@@ -8,6 +8,8 @@ const axios = require("axios");
 
 const { searchFlights } = require("./services/flightSearchService");
 
+const { resolveLocation } = require("./services/locationService");
+
 const app = express();
 app.use(express.json());
 
@@ -54,21 +56,34 @@ app.get("/webhook", (req, res) => {
  * (Deterministic & safe)
  * ================================
  */
-function parseFlightQuery(text) {
+async function parseFlightQuery(text) {
   const cleaned = text.replace(/,/g, "");
 
+  // Accept city names OR IATA codes
   const match = cleaned.match(
-    /flight\s+(\w{3})\s+to\s+(\w{3})\s+on\s+(\d{4}-\d{2}-\d{2})/
+    /flight\s+(.+?)\s+to\s+(.+?)\s+on\s+(\d{4}-\d{2}-\d{2})/
   );
 
   if (!match) return null;
 
+  const originInput = match[1].trim();
+  const destinationInput = match[2].trim();
+  const date = match[3];
+
+  const origin = await resolveLocation(originInput);
+  const destination = await resolveLocation(destinationInput);
+
+  if (!origin || !destination) {
+    return { error: "UNKNOWN_LOCATION" };
+  }
+
   return {
-    origin: match[1].toUpperCase(),
-    destination: match[2].toUpperCase(),
-    date: match[3]
+    origin,
+    destination,
+    date
   };
 }
+
 
 /**
  * ================================
@@ -119,7 +134,16 @@ app.post("/webhook", async (req, res) => {
      * FLIGHT INTENT HANDLING
      * ================================
      */
-    const flightQuery = parseFlightQuery(text);
+    const flightQuery = await parseFlightQuery(text);
+
+    if (flightQuery?.error === "UNKNOWN_LOCATION") {
+      await sendWhatsAppMessage(
+        from,
+        "❌ I couldn’t recognize one of the locations.\n" +
+          "Please try again using a major city or airport name."
+      );
+      return res.sendStatus(200);
+    }
 
     if (text.includes("flight") && !flightQuery) {
       await sendWhatsAppMessage(
