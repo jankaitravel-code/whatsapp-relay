@@ -1,6 +1,6 @@
 /**
  * Location Service
- * Resolves city names to IATA airport/city codes using Amadeus
+ * Resolves user input to both CITY and AIRPORT IATA codes (OTA-grade)
  */
 
 const axios = require("axios");
@@ -29,7 +29,7 @@ async function resolveLocation(query) {
       params: {
         keyword: query,
         subType: "CITY,AIRPORT",
-        page: { limit: 5 }
+        page: { limit: 10 }
       }
     }
   );
@@ -40,13 +40,28 @@ async function resolveLocation(query) {
     return null;
   }
 
-  // Prefer airports over cities
+  // Only keep locations that actually have an IATA code
+  const withIata = locations.filter(l => l.iataCode);
+
+  if (!withIata.length) {
+    return null;
+  }
+
+  // Determine city code (used for flight search)
+  const city =
+    withIata.find(l => l.subType === "CITY") ||
+    withIata[0];
+
+  // Determine airport code (used for booking / display)
   const airport =
-    locations.find(l => l.subType === "AIRPORT") || locations[0];
+    withIata.find(l => l.subType === "AIRPORT") ||
+    city;
 
   const resolved = {
-    code: airport.iataCode,
-    name: airport.name,
+    cityCode: city.iataCode,
+    airportCode: airport.iataCode,
+    cityName: city.name,
+    airportName: airport.name,
     type: airport.subType
   };
 
