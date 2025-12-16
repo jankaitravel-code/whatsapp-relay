@@ -39,9 +39,60 @@ app.post("/webhook", async (req, res) => {
     }
 
     const from = message.from; // user's phone number
-    const text = message.text?.body?.toLowerCase() || "";
+    const rawText = message.text?.body || "";
+    const text = rawText.toLowerCase();
 
     console.log("📩 Message received:", text);
+    const { searchFlights } = require("./services/flightSearchService");
+
+    function parseFlightQuery(text) {
+      const match = text.match(/flight\s+(\w+)\s+to\s+(\w+)\s+on\s+([\d-]+)/);
+      if (!match) return null;
+
+      return {
+        origin: match[1].toUpperCase(),
+        destination: match[2].toUpperCase(),
+        date: match[3]
+      };
+    }
+    const flightQuery = parseFlightQuery(text);
+
+    if (flightQuery) {
+      const flights = await searchFlights(flightQuery);
+
+      if (!flights.length) {
+        await axios.post(
+          `https://graph.facebook.com/v19.0/${PHONE_NUMBER_ID}/messages`,
+          {
+            messaging_product: "whatsapp",
+            to: from,
+            text: { body: "No flights found for your query." }
+          },
+          { headers: { Authorization: `Bearer ${WHATSAPP_TOKEN}` } }
+        );
+        return res.sendStatus(200);
+      }
+
+      const reply = flights
+        .map((f, i) => {
+          const price = f.price.total;
+          const segments = f.itineraries[0].segments[0];
+          return `${i + 1}. ${segments.carrierCode} ${segments.number} – ₹${price}`;
+        })
+        .join("\n");
+
+      await axios.post(
+        `https://graph.facebook.com/v19.0/${PHONE_NUMBER_ID}/messages`,
+        {
+          messaging_product: "whatsapp",
+          to: from,
+          text: { body: `Here are some options:\n${reply}` }
+        },
+        { headers: { Authorization: `Bearer ${WHATSAPP_TOKEN}` } }
+      );
+
+  return res.sendStatus(200);
+}
 
     if (text === "hi" || text === "hello") {
       await axios.post(
