@@ -1,32 +1,102 @@
-// Minimal WhatsApp relay server
+/**
+ * WhatsApp Relay Server
+ * Production-oriented baseline
+ */
+
 const express = require("express");
 const axios = require("axios");
-const WHATSAPP_TOKEN = "EAFoqwCGEN2oBQKJG9ZAc6YiQGTXBpBpd4wSwEtdwc9M9QcMGW0XmmkT4MGCu1vcEYzD0S4fspUgVSehXptXIjmYLE1VbvEaapSgGaZB9pSHVmZBrb9FOodwHu3FAHGRHBB22ZB7fRpxNTYG77wLkYOrh3moU4tQ43ZAUaNrTl7KBrBsC49HrAXnn8i6PC5SzLuNeVkyNjRPZAeZBY3CREPIxa7SrlZB7KZBCZCdiZCE3TrwqOUOwcVBEduvW3e8PljtQ4kvcR1cZAFwAD8FuKlvk8xi1MpZCZCBBeqNjF7xQZDZD";
-const PHONE_NUMBER_ID = "948142088373793";
+
+const { searchFlights } = require("./services/flightSearchService");
 
 const app = express();
-
 app.use(express.json());
 
-// Health check
+/**
+ * ================================
+ * TEMPORARY HARDCODED SECRETS
+ * (Tracked technical debt)
+ * ================================
+ */
+const VERIFY_TOKEN = "my_verify_token_123";
+const WHATSAPP_TOKEN = "PASTE_YOUR_WHATSAPP_ACCESS_TOKEN";
+const PHONE_NUMBER_ID = "PASTE_YOUR_PHONE_NUMBER_ID";
+
+/**
+ * ================================
+ * HEALTH CHECK
+ * ================================
+ */
 app.get("/", (req, res) => {
   res.send("✅ WhatsApp relay is running");
 });
 
-// Webhook verification (Meta will call this)
+/**
+ * ================================
+ * WEBHOOK VERIFICATION
+ * ================================
+ */
 app.get("/webhook", (req, res) => {
-  const VERIFY_TOKEN = "Jank_ai";
   const mode = req.query["hub.mode"];
   const token = req.query["hub.verify_token"];
   const challenge = req.query["hub.challenge"];
 
   if (mode === "subscribe" && token === VERIFY_TOKEN) {
+    console.log("✅ Webhook verified");
     return res.status(200).send(challenge);
   }
+
   return res.sendStatus(403);
 });
 
-// Incoming WhatsApp messages (just log for now)
+/**
+ * ================================
+ * FLIGHT QUERY PARSER
+ * (Deterministic & safe)
+ * ================================
+ */
+function parseFlightQuery(text) {
+  const cleaned = text.replace(/,/g, "");
+
+  const match = cleaned.match(
+    /flight\s+(\w{3})\s+to\s+(\w{3})\s+on\s+(\d{4}-\d{2}-\d{2})/
+  );
+
+  if (!match) return null;
+
+  return {
+    origin: match[1].toUpperCase(),
+    destination: match[2].toUpperCase(),
+    date: match[3]
+  };
+}
+
+/**
+ * ================================
+ * SEND WHATSAPP MESSAGE
+ * ================================
+ */
+async function sendWhatsAppMessage(to, body) {
+  await axios.post(
+    `https://graph.facebook.com/v19.0/${PHONE_NUMBER_ID}/messages`,
+    {
+      messaging_product: "whatsapp",
+      to,
+      text: { body }
+    },
+    {
+      headers: {
+        Authorization: `Bearer ${WHATSAPP_TOKEN}`,
+        "Content-Type": "application/json"
+      }
+    }
+  );
+}
+
+/**
+ * ================================
+ * INCOMING WHATSAPP MESSAGES
+ * ================================
+ */
 app.post("/webhook", async (req, res) => {
   try {
     const entry = req.body.entry?.[0];
@@ -38,93 +108,99 @@ app.post("/webhook", async (req, res) => {
       return res.sendStatus(200);
     }
 
-    const from = message.from; // user's phone number
+    const from = message.from;
     const rawText = message.text?.body || "";
     const text = rawText.toLowerCase();
 
-    console.log("📩 Message received:", text);
-    const { searchFlights } = require("./services/flightSearchService");
+    console.log("📩 Message received:", rawText);
 
-    function parseFlightQuery(text) {
-      const match = text.match(/flight\s+(\w+)\s+to\s+(\w+)\s+on\s+([\d-]+)/);
-      if (!match) return null;
-
-      return {
-        origin: match[1].toUpperCase(),
-        destination: match[2].toUpperCase(),
-        date: match[3]
-      };
-    }
+    /**
+     * ================================
+     * FLIGHT INTENT HANDLING
+     * ================================
+     */
     const flightQuery = parseFlightQuery(text);
 
+    if (text.includes("flight") && !flightQuery) {
+      await sendWhatsAppMessage(
+        from,
+        "✈️ I can help you find flights.\n\n" +
+          "Please use this format:\n" +
+          "flight DEL to DXB on 2025-12-25"
+      );
+      return res.sendStatus(200);
+    }
+
     if (flightQuery) {
+      console.log("✈️ Parsed flight query:", flightQuery);
+
       const flights = await searchFlights(flightQuery);
 
-      if (!flights.length) {
-        await axios.post(
-          `https://graph.facebook.com/v19.0/${PHONE_NUMBER_ID}/messages`,
-          {
-            messaging_product: "whatsapp",
-            to: from,
-            text: { body: "No flights found for your query." }
-          },
-          { headers: { Authorization: `Bearer ${WHATSAPP_TOKEN}` } }
+      if (!flights || flights.length === 0) {
+        await sendWhatsAppMessage(
+          from,
+          "Sorry, I couldn’t find any flights for that route and date."
         );
         return res.sendStatus(200);
       }
 
       const reply = flights
         .map((f, i) => {
+          const segment = f.itineraries[0].segments[0];
           const price = f.price.total;
-          const segments = f.itineraries[0].segments[0];
-          return `${i + 1}. ${segments.carrierCode} ${segments.number} – ₹${price}`;
+          return `${i + 1}. ${segment.carrierCode} ${
+            segment.number
+          } – ₹${price}`;
         })
         .join("\n");
 
-      await axios.post(
-        `https://graph.facebook.com/v19.0/${PHONE_NUMBER_ID}/messages`,
-        {
-          messaging_product: "whatsapp",
-          to: from,
-          text: { body: `Here are some options:\n${reply}` }
-        },
-        { headers: { Authorization: `Bearer ${WHATSAPP_TOKEN}` } }
+      await sendWhatsAppMessage(
+        from,
+        `✈️ Here are some flight options:\n\n${reply}`
       );
 
-  return res.sendStatus(200);
-}
-
-    if (text === "hi" || text === "hello") {
-      await axios.post(
-        `https://graph.facebook.com/v19.0/${PHONE_NUMBER_ID}/messages`,
-        {
-          messaging_product: "whatsapp",
-          to: from,
-          text: {
-            body: "Hello 👋 I’m your travel assistant"
-          }
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${WHATSAPP_TOKEN}`,
-            "Content-Type": "application/json"
-          }
-        }
-      );
-
-      console.log("✅ Reply sent");
+      return res.sendStatus(200);
     }
 
-    res.sendStatus(200);
+    /**
+     * ================================
+     * BASIC GREETING
+     * ================================
+     */
+    if (text === "hi" || text === "hello") {
+      await sendWhatsAppMessage(
+        from,
+        "Hello 👋 I’m your travel assistant"
+      );
+      return res.sendStatus(200);
+    }
+
+    /**
+     * ================================
+     * FALLBACK
+     * ================================
+     */
+    await sendWhatsAppMessage(
+      from,
+      "I can help with flights.\nTry:\nflight DEL to DXB on 2025-12-25"
+    );
+
+    return res.sendStatus(200);
   } catch (err) {
-    console.error("❌ Error handling message", err.response?.data || err.message);
-    res.sendStatus(200);
+    console.error(
+      "❌ Error handling message",
+      err.response?.data || err.message
+    );
+    return res.sendStatus(200);
   }
 });
 
-
+/**
+ * ================================
+ * SERVER START
+ * ================================
+ */
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log("🚀 Relay server running on port", PORT);
 });
-
