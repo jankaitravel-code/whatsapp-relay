@@ -26,8 +26,8 @@ async function getAccessToken() {
     `${AMADEUS_BASE_URL}/v1/security/oauth2/token`,
     new URLSearchParams({
       grant_type: "client_credentials",
-      client_id: "AMADEUS_API_KEY_HERE",
-      client_secret: "AMADEUS_API_SECRET_HERE"
+      client_id: "wSAAIVyw13GQjZK9gduD1xLMKpsUMKNZ",
+      client_secret: "HFRZHFYk22TIPDHD"
     }),
     {
       headers: {
@@ -41,7 +41,20 @@ async function getAccessToken() {
 
   return accessToken;
 }
-
+async function testConnection() {
+  try {
+    const token = await getAccessToken();
+    console.log("✅ Amadeus token fetched successfully");
+    return token;
+  } catch (err) {
+    console.error(
+      "❌ Amadeus connection failed",
+      err.response?.data || err.message
+    );
+    throw err;
+  }
+}
 module.exports = {
-  getAccessToken
+  getAccessToken,
+  testConnection
 };
