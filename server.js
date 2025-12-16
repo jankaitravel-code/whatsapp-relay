@@ -156,9 +156,19 @@ app.post("/webhook", async (req, res) => {
     }
 
     if (flightQuery) {
-      console.log("✈️ Parsed flight query:", flightQuery);
+      console.log("✈️ Resolved flight query:", {
+        origin: flightQuery.origin,
+        destination: flightQuery.destination,
+        date: flightQuery.date
+      });
 
-      const flights = await searchFlights(flightQuery);
+
+      const flights = await searchFlights({
+        origin: flightQuery.origin.code,
+        destination: flightQuery.destination.code,
+        date: flightQuery.date
+      });
+
 
       if (!flights || flights.length === 0) {
         await sendWhatsAppMessage(
