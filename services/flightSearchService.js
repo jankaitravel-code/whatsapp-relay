@@ -11,7 +11,7 @@ const AMADEUS_BASE_URL = "https://test.api.amadeus.com";
 /**
  * Search one-way flights
  */
-async function searchFlights({ origin, destination, date }) {
+async function searchFlights({ originLocationCode, destinationLocationCode, date }) {
   const token = await getAccessToken();
 
   const response = await axios.get(
@@ -21,8 +21,8 @@ async function searchFlights({ origin, destination, date }) {
         Authorization: `Bearer ${token}`
       },
       params: {
-        originLocationCode: origin,
-        destinationLocationCode: destination,
+        originLocationCode,
+        destinationLocationCode,
         departureDate: date,
         adults: 1,
         max: 3
