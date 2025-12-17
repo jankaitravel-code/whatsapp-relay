@@ -228,6 +228,11 @@ app.post("/webhook", async (req, res) => {
         selectedOriginAirport: flightQuery.origin.airportCode,
         selectedDestinationAirport: flightQuery.destination.airportCode
       });
+     
+     // 🔄 Full flight query overrides any pending conversation
+    if (flightQuery.date) {
+      clearConversation(from);
+    }
 
     // 📝 Handle partial flight query (missing date)
     if (!flightQuery.date) {
