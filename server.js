@@ -145,12 +145,18 @@ app.post("/webhook", async (req, res) => {
     if (conversation) {
       console.log("🧠 Existing conversation state:", conversation);
     }
-    // 🔁 Resume pending flight search if awaiting date
+   /**
+     * ================================
+     * FLIGHT INTENT HANDLING
+     * ================================
+     */
+    const flightQuery = await parseFlightQuery(text);
+    // 🔁 Resume pending flight search ONLY if this message is NOT a new flight query
     if (
       conversation?.intent === "FLIGHT_SEARCH" &&
       conversation.awaiting === "date" &&
-      !text.includes("flight")
-    ) {    
+      !flightQuery
+    ) {
       const dateMatch = rawText.match(/\d{4}-\d{2}-\d{2}/);
 
       if (!dateMatch) {
@@ -200,13 +206,7 @@ app.post("/webhook", async (req, res) => {
 
       return res.sendStatus(200);
     }
-    /**
-     * ================================
-     * FLIGHT INTENT HANDLING
-     * ================================
-     */
-    const flightQuery = await parseFlightQuery(text);
-
+    
     if (flightQuery?.error === "UNKNOWN_LOCATION") {
       await sendWhatsAppMessage(
         from,
