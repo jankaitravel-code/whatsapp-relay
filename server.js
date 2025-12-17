@@ -138,9 +138,58 @@ app.post("/webhook", async (req, res) => {
 
     if (conversation) {
       console.log("🧠 Existing conversation state:", conversation);
+
+    // 🔁 Resume pending flight search if awaiting date
+    if (conversation?.intent === "FLIGHT_SEARCH" && conversation.awaiting === "date") {
+      const dateMatch = rawText.match(/\d{4}-\d{2}-\d{2}/);
+
+      if (!dateMatch) {
+        await sendWhatsAppMessage(
+          from,
+          "📅 Please provide the date in YYYY-MM-DD format."
+        );
+        return res.sendStatus(200);
+      }
+
+      const completedQuery = {
+        origin: conversation.origin,
+        destination: conversation.destination,
+        date: dateMatch[0]
+      };
+
+      clearConversation(from);
+
+      console.log("🔁 Resuming flight search with:", completedQuery);
+
+      const flights = await searchFlights({
+        originLocationCode: completedQuery.origin.cityCode,
+        destinationLocationCode: completedQuery.destination.cityCode,
+        date: completedQuery.date
+      });
+
+      if (!flights || flights.length === 0) {
+        await sendWhatsAppMessage(
+          from,
+          "Sorry, I couldn’t find any flights for that route and date."
+        );
+        return res.sendStatus(200);
+      }
+
+      const reply = flights
+        .map((f, i) => {
+          const segment = f.itineraries[0].segments[0];
+          const price = f.price.total;
+          return `${i + 1}. ${segment.carrierCode} ${segment.number} – ₹${price}`;
+        })
+        .join("\n");
+
+      await sendWhatsAppMessage(
+        from,
+        `✈️ Here are some flight options:\n\n${reply}`
+      );
+
+      return res.sendStatus(200);
     }
-
-
     /**
      * ================================
      * FLIGHT INTENT HANDLING
@@ -176,7 +225,24 @@ app.post("/webhook", async (req, res) => {
         selectedDestinationAirport: flightQuery.destination.airportCode
       });
 
+    // 📝 Handle partial flight query (missing date)
+    if (!flightQuery.date) {
+      setConversation(from, {
+        intent: "FLIGHT_SEARCH",
+        origin: flightQuery.origin,
+        destination: flightQuery.destination,
+        date: null,
+        awaiting: "date"
+      });
 
+      await sendWhatsAppMessage(
+        from,
+        "✈️ Got it. What date would you like to travel? (YYYY-MM-DD)"
+      );
+
+      return res.sendStatus(200);
+    }
+  
       const flights = await searchFlights({
         originLocationCode: flightQuery.origin.cityCode,
         destinationLocationCode: flightQuery.destination.cityCode,
