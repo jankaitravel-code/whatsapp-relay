@@ -6,7 +6,7 @@
 const express = require("express");
 const axios = require("axios");
 
-const searchFlights = require("./services/flightSearchService");
+const { searchFlights } = require("./services/flightSearchService");
 
 const { resolveLocation } = require("./services/locationService");
 
