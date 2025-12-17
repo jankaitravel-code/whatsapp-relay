@@ -62,18 +62,30 @@ app.get("/webhook", (req, res) => {
  * ================================
  */
 async function parseFlightQuery(text) {
-  const cleaned = text.replace(/,/g, "");
+  const cleaned = text.replace(/,/g, "").trim();
 
-  // Accept city names OR IATA codes
-  const match = cleaned.match(
-    /flight\s+(.+?)\s+to\s+(.+?)(?:\s+on\s+(\d{4}-\d{2}-\d{2}))?/
+  // FULL query with date
+  let match = cleaned.match(
+    /flight\s+(.+?)\s+to\s+(.+?)\s+on\s+(\d{4}-\d{2}-\d{2})$/i
   );
 
-  if (!match) return null;
+  let originInput, destinationInput, date = null;
 
-  const originInput = match[1].trim();
-  const destinationInput = match[2].trim();
-  const date = match[3] || null;
+  if (match) {
+    originInput = match[1].trim();
+    destinationInput = match[2].trim();
+    date = match[3];
+  } else {
+    // PARTIAL query (no date)
+    match = cleaned.match(
+      /flight\s+(.+?)\s+to\s+(.+?)$/i
+    );
+
+    if (!match) return null;
+
+    originInput = match[1].trim();
+    destinationInput = match[2].trim();
+  }
 
   const origin = await resolveLocation(originInput);
   const destination = await resolveLocation(destinationInput);
@@ -88,7 +100,6 @@ async function parseFlightQuery(text) {
     date
   };
 }
-
 
 /**
  * ================================
