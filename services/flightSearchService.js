@@ -1,3 +1,13 @@
+/**
+ * Flight Search Service
+ * Calls Amadeus Flight Offers API
+ */
+
+const axios = require("axios");
+const { getAccessToken } = require("./amadeusClient");
+
+const AMADEUS_BASE_URL = "https://test.api.amadeus.com";
+
 async function searchFlights(input) {
   const { originLocationCode, destinationLocationCode, date } = input;
 
