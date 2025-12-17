@@ -134,6 +134,12 @@ app.post("/webhook", async (req, res) => {
 
     console.log("📩 Message received:", rawText);
 
+    // 🔄 New flight command always overrides pending conversation
+    if (text.includes("flight")) {
+      clearConversation(from);
+    }
+
+
     const conversation = getConversation(from);
 
     if (conversation) {
