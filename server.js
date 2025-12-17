@@ -7,6 +7,12 @@ const express = require("express");
 const axios = require("axios");
 const config = require("./config");
 
+const {
+  getConversation,
+  setConversation,
+  clearConversation
+} = require("./state/conversationStore");
+
 
 const { searchFlights } = require("./services/flightSearchService");
 
@@ -127,6 +133,13 @@ app.post("/webhook", async (req, res) => {
     const text = rawText.toLowerCase();
 
     console.log("📩 Message received:", rawText);
+
+    const conversation = getConversation(from);
+
+    if (conversation) {
+      console.log("🧠 Existing conversation state:", conversation);
+    }
+
 
     /**
      * ================================
