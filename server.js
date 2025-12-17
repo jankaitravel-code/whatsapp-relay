@@ -66,14 +66,14 @@ async function parseFlightQuery(text) {
 
   // Accept city names OR IATA codes
   const match = cleaned.match(
-    /flight\s+(.+?)\s+to\s+(.+?)\s+on\s+(\d{4}-\d{2}-\d{2})/
+    /flight\s+(.+?)\s+to\s+(.+?)(?:\s+on\s+(\d{4}-\d{2}-\d{2}))?/
   );
 
   if (!match) return null;
 
   const originInput = match[1].trim();
   const destinationInput = match[2].trim();
-  const date = match[3];
+  const date = match[3] || null;
 
   const origin = await resolveLocation(originInput);
   const destination = await resolveLocation(destinationInput);
