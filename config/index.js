@@ -5,7 +5,7 @@
 
 const config = {
   whatsapp: {
-    verifyToken: process.env.VERIFY_TOKEN || "my_verify_token_123",
+    verifyToken: process.env.VERIFY_TOKEN,
     accessToken:
       process.env.WHATSAPP_TOKEN ||
       "EAFoqwCGEN2oBQFnIXZCtXh3t8sGX2pulg0YZAlcJfB31GvJU3Rp8ynlct3yNCgZCHQfuDwJoQ16pKwvPcKFV5i8CYWrVLwpoX8dvKGvmhXCwaxNlS4wc0w34jCwooZAUo4xe6AdyobVWmoU36MdtBmIRZAAoPFFuHAtnasF4SjSIKSxRmeYxbz6bGQcRJBgOEZA5Hl9JZBdGq5dorvIHbhKEpa5ZCxDICB16eIDRZA3pNxBREPZAZCxx3OSXldzar3ZBg7sUCrlBhqW2suzTA4LDgy3sRV0VLS6ZCHyabey9l",
