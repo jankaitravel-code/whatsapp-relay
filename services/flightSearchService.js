@@ -16,8 +16,8 @@ async function searchFlights(input) {
         Authorization: `Bearer ${token}`
       },
       params: {
-        originLocationCode: originLocationCode,
-        destinationLocationCode: destinationLocationCode,
+        originLocationCode,
+        destinationLocationCode,
         departureDate: date,
         adults: 1,
         max: 3
@@ -27,3 +27,7 @@ async function searchFlights(input) {
 
   return response.data.data;
 }
+
+module.exports = {
+  searchFlights
+};
