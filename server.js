@@ -19,7 +19,7 @@ app.use(express.json());
  * (Tracked technical debt)
  * ================================
  */
-const VERIFY_TOKEN = "my_verify_token_123";
+const VERIFY_TOKEN = "Jank_ai";
 const WHATSAPP_TOKEN = "EAFoqwCGEN2oBQJ5QA0ViVoZArNaekqholvgVbWABVd8Tnz27N9uCPdE3vIr3AZAqDJCvChHDCacu21PfBxc2aM83FuDWLyb6RTkkdl55QfD4VkjFKd8EVzlZCYeJaHeZBQc6qwIzf37ME018raRJqXNnlEnfHd0m2WRwBe3MSuqVpZCP8ZAUZByJpRhX0IPo5FPflAOiiVi7EZAXw5YRjHug19rsp20wuJR3uVc7WqXBw74Uqt60KA9QpKDy1lnAo1SHZC0FczGjEO0xEbRWWJ4HPOrpRGmHXfH3SYQZDZD";
 const PHONE_NUMBER_ID = "948142088373793";
 
