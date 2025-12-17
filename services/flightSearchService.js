@@ -1,17 +1,12 @@
-/**
- * Flight Search Service
- * Responsible for searching flights using Amadeus
- */
+async function searchFlights(input) {
+  const { originLocationCode, destinationLocationCode, date } = input;
 
-const axios = require("axios");
-const { getAccessToken } = require("./amadeusClient");
+  console.log("🛫 Amadeus flight search params:", {
+    originLocationCode,
+    destinationLocationCode,
+    departureDate: date
+  });
 
-const AMADEUS_BASE_URL = "https://test.api.amadeus.com";
-
-/**
- * Search one-way flights
- */
-async function searchFlights({ originLocationCode, destinationLocationCode, date }) {
   const token = await getAccessToken();
 
   const response = await axios.get(
@@ -21,8 +16,8 @@ async function searchFlights({ originLocationCode, destinationLocationCode, date
         Authorization: `Bearer ${token}`
       },
       params: {
-        originLocationCode,
-        destinationLocationCode,
+        originLocationCode: originLocationCode,
+        destinationLocationCode: destinationLocationCode,
         departureDate: date,
         adults: 1,
         max: 3
@@ -32,7 +27,3 @@ async function searchFlights({ originLocationCode, destinationLocationCode, date
 
   return response.data.data;
 }
-
-module.exports = {
-  searchFlights
-};
