@@ -5,6 +5,8 @@
 
 const express = require("express");
 const axios = require("axios");
+const config = require("./config");
+
 
 const { searchFlights } = require("./services/flightSearchService");
 
@@ -15,13 +17,10 @@ app.use(express.json());
 
 /**
  * ================================
- * TEMPORARY HARDCODED SECRETS
- * (Tracked technical debt)
+ * centralized tokens
  * ================================
  */
-const VERIFY_TOKEN = "my_verify_token_123";
-const WHATSAPP_TOKEN = "EAFoqwCGEN2oBQBGwBYYdvLlVlD9XAukvhDmLCZBcpHBOOZBOdWtqLH4gNs7e2oNpk645bNZAGRj4tVjgZAo41ZAHFCbZBJGfIX33TZB2m3H9QHzMc9OrxTIadPTpUxFElh4aZCnFEPCEJp5ms4QWJCeuBFdxTs6yVZAN8WB51zuNX4Vmk3LDKs6BxwI43d2TjA9cQfZCFAaZARzgg8Yvfcu1a4WXS0bnIjtIERq7DxHnh2RZCcelTtciMnZBNIfeayg1wBfw5kEokK98OhOn3aOzHOqCLO0mtH1n1P3ZBj0wZDZD";
-const PHONE_NUMBER_ID = "948142088373793";
+const { verifyToken, accessToken, phoneNumberId } = config.whatsapp;
 
 /**
  * ================================
@@ -42,7 +41,7 @@ app.get("/webhook", (req, res) => {
   const token = req.query["hub.verify_token"];
   const challenge = req.query["hub.challenge"];
 
-  if (mode === "subscribe" && token === VERIFY_TOKEN) {
+  if (mode === "subscribe" && token === verifyToken) {
     console.log("✅ Webhook verified");
     return res.status(200).send(challenge);
   }
@@ -92,7 +91,7 @@ async function parseFlightQuery(text) {
  */
 async function sendWhatsAppMessage(to, body) {
   await axios.post(
-    `https://graph.facebook.com/v19.0/${PHONE_NUMBER_ID}/messages`,
+    `https://graph.facebook.com/v19.0/${phoneNumberId}/messages`,
     {
       messaging_product: "whatsapp",
       to,
@@ -100,7 +99,7 @@ async function sendWhatsAppMessage(to, body) {
     },
     {
       headers: {
-        Authorization: `Bearer ${WHATSAPP_TOKEN}`,
+        Authorization: `Bearer ${accessToken}`,
         "Content-Type": "application/json"
       }
     }
