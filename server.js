@@ -140,7 +140,11 @@ app.post("/webhook", async (req, res) => {
       console.log("🧠 Existing conversation state:", conversation);
     }
     // 🔁 Resume pending flight search if awaiting date
-    if (conversation?.intent === "FLIGHT_SEARCH" && conversation.awaiting === "date") {
+    if (
+      conversation?.intent === "FLIGHT_SEARCH" &&
+      conversation.awaiting === "date" &&
+      !text.includes("flight")
+    ) {    
       const dateMatch = rawText.match(/\d{4}-\d{2}-\d{2}/);
 
       if (!dateMatch) {
