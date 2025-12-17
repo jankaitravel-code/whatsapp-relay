@@ -156,16 +156,18 @@ app.post("/webhook", async (req, res) => {
     }
 
     if (flightQuery) {
-      console.log("✈️ Resolved flight query:", {
-        origin: flightQuery.origin,
-        destination: flightQuery.destination,
-        date: flightQuery.date
+      console.log("✈️ Flight search using city codes:", {
+        originCity: flightQuery.origin.cityCode,
+        destinationCity: flightQuery.destination.cityCode,
+        date: flightQuery.date,
+        selectedOriginAirport: flightQuery.origin.airportCode,
+        selectedDestinationAirport: flightQuery.destination.airportCode
       });
 
 
       const flights = await searchFlights({
-        origin: flightQuery.origin.code,
-        destination: flightQuery.destination.code,
+        origin: flightQuery.origin.citycode,
+        destination: flightQuery.destination.citycode,
         date: flightQuery.date
       });
 
