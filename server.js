@@ -166,8 +166,8 @@ app.post("/webhook", async (req, res) => {
 
 
       const flights = await searchFlights({
-        originLocationCode: flightQuery.origin.citycode,
-        destinationLocationCode: flightQuery.destination.citycode,
+        originLocationCode: flightQuery.origin.cityCode,
+        destinationLocationCode: flightQuery.destination.cityCode,
         date: flightQuery.date
       });
 
