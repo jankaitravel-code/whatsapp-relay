@@ -11,11 +11,9 @@ const config = {
   },
 
   amadeus: {
-    apiKey: process.env.AMADEUS_API_KEY || "",
-    apiSecret: process.env.AMADEUS_API_SECRET || "",
-    baseUrl:
-      process.env.AMADEUS_BASE_URL ||
-      "https://test.api.amadeus.com"
+    apiKey: process.env.AMADEUS_API_KEY,
+    apiSecret: process.env.AMADEUS_API_SECRET,
+    baseUrl: process.env.AMADEUS_BASE_URL     
   }
 };
 
