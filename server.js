@@ -7,6 +7,9 @@ const express = require("express");
 const axios = require("axios");
 const config = require("./config");
 
+const { routeIntent } = require("./intents/intentRouter");
+
+
 const {
   getConversation,
   setConversation,
@@ -145,22 +148,19 @@ app.post("/webhook", async (req, res) => {
 
     console.log("📩 Message received:", rawText);
 
-    // 🔄 Universal reset commands
-    if (
-      text === "cancel" ||
-      text === "start over" ||
-      text === "reset"
-    ) {
-      clearConversation(from);
-
-      await sendWhatsAppMessage(
-        from,
-        "✅ All set. Let’s start fresh.\nYou can say:\nflight DEL to DXB on 2025-12-25"
-      );
-
-      return res.sendStatus(200);
-    }
-
+    const intentContext = {
+      from,
+      text,
+      rawText,
+      sendWhatsAppMessage,
+      clearConversation,
+      getConversation,
+      setConversation,
+      searchFlights,
+      resolveLocation
+    };
+    // 🔀 Route reset / greeting / flight intents
+    await routeIntent(intentContext);
 
     // 🔄 New flight command always overrides pending conversation
     if (/^flight\s+/i.test(text)) {
