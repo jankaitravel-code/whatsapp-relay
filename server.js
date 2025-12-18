@@ -1,6 +1,6 @@
 /**
  * WhatsApp Relay Server
- * Production-oriented baseline
+ * Transport-only (7.2+ architecture)
  */
 
 const express = require("express");
@@ -8,25 +8,18 @@ const axios = require("axios");
 const config = require("./config");
 
 const { routeIntent } = require("./intents/intentRouter");
-
-
 const {
   getConversation,
   setConversation,
   clearConversation
 } = require("./state/conversationStore");
 
-
-const { searchFlights } = require("./services/flightSearchService");
-
-const { resolveLocation } = require("./services/locationService");
-
 const app = express();
 app.use(express.json());
 
 /**
  * ================================
- * centralized tokens
+ * Centralized WhatsApp tokens
  * ================================
  */
 const { verifyToken, accessToken, phoneNumberId } = config.whatsapp;
@@ -60,53 +53,7 @@ app.get("/webhook", (req, res) => {
 
 /**
  * ================================
- * FLIGHT QUERY PARSER
- * (Deterministic & safe)
- * ================================
- */
-async function parseFlightQuery(text) {
-  const cleaned = text.replace(/,/g, "").trim();
-
-  // FULL query with date
-  let match = cleaned.match(
-    /flight\s+(.+?)\s+to\s+(.+?)\s+on\s+(\d{4}-\d{2}-\d{2})$/i
-  );
-
-  let originInput, destinationInput, date = null;
-
-  if (match) {
-    originInput = match[1].trim();
-    destinationInput = match[2].trim();
-    date = match[3];
-  } else {
-    // PARTIAL query (no date)
-    match = cleaned.match(
-      /flight\s+(.+?)\s+to\s+(.+?)$/i
-    );
-
-    if (!match) return null;
-
-    originInput = match[1].trim();
-    destinationInput = match[2].trim();
-  }
-
-  const origin = await resolveLocation(originInput);
-  const destination = await resolveLocation(destinationInput);
-
-  if (!origin || !destination) {
-    return { error: "UNKNOWN_LOCATION" };
-  }
-
-  return {
-    origin,
-    destination,
-    date
-  };
-}
-
-/**
- * ================================
- * SEND WHATSAPP MESSAGE
+ * SEND WHATSAPP MESSAGE (transport helper)
  * ================================
  */
 async function sendWhatsAppMessage(to, body) {
@@ -156,6 +103,7 @@ app.post("/webhook", async (req, res) => {
       rawText,
       conversation,
 
+      // helpers available to intents
       sendWhatsAppMessage,
       setConversation,
       clearConversation
@@ -167,202 +115,7 @@ app.post("/webhook", async (req, res) => {
     return res.sendStatus(200);
 
   } catch (err) {
-    console.error(
-      "❌ Error handling message",
-      err.response?.data || err.message
-    );
-    return res.sendStatus(200);
-  }
-});
-
-   /**
-     * ================================
-     * FLIGHT INTENT HANDLING
-     * ================================
-     */
-    const flightQuery = await parseFlightQuery(text);
-    // 🔁 Resume pending flight search ONLY if this message is NOT a new flight query
-    if (
-      conversation?.intent === "FLIGHT_SEARCH" &&
-      conversation.awaiting === "date" &&
-      !flightQuery
-    ) {
-      const dateMatch = rawText.match(/\d{4}-\d{2}-\d{2}/);
-
-      if (!dateMatch) {
-        await sendWhatsAppMessage(
-          from,
-          "📅 Please provide the date in YYYY-MM-DD format."
-        );
-        return res.sendStatus(200);
-      }
-
-      const completedQuery = {
-        origin: conversation.origin,
-        destination: conversation.destination,
-        date: dateMatch[0]
-      };
-
-      console.log("🔁 Resuming flight search with:", completedQuery);
-
-      setConversation(from, {
-        intent: "FLIGHT_SEARCH",
-        origin: completedQuery.origin,
-        destination: completedQuery.destination,
-        date: completedQuery.date,
-        awaiting: null
-      });
-
-      const flights = await searchFlights({
-        originLocationCode: completedQuery.origin.cityCode,
-        destinationLocationCode: completedQuery.destination.cityCode,
-        date: completedQuery.date
-      });
-
-      if (!flights || flights.length === 0) {
-        await sendWhatsAppMessage(
-          from,
-          "Sorry, I couldn’t find any flights for that route and date."
-        );
-        return res.sendStatus(200);
-      }
-
-      const reply = flights
-        .map((f, i) => {
-          const segment = f.itineraries[0].segments[0];
-          const price = f.price.total;
-          return `${i + 1}. ${segment.carrierCode} ${segment.number} – ₹${price}`;
-        })
-        .join("\n");
-
-      await sendWhatsAppMessage(
-        from,
-        `✈️ Here are some flight options:\n\n${reply}`
-      );
-
-      return res.sendStatus(200);
-    }
-    
-    if (flightQuery?.error === "UNKNOWN_LOCATION") {
-      await sendWhatsAppMessage(
-        from,
-        "❌ I couldn’t recognize one of the locations.\n" +
-          "Please try again using a major city or airport name."
-      );
-      return res.sendStatus(200);
-    }
-
-    if (text.includes("flight") && !flightQuery) {
-      await sendWhatsAppMessage(
-        from,
-        "✈️ I can help you find flights.\n\n" +
-          "Please use this format:\n" +
-          "flight DEL to DXB on 2025-12-25"
-      );
-      return res.sendStatus(200);
-    }
-
-    if (flightQuery) {
-      console.log("✈️ Flight search using city codes:", {
-        originCity: flightQuery.origin.cityCode,
-        destinationCity: flightQuery.destination.cityCode,
-        date: flightQuery.date,
-        selectedOriginAirport: flightQuery.origin.airportCode,
-        selectedDestinationAirport: flightQuery.destination.airportCode
-      });
-    
-      // 💾 Store completed flight search for possible corrections
-    if (flightQuery.date) {
-      setConversation(from, {
-        intent: "FLIGHT_SEARCH",
-        origin: flightQuery.origin,
-        destination: flightQuery.destination,
-        date: flightQuery.date,
-        awaiting: null
-      });
-    }
-
-
-    // 📝 Handle partial flight query (missing date)
-    if (!flightQuery.date) {
-      setConversation(from, {
-        intent: "FLIGHT_SEARCH",
-        origin: flightQuery.origin,
-        destination: flightQuery.destination,
-        date: null,
-        awaiting: "date"
-      });
-
-      await sendWhatsAppMessage(
-        from,
-        "✈️ Got it. What date would you like to travel? (YYYY-MM-DD)"
-      );
-
-      return res.sendStatus(200);
-    }
-  
-      const flights = await searchFlights({
-        originLocationCode: flightQuery.origin.cityCode,
-        destinationLocationCode: flightQuery.destination.cityCode,
-        date: flightQuery.date
-      });
-
-
-      if (!flights || flights.length === 0) {
-        await sendWhatsAppMessage(
-          from,
-          "Sorry, I couldn’t find any flights for that route and date."
-        );
-        return res.sendStatus(200);
-      }
-
-      const reply = flights
-        .map((f, i) => {
-          const segment = f.itineraries[0].segments[0];
-          const price = f.price.total;
-          return `${i + 1}. ${segment.carrierCode} ${
-            segment.number
-          } – ₹${price}`;
-        })
-        .join("\n");
-
-      await sendWhatsAppMessage(
-        from,
-        `✈️ Here are some flight options:\n\n${reply}`
-      );
-
-      return res.sendStatus(200);
-    }
-
-    /**
-     * ================================
-     * BASIC GREETING
-     * ================================
-     */
-    if (text === "hi" || text === "hello") {
-      await sendWhatsAppMessage(
-        from,
-        "Hello 👋 I’m your travel assistant"
-      );
-      return res.sendStatus(200);
-    }
-
-    /**
-     * ================================
-     * FALLBACK
-     * ================================
-     */
-    await sendWhatsAppMessage(
-      from,
-      "I can help with flights.\nTry:\nflight DEL to DXB on 2025-12-25"
-    );
-
-    return res.sendStatus(200);
-  } catch (err) {
-    console.error(
-      "❌ Error handling message",
-      err.response?.data || err.message
-    );
+    console.error("❌ Error handling message", err.message);
     return res.sendStatus(200);
   }
 });
