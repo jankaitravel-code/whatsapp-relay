@@ -160,7 +160,11 @@ app.post("/webhook", async (req, res) => {
       resolveLocation
     };
     // 🔀 Route reset / greeting / flight intents
-    await routeIntent(intentContext);
+    const handled = await routeIntent(intentContext);
+    if (handled) {
+      return res.sendStatus(200);
+    }
+
 
     // 🔄 New flight command always overrides pending conversation
     if (/^flight\s+/i.test(text)) {
