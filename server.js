@@ -163,7 +163,7 @@ app.post("/webhook", async (req, res) => {
 
 
     // 🔄 New flight command always overrides pending conversation
-    if (text.includes("flight")) {
+    if (/^flight\s+/i.test(text)) {
       clearConversation(from);
     }
 
@@ -198,9 +198,9 @@ app.post("/webhook", async (req, res) => {
       // 💾 Persist completed search for corrections
       setConversation(from, {
         intent: "FLIGHT_SEARCH",
-        origin: completedQuery.origin,
-        destination: completedQuery.destination,
-        date: completedQuery.date,
+        origin: conversation.origin,
+        destination: conversation.destination,
+        date: updatedQuery.date,
         awaiting: null
       });
 
@@ -262,9 +262,15 @@ app.post("/webhook", async (req, res) => {
         date: dateMatch[0]
       };
 
-      clearConversation(from);
-
       console.log("🔁 Resuming flight search with:", completedQuery);
+
+      setConversation(from, {
+        intent: "FLIGHT_SEARCH",
+        origin: completedQuery.origin,
+        destination: completedQuery.destination,
+        date: completedQuery.date,
+        awaiting: null
+      });
 
       const flights = await searchFlights({
         originLocationCode: completedQuery.origin.cityCode,
