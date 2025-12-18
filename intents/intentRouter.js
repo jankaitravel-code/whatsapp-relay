@@ -10,6 +10,11 @@ const handleFallbackIntent = require("./fallbackIntent");
 async function routeIntent(context) {
   const { text } = context;
 
+  // 🔁 If we are mid-conversation, let server.js handle it
+  if (conversation?.awaiting) {
+    return false;
+  }
+
   if (handleResetIntent.canHandle(text)) {
     await handleResetIntent.handle(context);
     return true;
