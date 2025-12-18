@@ -1,14 +1,18 @@
 /**
- * Flight Intent (stub)
- * Will be implemented in 7.2.4
+ * Flight Intent
+ * Delegates to existing flight handling logic
  */
 
 function canHandle(text) {
-  return false;
+  if (!text) return false;
+  return text.toLowerCase().includes("flight");
 }
 
 async function handle(context) {
-  // No-op for now
+  // IMPORTANT:
+  // Do nothing here yet.
+  // Let server.js handle flight logic as before.
+  return false;
 }
 
 module.exports = {
