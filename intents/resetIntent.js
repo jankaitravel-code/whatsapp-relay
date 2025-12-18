@@ -4,21 +4,22 @@
  */
 
 function canHandle(text) {
+  const normalized = text.trim().toLowerCase();
+
   return (
-    text === "cancel" ||
-    text === "reset" ||
-    text === "start over"
+    normalized === "cancel" ||
+    normalized === "reset" ||
+    normalized === "start over"
   );
 }
 
-async function handle(context) {
-  const { from, sendWhatsAppMessage, clearConversation } = context;
-
+async function handle({ from, sendWhatsAppMessage, clearConversation }) {
   clearConversation(from);
 
   await sendWhatsAppMessage(
     from,
-    "✅ All set. Let’s start fresh.\nYou can say:\nflight DEL to DXB on 2025-12-25"
+    "✅ All set. Let’s start fresh.\n\n" +
+    "You can say:\nflight DEL to DXB on 2025-12-25"
   );
 }
 
