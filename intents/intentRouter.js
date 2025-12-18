@@ -3,9 +3,9 @@
  * Decides which intent handler should process the message
  */
 
-const handleFlightIntent = require("./flightIntent");
-const handleGreetingIntent = require("./greetingIntent");
 const handleResetIntent = require("./resetIntent");
+const handleGreetingIntent = require("./greetingIntent");
+const handleFlightIntent = require("./flightIntent");
 const handleFallbackIntent = require("./fallbackIntent");
 async function routeIntent(context) {
   const { text } = context;
