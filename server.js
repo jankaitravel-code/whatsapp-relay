@@ -148,20 +148,6 @@ app.post("/webhook", async (req, res) => {
 
     console.log("📩 Message received:", rawText);
 
-    const intentContext = {
-      from,
-      text,
-      rawText,
-      sendWhatsAppMessage,
-      clearConversation,
-      getConversation,
-      setConversation,
-      searchFlights,
-      resolveLocation
-    };
-
-    console.log("🧪 Router received text:", text);
-
     const conversation = getConversation(from);
 
     const intentContext = {
@@ -176,6 +162,7 @@ app.post("/webhook", async (req, res) => {
       clearConversation
     };
 
+    console.log("🧪 Router received text:", text);
 
     // 🔀 Route reset / greeting / flight intents
     const handled = await routeIntent(intentContext);
