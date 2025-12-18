@@ -195,7 +195,14 @@ app.post("/webhook", async (req, res) => {
         awaiting: null
       };
 
-      clearConversation(from);
+      // 💾 Persist completed search for corrections
+      setConversation(from, {
+        intent: "FLIGHT_SEARCH",
+        origin: completedQuery.origin,
+        destination: completedQuery.destination,
+        date: completedQuery.date,
+        awaiting: null
+      });
 
       const flights = await searchFlights({
         originLocationCode: updatedQuery.origin.cityCode,
