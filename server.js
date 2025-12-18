@@ -316,11 +316,18 @@ app.post("/webhook", async (req, res) => {
         selectedOriginAirport: flightQuery.origin.airportCode,
         selectedDestinationAirport: flightQuery.destination.airportCode
       });
-     
-     // 🔄 Full flight query overrides any pending conversation
+    
+      // 💾 Store completed flight search for possible corrections
     if (flightQuery.date) {
-      clearConversation(from);
+      setConversation(from, {
+        intent: "FLIGHT_SEARCH",
+        origin: flightQuery.origin,
+        destination: flightQuery.destination,
+        date: flightQuery.date,
+        awaiting: null
+      });
     }
+
 
     // 📝 Handle partial flight query (missing date)
     if (!flightQuery.date) {
