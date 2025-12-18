@@ -7,24 +7,26 @@ const handleFlightIntent = require("./flightIntent");
 const handleGreetingIntent = require("./greetingIntent");
 const handleResetIntent = require("./resetIntent");
 const handleFallbackIntent = require("./fallbackIntent");
-
 async function routeIntent(context) {
   const { text } = context;
 
-  // Order matters
   if (handleResetIntent.canHandle(text)) {
-    return handleResetIntent.handle(context);
+    await handleResetIntent.handle(context);
+    return true;
   }
 
   if (handleGreetingIntent.canHandle(text)) {
-    return handleGreetingIntent.handle(context);
+    await handleGreetingIntent.handle(context);
+    return true;
   }
 
   if (handleFlightIntent.canHandle(text)) {
-    return handleFlightIntent.handle(context);
+    await handleFlightIntent.handle(context);
+    return true;
   }
 
-  return handleFallbackIntent.handle(context);
+  await handleFallbackIntent.handle(context);
+  return true;
 }
 
 module.exports = {
