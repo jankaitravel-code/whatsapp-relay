@@ -3,35 +3,34 @@
  * Decides which intent handler should process the message
  */
 
-const handleResetIntent = require("./resetIntent");
-const handleGreetingIntent = require("./greetingIntent");
-const handleFlightIntent = require("./flightIntent");
-const handleFallbackIntent = require("./fallbackIntent");
+const resetIntent = require("./resetIntent");
+const greetingIntent = require("./greetingIntent");
+const flightIntent = require("./flightIntent");
+const fallbackIntent = require("./fallbackIntent");
+
 async function routeIntent(context) {
   const { text } = context;
 
-  // 🔁 If we are mid-conversation, let server.js handle it
-  if (conversation?.awaiting) {
-    return false;
+  // 1️⃣ Reset has highest priority
+  if (resetIntent.canHandle(text)) {
+    await resetIntent.handle(context);
+    return;
   }
 
-  if (handleResetIntent.canHandle(text)) {
-    await handleResetIntent.handle(context);
-    return true;
+  // 2️⃣ Flight intent (full or partial)
+  if (flightIntent.canHandle(text, context)) {
+    await flightIntent.handle(context);
+    return;
   }
 
-  if (handleGreetingIntent.canHandle(text)) {
-    await handleGreetingIntent.handle(context);
-    return true;
+  // 3️⃣ Greeting intent
+  if (greetingIntent.canHandle(text)) {
+    await greetingIntent.handle(context);
+    return;
   }
 
-  if (handleFlightIntent.canHandle(text)) {
-    // Let server.js handle flight logic
-    return false;
-  }
-
-  await handleFallbackIntent.handle(context);
-  return true;
+  // 4️⃣ Fallback (always last)
+  await fallbackIntent.handle(context);
 }
 
 module.exports = {
