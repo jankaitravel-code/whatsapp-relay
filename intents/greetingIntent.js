@@ -2,8 +2,12 @@
  * Greeting Intent
  */
 
-function canHandle(text) {
+function canHandle(text, context) {
   const normalized = text.trim().toLowerCase();
+
+  // Do not interrupt active conversations
+  if (context?.conversation) return false;
+
   return (
     normalized === "hi" ||
     normalized === "hello" ||
