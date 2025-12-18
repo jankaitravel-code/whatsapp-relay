@@ -173,6 +173,60 @@ app.post("/webhook", async (req, res) => {
     if (conversation) {
       console.log("🧠 Existing conversation state:", conversation);
     }
+
+    // 🗓️ Change date intent
+    if (
+      conversation?.intent === "FLIGHT_SEARCH" &&
+      text.includes("change date")
+    ) {
+      const dateMatch = rawText.match(/\d{4}-\d{2}-\d{2}/);
+
+      if (!dateMatch) {
+        await sendWhatsAppMessage(
+          from,
+          "📅 Please provide the new date in YYYY-MM-DD format."
+        );
+        return res.sendStatus(200);
+      }
+
+      const updatedQuery = {
+        ...conversation,
+        date: dateMatch[0],
+        awaiting: null
+      };
+
+      clearConversation(from);
+
+      const flights = await searchFlights({
+        originLocationCode: updatedQuery.origin.cityCode,
+        destinationLocationCode: updatedQuery.destination.cityCode,
+        date: updatedQuery.date
+      });
+
+      if (!flights || flights.length === 0) {
+        await sendWhatsAppMessage(
+          from,
+          "Sorry, I couldn’t find any flights for that new date."
+        );
+        return res.sendStatus(200);
+      }
+
+      const reply = flights
+        .map((f, i) => {
+          const segment = f.itineraries[0].segments[0];
+          const price = f.price.total;
+          return `${i + 1}. ${segment.carrierCode} ${segment.number} – ₹${price}`;
+        })
+        .join("\n");
+
+      await sendWhatsAppMessage(
+        from,
+        `✈️ Updated flight options:\n\n${reply}`
+      );
+
+      return res.sendStatus(200);
+    }
+
    /**
      * ================================
      * FLIGHT INTENT HANDLING
