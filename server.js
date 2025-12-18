@@ -159,6 +159,9 @@ app.post("/webhook", async (req, res) => {
       searchFlights,
       resolveLocation
     };
+
+    console.log("🧪 Router received text:", text);
+
     // 🔀 Route reset / greeting / flight intents
     const handled = await routeIntent(intentContext);
     if (handled) {
