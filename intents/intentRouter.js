@@ -21,8 +21,8 @@ async function routeIntent(context) {
   }
 
   if (handleFlightIntent.canHandle(text)) {
-    await handleFlightIntent.handle(context);
-    return true;
+    // Let server.js handle flight logic
+    return false;
   }
 
   await handleFallbackIntent.handle(context);
