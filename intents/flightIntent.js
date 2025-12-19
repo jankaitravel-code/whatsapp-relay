@@ -56,6 +56,42 @@ async function handle(context) {
     return;
   }
 
+     /* ===============================
+      DATE-ONLY INPUT (COLLECTING)
+   =============================== */
+  let flightQuery = null;
+
+  if (
+    conversation?.state === "COLLECTING" &&
+    conversation.flightQuery &&
+    !conversation.flightQuery.date
+  ) {
+    const dateMatch = rawText.match(/\d{4}-\d{2}-\d{2}/);
+
+    if (!dateMatch) {
+      await sendWhatsAppMessage(
+        from,
+        "📅 Please provide the date in YYYY-MM-DD format."
+      );
+      return;
+    }
+
+    const updatedQuery = {
+      ...conversation.flightQuery,
+      date: dateMatch[0]
+    };
+
+    setConversation(from, {
+      intent: "FLIGHT_SEARCH",
+      state: "COLLECTING",
+      flightQuery: updatedQuery
+    });
+
+    // allow flow to continue
+    flightQuery = updatedQuery;
+  }
+
+
   /* ===============================
      READY_TO_CONFIRM STATE
   =============================== */
@@ -89,7 +125,6 @@ async function handle(context) {
   /* ===============================
      COLLECT / PARSE INPUT
   =============================== */
-  let flightQuery = conversation?.flightQuery || null;
 
   if (!conversation || lower.includes("flight")) {
     const parsed = await parseFlightQuery(text);
