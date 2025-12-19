@@ -6,6 +6,7 @@
 
 const { parseFlightQuery } = require("../services/flightParser");
 const { searchFlights } = require("../services/flightSearchService");
+const { log } = require("../utils/logger");
 
 function canHandle(text, context) {
   if (!text) return false;
@@ -52,6 +53,14 @@ async function handle(context) {
   =============================== */
   if (lower === "cancel") {
     clearConversation(from);
+
+    log("state_transition", {
+      intent: "FLIGHT_SEARCH",
+      state: "CANCELLED",
+      user: from,
+      requestId: context.requestContext?.requestId
+    });
+    
     await sendWhatsAppMessage(from, "❌ Flight search cancelled.");
     return;
   }
@@ -85,6 +94,13 @@ async function handle(context) {
       flightQuery: updatedQuery
     });
 
+    log("state_transition", {
+      intent: "FLIGHT_SEARCH",
+      state: "READY_TO_CONFIRM",
+      user: from,
+      requestId: context.requestContext?.requestId
+    });
+
     await sendWhatsAppMessage(
       from,
       buildConfirmationMessage(updatedQuery)
@@ -103,6 +119,13 @@ async function handle(context) {
         intent: "FLIGHT_SEARCH",
         state: "SEARCHING",
         lockedFlightQuery: locked
+      });
+
+      log("state_transition", {
+        intent: "FLIGHT_SEARCH",
+        state: "SEARCHING",
+        user: from,
+        requestId: context.requestContext?.requestId
       });
 
       // 🔥 IMMEDIATELY execute search
@@ -134,6 +157,13 @@ async function handle(context) {
         lockedFlightQuery: locked
       });
 
+      log("state_transition", {
+        intent: "FLIGHT_SEARCH",
+        state: "RESULTS",
+        user: from,
+        requestId: context.requestContext?.requestId
+      });
+
       await sendWhatsAppMessage(
         from,
         `✈️ Here are your flight options:\n\n${reply}`
@@ -145,6 +175,14 @@ async function handle(context) {
         state: "COLLECTING",
         flightQuery: { ...conversation.flightQuery }
       });
+
+      log("state_transition", {
+        intent: "FLIGHT_SEARCH",
+        state: "COLLECTING",
+        user: from,
+        requestId: context.requestContext?.requestId
+      });
+
       await sendWhatsAppMessage(
         from,
         "✏️ Okay, what would you like to change?"
@@ -194,6 +232,13 @@ async function handle(context) {
       flightQuery
     });
 
+    log("state_transition", {
+      intent: "FLIGHT_SEARCH",
+      state: "COLLECTING",
+      user: from,
+      requestId: context.requestContext?.requestId
+    });
+
     // 🔴 SCENARIO 2 FIX — ASK FOR DATE IMMEDIATELY
     if (!flightQuery.date) {
       await sendWhatsAppMessage(
@@ -208,6 +253,13 @@ async function handle(context) {
       intent: "FLIGHT_SEARCH",
       state: "READY_TO_CONFIRM",
       flightQuery
+    });
+
+    log("state_transition", {
+      intent: "FLIGHT_SEARCH",
+      state: "READY_TO_CONFIRM",
+      user: from,
+      requestId: context.requestContext?.requestId
     });
 
     await sendWhatsAppMessage(
@@ -247,6 +299,13 @@ async function handle(context) {
     setConversation(from, {
       ...conversation,
       state: "RESULTS"
+    });
+
+    log("state_transition", {
+      intent: "FLIGHT_SEARCH",
+      state: "RESULTS",
+      user: from,
+      requestId: context.requestContext?.requestId
     });
 
     await sendWhatsAppMessage(
