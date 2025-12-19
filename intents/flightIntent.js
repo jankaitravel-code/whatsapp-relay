@@ -56,17 +56,15 @@ async function handle(context) {
     return;
   }
 
-     /* ===============================
-      DATE-ONLY INPUT (COLLECTING)
-   =============================== */
-  let flightQuery = null;
-
+       /* ===============================
+       DATE-ONLY INPUT (COLLECTING)
+    =============================== */
   if (
     conversation?.state === "COLLECTING" &&
     conversation.flightQuery &&
     !conversation.flightQuery.date
   ) {
-    const dateMatch = rawText.match(/\d{4}-\d{2}-\d{2}/);
+    const dateMatch = rawText.match(/^\d{4}-\d{2}-\d{2}$/);
 
     if (!dateMatch) {
       await sendWhatsAppMessage(
@@ -83,15 +81,17 @@ async function handle(context) {
 
     setConversation(from, {
       intent: "FLIGHT_SEARCH",
-      state: "COLLECTING",
+      state: "READY_TO_CONFIRM",
       flightQuery: updatedQuery
     });
 
-    // allow flow to continue
-    flightQuery = updatedQuery;
+    await sendWhatsAppMessage(
+      from,
+      buildConfirmationMessage(updatedQuery)
+    );
+    return;
   }
-
-
+ 
   /* ===============================
      READY_TO_CONFIRM STATE
   =============================== */
@@ -216,43 +216,6 @@ async function handle(context) {
     );
     return;
   }
-
-  /* ===============================
-     ASK FOR DATE IF MISSING
-  =============================== */
-  if (
-    conversation?.state === "COLLECTING" &&
-    conversation.flightQuery &&
-    conversation.flightQuery.origin &&
-    conversation.flightQuery.destination &&
-    !conversation.flightQuery.date
-  ) {
-    await sendWhatsAppMessage(
-      from,
-      "📅 What date would you like to travel? (YYYY-MM-DD)"
-    );
-    return;
-  }
-  /* ===============================
-     READY TO CONFIRM
-  =============================== */
-  if (
-    conversation?.state === "COLLECTING" &&
-    isQueryComplete(flightQuery)
-  ) {
-    setConversation(from, {
-      intent: "FLIGHT_SEARCH",
-      state: "READY_TO_CONFIRM",
-      flightQuery
-    });
-
-    await sendWhatsAppMessage(
-      from,
-      buildConfirmationMessage(flightQuery)
-    );
-    return;
-  }
-
   /* ===============================
      EXECUTE SEARCH (CONFIRMED ONLY)
   =============================== */
