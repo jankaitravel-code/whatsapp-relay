@@ -9,6 +9,9 @@ const config = require("./config");
 
 const { buildRequestContext } = require("./utils/requestContext");
 
+const { checkRateLimit } = require("./security/rateLimiter");
+const { log } = require("./utils/logger");
+
 const { routeIntent } = require("./intents/intentRouter");
 const {
   getConversation,
@@ -96,6 +99,17 @@ app.post("/webhook", async (req, res) => {
     const text = rawText.toLowerCase();
 
     console.log("📩 Message received:", rawText);
+    
+    const rate = checkRateLimit({ user: from });
+
+    log("rate_limit_check", {
+      user: from,
+      count: rate.count,
+      limit: rate.limit,
+      windowMs: rate.windowMs,
+      allowed: rate.allowed,
+      requestId: requestContext?.requestId
+    });
 
     const conversation = getConversation(from);
 
