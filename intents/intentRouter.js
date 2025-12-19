@@ -32,7 +32,7 @@ async function routeIntent(context) {
   // 4️⃣ Fallback (always last)
   await fallbackIntent.handle(context);
 }
-
+console.log("🔑 requestId:", context.requestContext?.requestId);
 module.exports = {
   routeIntent
 };
