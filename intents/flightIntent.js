@@ -213,14 +213,19 @@ async function handle(context) {
   /* ===============================
      ASK FOR DATE IF MISSING
   =============================== */
-  if (conversation?.state === "COLLECTING" && !flightQuery.date) {
+  if (
+    conversation?.state === "COLLECTING" &&
+    conversation.flightQuery &&
+    conversation.flightQuery.origin &&
+    conversation.flightQuery.destination &&
+    !conversation.flightQuery.date
+  ) {
     await sendWhatsAppMessage(
       from,
       "📅 What date would you like to travel? (YYYY-MM-DD)"
     );
     return;
   }
-
   /* ===============================
      READY TO CONFIRM
   =============================== */
