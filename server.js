@@ -116,19 +116,29 @@ app.post("/webhook", async (req, res) => {
       requestId: requestContext.requestId
     });
 
-    // 🟡 B2: Soft warning (no blocking)
+    // 🟡 B2: Soft warning (non-blocking, failure-safe)
     if (rate.count === RATE_LIMIT_WARNING_THRESHOLD) {
-      await sendWhatsAppMessage(
-        from,
-        "⚠️ You’re sending messages very quickly.\n" +
-        "Please slow down to avoid temporary limits."
-      );
+      (async () => {
+        try {
+          await sendWhatsAppMessage(
+            from,
+            "⚠️ You’re sending messages very quickly.\n" +
+            "Please slow down to avoid temporary limits."
+          );
 
-      log("rate_limit_warning_sent", {
-        user: from,
-        count: rate.count,
-        requestId: requestContext.requestId
-      });
+          log("rate_limit_warning_sent", {
+            user: from,
+            count: rate.count,
+            requestId: requestContext.requestId
+          });
+        } catch (err) {
+          log("rate_limit_warning_failed", {
+            user: from,
+            error: err.message,
+            requestId: requestContext.requestId
+          });
+        }
+      })();
     }
 
     // B1: rate limiting is warn-only for now (no blocking)
