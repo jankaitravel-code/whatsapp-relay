@@ -251,7 +251,7 @@ async function handle(context) {
       .slice(0, 5)
       .map((f, i) => {
         const s = f.itineraries[0].segments[0];
-        return `${i + 1}. ${s.carrierCode} ${s.number} – ₹${f.price.total}`;
+        return `${i + 1}. ${s.carrierCode} ${s.number} - ₹${f.price.total}`;
       })
       .join("\n");
 
