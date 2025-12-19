@@ -104,7 +104,7 @@ app.post("/webhook", async (req, res) => {
     const requestContext = buildRequestContext({ from });
 
     // 🛡️ B1: Rate limit check (log-only)
-    const rate = checkRateLimit({ user: from });
+    const allowed = checkRateLimit({ user: from });
 
     log("rate_limit_check", {
       user: from,
