@@ -162,15 +162,13 @@ async function handle(context) {
   /* ===============================
      COLLECT / PARSE INPUT
   =============================== */
-
   if (lower.startsWith("flight")) {
     const parsed = await parseFlightQuery(text);
 
     if (parsed?.error === "UNKNOWN_LOCATION") {
       await sendWhatsAppMessage(
         from,
-        "❌ I couldn’t recognize one of the locations.\n" +
-        "Please try a major city or airport."
+        "❌ I couldn’t recognize one of the locations.\nPlease try a major city or airport."
       );
       return;
     }
@@ -178,7 +176,7 @@ async function handle(context) {
     if (!parsed) {
       await sendWhatsAppMessage(
         from,
-        "✈️ Try:\nflight from DEL to DXB on 2025-12-25"
+        "✈️ Try:\nflight from delhi to mumbai on 2025-12-25"
       );
       return;
     }
@@ -189,11 +187,27 @@ async function handle(context) {
       date: parsed.date || null
     };
 
+    // 🔑 SET BASE STATE
     setConversation(from, {
       intent: "FLIGHT_SEARCH",
       state: "COLLECTING",
       flightQuery
     });
+
+    // 🔥 IMMEDIATE TRANSITION IF COMPLETE
+    if (flightQuery.origin && flightQuery.destination && flightQuery.date) {
+      setConversation(from, {
+        intent: "FLIGHT_SEARCH",
+        state: "READY_TO_CONFIRM",
+        flightQuery
+      });
+
+      await sendWhatsAppMessage(
+        from,
+        buildConfirmationMessage(flightQuery)
+      );
+      return;
+    }
   }
 
   /* ===============================
