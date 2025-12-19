@@ -7,6 +7,8 @@ const express = require("express");
 const axios = require("axios");
 const config = require("./config");
 
+const { buildRequestContext } = require("./utils/requestContext");
+
 const { routeIntent } = require("./intents/intentRouter");
 const {
   getConversation,
@@ -97,6 +99,8 @@ app.post("/webhook", async (req, res) => {
 
     const conversation = getConversation(from);
 
+    const requestContext = buildRequestContext({ from });
+    
     const intentContext = {
       from,
       text,
@@ -106,7 +110,10 @@ app.post("/webhook", async (req, res) => {
       // helpers available to intents
       sendWhatsAppMessage,
       setConversation,
-      clearConversation
+      clearConversation,
+  
+        // 🔐 A3 addition
+      requestContext
     };
 
     console.log("🧪 Router received text:", text);
