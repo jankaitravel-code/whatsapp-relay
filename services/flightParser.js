@@ -10,7 +10,7 @@ async function parseFlightQuery(text) {
 
   // FULL query with date
   let match = cleaned.match(
-    /flight\s+(.+?)\s+to\s+(.+?)\s+on\s+(\d{4}-\d{2}-\d{2})$/i
+    /flight\s+(?:from\s+)?(.+?)\s+to\s+(.+?)\s+on\s+(\d{4}-\d{2}-\d{2})$/i
   );
 
   let originInput, destinationInput, date = null;
@@ -22,7 +22,7 @@ async function parseFlightQuery(text) {
   } else {
     // PARTIAL query (no date)
     match = cleaned.match(
-      /flight\s+(.+?)\s+to\s+(.+?)$/i
+      /flight\s+(?:from\s+)?(.+?)\s+to\s+(.+?)$/i
     );
 
     if (!match) return null;
