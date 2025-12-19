@@ -20,7 +20,7 @@ async function handle({ from, sendWhatsAppMessage }) {
     from,
     "Hello 👋 I’m your travel assistant.\n\n" +
     "I can help you find flights.\n" +
-    "Try:\nflight DEL to DXB on 2025-12-25"
+    "Try:\nflight from Delhi to Mumbai on 2025-12-25"
   );
 }
 
