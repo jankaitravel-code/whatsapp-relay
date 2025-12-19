@@ -1,6 +1,7 @@
 /**
  * Flight Intent
  * Handles all flight-related messages and conversation continuation
+ * Production-safe with explicit confirmation (Step 7.2.4)
  */
 
 const { parseFlightQuery } = require("../services/flightParser");
@@ -9,13 +10,28 @@ const { searchFlights } = require("../services/flightSearchService");
 function canHandle(text, context) {
   if (!text) return false;
 
-  // New flight query
   if (text.toLowerCase().includes("flight")) return true;
 
-  // Conversation continuation (date / change date)
   if (context?.conversation?.intent === "FLIGHT_SEARCH") return true;
 
   return false;
+}
+
+function isQueryComplete(q) {
+  return Boolean(q?.origin && q?.destination && q?.date);
+}
+
+function buildConfirmationMessage(q) {
+  return (
+    `✈️ Please confirm your flight search:\n\n` +
+    `From: ${q.origin.cityName}\n` +
+    `To: ${q.destination.cityName}\n` +
+    `Date: ${q.date}\n\n` +
+    `Reply:\n` +
+    `• Yes — to search\n` +
+    `• Change — to modify\n` +
+    `• Cancel — to stop`
+  );
 }
 
 async function handle(context) {
@@ -25,58 +41,60 @@ async function handle(context) {
     rawText,
     conversation,
     sendWhatsAppMessage,
-    setConversation
+    setConversation,
+    clearConversation
   } = context;
 
+  const lower = rawText.toLowerCase();
+
   /* ===============================
-     CHANGE DATE
+     GLOBAL CANCEL (always allowed)
   =============================== */
-  if (
-    conversation?.intent === "FLIGHT_SEARCH" &&
-    rawText.toLowerCase().includes("change date")
-  ) {
-    const dateMatch = rawText.match(/\d{4}-\d{2}-\d{2}/);
-
-    if (!dateMatch) {
-      await sendWhatsAppMessage(
-        from,
-        "📅 Please provide the new date in YYYY-MM-DD format."
-      );
-      return;
-    }
-
-    conversation.date = dateMatch[0];
+  if (lower === "cancel") {
+    clearConversation(from);
+    await sendWhatsAppMessage(from, "❌ Flight search cancelled.");
+    return;
   }
 
   /* ===============================
-     DATE-ONLY RESPONSE
+     READY_TO_CONFIRM STATE
   =============================== */
-  if (
-    conversation?.intent === "FLIGHT_SEARCH" &&
-    conversation.awaiting === "date"
-  ) {
-    const dateMatch = rawText.match(/\d{4}-\d{2}-\d{2}/);
-
-    if (!dateMatch) {
+  if (conversation?.state === "READY_TO_CONFIRM") {
+    if (lower === "yes") {
+      setConversation(from, {
+        ...conversation,
+        state: "SEARCHING",
+        lockedFlightQuery: { ...conversation.flightQuery }
+      });
+    } else if (lower === "change") {
+      setConversation(from, {
+        intent: "FLIGHT_SEARCH",
+        state: "COLLECTING",
+        flightQuery: { ...conversation.flightQuery }
+      });
       await sendWhatsAppMessage(
         from,
-        "📅 Please provide the date in YYYY-MM-DD format."
+        "✏️ Okay, what would you like to change?"
+      );
+      return;
+    } else {
+      await sendWhatsAppMessage(
+        from,
+        "Please reply with *Yes*, *Change*, or *Cancel*."
       );
       return;
     }
-
-    conversation.date = dateMatch[0];
   }
 
   /* ===============================
-     PARSE NEW QUERY IF NEEDED
+     COLLECT / PARSE INPUT
   =============================== */
-  let flightQuery = null;
+  let flightQuery = conversation?.flightQuery || null;
 
-  if (!conversation || text.toLowerCase().includes("flight")) {
-    flightQuery = await parseFlightQuery(text);
+  if (!conversation || lower.includes("flight")) {
+    const parsed = await parseFlightQuery(text);
 
-    if (flightQuery?.error === "UNKNOWN_LOCATION") {
+    if (parsed?.error === "UNKNOWN_LOCATION") {
       await sendWhatsAppMessage(
         from,
         "❌ I couldn’t recognize one of the locations.\n" +
@@ -85,7 +103,7 @@ async function handle(context) {
       return;
     }
 
-    if (!flightQuery) {
+    if (!parsed) {
       await sendWhatsAppMessage(
         from,
         "✈️ Try:\nflight DEL to DXB on 2025-12-25"
@@ -93,73 +111,88 @@ async function handle(context) {
       return;
     }
 
-    // Partial query
-    if (!flightQuery.date) {
-      setConversation(from, {
-        intent: "FLIGHT_SEARCH",
-        origin: flightQuery.origin,
-        destination: flightQuery.destination,
-        date: null,
-        awaiting: "date"
-      });
+    flightQuery = {
+      origin: parsed.origin,
+      destination: parsed.destination,
+      date: parsed.date || null
+    };
 
-      await sendWhatsAppMessage(
-        from,
-        "✈️ Got it. What date would you like to travel? (YYYY-MM-DD)"
-      );
-      return;
-    }
-
-    // Full query
     setConversation(from, {
       intent: "FLIGHT_SEARCH",
-      origin: flightQuery.origin,
-      destination: flightQuery.destination,
-      date: flightQuery.date,
-      awaiting: null
+      state: "COLLECTING",
+      flightQuery
     });
   }
 
   /* ===============================
-     EXECUTE SEARCH
+     ASK FOR DATE IF MISSING
   =============================== */
-  const active = getActiveQuery(conversation, flightQuery);
-
-  const flights = await searchFlights({
-    originLocationCode: active.origin.cityCode,
-    destinationLocationCode: active.destination.cityCode,
-    date: active.date
-  });
-
-  if (!flights || flights.length === 0) {
+  if (conversation?.state === "COLLECTING" && !flightQuery.date) {
     await sendWhatsAppMessage(
       from,
-      "Sorry, I couldn’t find flights for that route and date."
+      "📅 What date would you like to travel? (YYYY-MM-DD)"
     );
     return;
   }
 
-  const reply = flights
-    .map((f, i) => {
-      const s = f.itineraries[0].segments[0];
-      return `${i + 1}. ${s.carrierCode} ${s.number} – ₹${f.price.total}`;
-    })
-    .join("\n");
+  /* ===============================
+     READY TO CONFIRM
+  =============================== */
+  if (
+    conversation?.state === "COLLECTING" &&
+    isQueryComplete(flightQuery)
+  ) {
+    setConversation(from, {
+      intent: "FLIGHT_SEARCH",
+      state: "READY_TO_CONFIRM",
+      flightQuery
+    });
 
-  await sendWhatsAppMessage(
-    from,
-    `✈️ Here are your flight options:\n\n${reply}`
-  );
-}
+    await sendWhatsAppMessage(
+      from,
+      buildConfirmationMessage(flightQuery)
+    );
+    return;
+  }
 
-function getActiveQuery(conversation, flightQuery) {
-  if (flightQuery) return flightQuery;
+  /* ===============================
+     EXECUTE SEARCH (CONFIRMED ONLY)
+  =============================== */
+  if (conversation?.state === "SEARCHING") {
+    const q = conversation.lockedFlightQuery;
 
-  return {
-    origin: conversation.origin,
-    destination: conversation.destination,
-    date: conversation.date
-  };
+    const flights = await searchFlights({
+      originLocationCode: q.origin.cityCode,
+      destinationLocationCode: q.destination.cityCode,
+      date: q.date
+    });
+
+    if (!flights || flights.length === 0) {
+      await sendWhatsAppMessage(
+        from,
+        "Sorry, I couldn’t find flights for that route and date."
+      );
+      return;
+    }
+
+    const reply = flights
+      .slice(0, 5)
+      .map((f, i) => {
+        const s = f.itineraries[0].segments[0];
+        return `${i + 1}. ${s.carrierCode} ${s.number} – ₹${f.price.total}`;
+      })
+      .join("\n");
+
+    setConversation(from, {
+      ...conversation,
+      state: "RESULTS"
+    });
+
+    await sendWhatsAppMessage(
+      from,
+      `✈️ Here are your flight options:\n\n${reply}`
+    );
+  }
 }
 
 module.exports = {
