@@ -97,11 +97,48 @@ async function handle(context) {
   =============================== */
   if (conversation?.state === "READY_TO_CONFIRM") {
     if (lower === "yes") {
+      const locked = { ...conversation.flightQuery };
+
       setConversation(from, {
-        ...conversation,
+        intent: "FLIGHT_SEARCH",
         state: "SEARCHING",
-        lockedFlightQuery: { ...conversation.flightQuery }
+        lockedFlightQuery: locked
       });
+
+      // 🔥 IMMEDIATELY execute search
+      const flights = await searchFlights({
+        originLocationCode: locked.origin.cityCode,
+        destinationLocationCode: locked.destination.cityCode,
+        date: locked.date
+      });
+
+      if (!flights || flights.length === 0) {
+        await sendWhatsAppMessage(
+          from,
+          "Sorry, I couldn’t find flights for that route and date."
+        );
+        return;
+      }
+
+      const reply = flights
+        .slice(0, 5)
+        .map((f, i) => {
+          const s = f.itineraries[0].segments[0];
+          return `${i + 1}. ${s.carrierCode} ${s.number} – ₹${f.price.total}`;
+        })
+        .join("\n");
+
+      setConversation(from, {
+        intent: "FLIGHT_SEARCH",
+        state: "RESULTS",
+        lockedFlightQuery: locked
+      });
+
+      await sendWhatsAppMessage(
+        from,
+        `✈️ Here are your flight options:\n\n${reply}`
+      );
+      return;
     } else if (lower === "change") {
       setConversation(from, {
         intent: "FLIGHT_SEARCH",
@@ -126,8 +163,8 @@ async function handle(context) {
      COLLECT / PARSE INPUT
   =============================== */
 
-  if (!conversation || lower.includes("flight")) {
-    const parsed = await parseFlightQuery(text);
+  if (lower.startsWith("flight")) {
+    const parsed = await parseFlightQuery(text);`
 
     if (parsed?.error === "UNKNOWN_LOCATION") {
       await sendWhatsAppMessage(
@@ -141,7 +178,7 @@ async function handle(context) {
     if (!parsed) {
       await sendWhatsAppMessage(
         from,
-        "✈️ Try:\nflight DEL to DXB on 2025-12-25"
+        "✈️ Try:\nflight from DEL to DXB on 2025-12-25"
       );
       return;
     }
