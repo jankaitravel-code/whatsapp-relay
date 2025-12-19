@@ -12,7 +12,7 @@ const AMADEUS_BASE_URL = "https://test.api.amadeus.com";
 const locationCache = {};
 
 async function resolveLocation(query) {
-  const key = query.toLowerCase();
+  const key = query.trim().toLowerCase();
 
   if (locationCache[key]) {
     return locationCache[key];
@@ -20,49 +20,48 @@ async function resolveLocation(query) {
 
   const token = await getAccessToken();
 
-  const response = await axios.get(
-    `${AMADEUS_BASE_URL}/v1/reference-data/locations`,
-    {
-      headers: {
-        Authorization: `Bearer ${token}`
-      },
-      params: {
-        keyword: query,
-        subType: "CITY,AIRPORT",
-        page: { limit: 10 }
+  async function fetchLocations(subType) {
+    const res = await axios.get(
+      `${AMADEUS_BASE_URL}/v1/reference-data/locations`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`
+        },
+        params: {
+          keyword: query,
+          subType,
+          page: { limit: 10 }
+        }
       }
-    }
-  );
+    );
+    return res.data?.data || [];
+  }
 
-  const locations = response.data.data;
+  // 1️⃣ Try CITY first (most stable for human input)
+  let locations = await fetchLocations("CITY");
 
-  if (!locations || locations.length === 0) {
+  // 2️⃣ Fallback to AIRPORT if needed
+  if (!locations.length) {
+    locations = await fetchLocations("AIRPORT");
+  }
+
+  if (!locations.length) {
     return null;
   }
 
-  // Only keep locations that actually have an IATA code
   const withIata = locations.filter(l => l.iataCode);
-
   if (!withIata.length) {
     return null;
   }
 
-  // Determine city code (used for flight search)
-  const city =
-    withIata.find(l => l.subType === "CITY") ||
-    withIata[0];
-
-  // Determine airport code (used for booking / display)
-  const airport =
-    withIata.find(l => l.subType === "AIRPORT") ||
-    city;
+  const chosen = withIata[0];
 
   const resolved = {
-    cityCode: city.iataCode,
-    airportCode: airport.iataCode,
-    cityName: city.name,
-    airportName: airport.name,
-    type: airport.subType
+    cityCode: chosen.iataCode,
+    airportCode: chosen.iataCode,
+    cityName: chosen.name,
+    airportName: chosen.name,
+    type: chosen.subType
   };
 
   locationCache[key] = resolved;
