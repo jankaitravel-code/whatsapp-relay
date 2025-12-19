@@ -10,6 +10,7 @@ const config = require("./config");
 const { buildRequestContext } = require("./utils/requestContext");
 
 const { checkRateLimit } = require("./security/rateLimiter");
+const RATE_LIMIT_WARNING_THRESHOLD = 10;
 const { log } = require("./utils/logger");
 
 const { routeIntent } = require("./intents/intentRouter");
@@ -103,16 +104,34 @@ app.post("/webhook", async (req, res) => {
     // 🔐 Build request context FIRST
     const requestContext = buildRequestContext({ from });
 
-    // 🛡️ B1: Rate limit check (log-only)
-    const allowed = checkRateLimit({ user: from });
+    // 🛡️ B1: Rate limit check (warn)
+    const rate = checkRateLimit({ user: from });
 
     log("rate_limit_check", {
       user: from,
-      allowed,
+      allowed: rate.allowed,
+      count: rate.count,
+      limit: rate.limit,
+      windowMs: rate.windowMs,
       requestId: requestContext.requestId
     });
 
-    // B1: rate limiting is log-only for now (no blocking)
+    // 🟡 B2: Soft warning (no blocking)
+    if (rate.count === RATE_LIMIT_WARNING_THRESHOLD) {
+      await sendWhatsAppMessage(
+        from,
+        "⚠️ You’re sending messages very quickly.\n" +
+        "Please slow down to avoid temporary limits."
+      );
+
+      log("rate_limit_warning_sent", {
+        user: from,
+        count: rate.count,
+        requestId: requestContext.requestId
+      });
+    }
+
+    // B1: rate limiting is warn-only for now (no blocking)
 
     const conversation = getConversation(from);
           
