@@ -187,27 +187,34 @@ async function handle(context) {
       date: parsed.date || null
     };
 
-    // 🔑 SET BASE STATE
+    // Always set base state
     setConversation(from, {
       intent: "FLIGHT_SEARCH",
       state: "COLLECTING",
       flightQuery
     });
 
-    // 🔥 IMMEDIATE TRANSITION IF COMPLETE
-    if (flightQuery.origin && flightQuery.destination && flightQuery.date) {
-      setConversation(from, {
-        intent: "FLIGHT_SEARCH",
-        state: "READY_TO_CONFIRM",
-        flightQuery
-      });
-
+    // 🔴 SCENARIO 2 FIX — ASK FOR DATE IMMEDIATELY
+    if (!flightQuery.date) {
       await sendWhatsAppMessage(
         from,
-        buildConfirmationMessage(flightQuery)
+        "📅 What date would you like to travel? (YYYY-MM-DD)"
       );
       return;
     }
+
+    // Full query → confirmation
+    setConversation(from, {
+      intent: "FLIGHT_SEARCH",
+      state: "READY_TO_CONFIRM",
+      flightQuery
+    });
+
+    await sendWhatsAppMessage(
+      from,
+      buildConfirmationMessage(flightQuery)
+    );
+    return;
   }
 
   /* ===============================
