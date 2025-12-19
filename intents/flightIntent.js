@@ -164,7 +164,7 @@ async function handle(context) {
   =============================== */
 
   if (lower.startsWith("flight")) {
-    const parsed = await parseFlightQuery(text);`
+    const parsed = await parseFlightQuery(text);
 
     if (parsed?.error === "UNKNOWN_LOCATION") {
       await sendWhatsAppMessage(
