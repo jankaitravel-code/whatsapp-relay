@@ -99,22 +99,23 @@ app.post("/webhook", async (req, res) => {
     const text = rawText.toLowerCase();
 
     console.log("📩 Message received:", rawText);
-    
+        
+    // 🔐 Build request context FIRST
+    const requestContext = buildRequestContext({ from });
+
+    // 🛡️ B1: Rate limit check (log-only)
     const rate = checkRateLimit({ user: from });
 
     log("rate_limit_check", {
       user: from,
-      count: rate.count,
-      limit: rate.limit,
-      windowMs: rate.windowMs,
-      allowed: rate.allowed,
-      requestId: requestContext?.requestId
+      allowed,
+      requestId: requestContext.requestId
     });
 
-    const conversation = getConversation(from);
+    // B1: rate limiting is log-only for now (no blocking)
 
-    const requestContext = buildRequestContext({ from });
-    
+    const conversation = getConversation(from);
+          
     const intentContext = {
       from,
       text,
