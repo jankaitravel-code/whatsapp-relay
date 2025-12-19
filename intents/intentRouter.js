@@ -9,6 +9,7 @@ const flightIntent = require("./flightIntent");
 const fallbackIntent = require("./fallbackIntent");
 
 async function routeIntent(context) {
+  console.log("🔑 requestId:", context.requestContext?.requestId);
   const { text } = context;
 
   // 1️⃣ Reset has highest priority
@@ -32,7 +33,7 @@ async function routeIntent(context) {
   // 4️⃣ Fallback (always last)
   await fallbackIntent.handle(context);
 }
-console.log("🔑 requestId:", context.requestContext?.requestId);
+
 module.exports = {
   routeIntent
 };
