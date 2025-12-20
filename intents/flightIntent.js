@@ -34,6 +34,39 @@ function formatDuration(isoDuration) {
   return `${h}h ${m}m`;
 }
 
+function safeFlightSummary(f, index) {
+  const itinerary = f.itineraries?.[0];
+  const segments = itinerary?.segments || [];
+
+  if (!itinerary || segments.length === 0) {
+    return `${index}. Flight details unavailable`;
+  }
+
+  const first = segments[0];
+  const last = segments[segments.length - 1];
+
+  const depTime = formatTime(first.departure?.at);
+  const arrTime = formatTime(last.arrival?.at);
+  const duration = formatDuration(itinerary.duration);
+
+  const stops = segments.length - 1;
+  const stopLabel = stops === 0 ? "Non-stop" : `${stops} stop${stops > 1 ? "s" : ""}`;
+
+  const price = f.price?.total ? `₹${f.price.total}` : "Price unavailable";
+
+  return (
+    `${index}. ${first.carrierCode} ${first.number} — ${price}\n` +
+    `   ${first.departure.iataCode} ${depTime} → ${last.arrival.iataCode} ${arrTime}\n` +
+    `   ${stopLabel} • ${duration}`
+  );
+}
+
+function getAirlineName(carrierCode, carriersDict) {
+  if (!carrierCode) return "Unknown Airline";
+  if (!carriersDict) return carrierCode;
+  return carriersDict[carrierCode] || carrierCode;
+}
+
 
 function canHandle(text, context) {
   if (!text) return false;
@@ -169,12 +202,12 @@ async function handle(context) {
         requestId: context.requestContext?.requestId
       });
 
-      const flights = await searchFlights({
+      const { flights, carriers } = await searchFlights({
         originLocationCode: locked.origin.cityCode,
         destinationLocationCode: locked.destination.cityCode,
         date: locked.date
       });
-
+      
       if (!flights || flights.length === 0) {
         await sendWhatsAppMessage(
           from,
@@ -202,6 +235,9 @@ async function handle(context) {
           }
       
           const first = segments[0];
+
+          const airlineName = getAirlineName(first.carrierCode, carriers);
+
           const last = segments[segments.length - 1];
       
           const depTime = formatTime(first.departure.at);
@@ -215,7 +251,7 @@ async function handle(context) {
             `${stopsCount} stops`;
       
           return (
-            `${i + 1}. ${first.carrierCode} ${first.number} — ₹${f.price.total}\n` +
+            `${i + 1}. ${airlineName} (${first.carrierCode} ${first.number}) — ₹${f.price.total}\n` +
             `   ${first.departure.iataCode} ${depTime} → ${last.arrival.iataCode} ${arrTime}\n` +
             `   ${duration} · ${stopsLabel}`
           );
