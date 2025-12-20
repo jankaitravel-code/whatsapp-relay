@@ -253,7 +253,7 @@ async function handle(context) {
       return;
     }
 
-    flightQuery = {
+    const flightQuery = {
       origin: parsed.origin,
       destination: parsed.destination,
       date: parsed.date || null
