@@ -235,6 +235,14 @@ async function handle(context) {
           const bTime = new Date(b.itineraries[0].segments[0].departure.at).getTime();
           return aTime - bTime; // earliest first
         });
+
+      if (sortedFlights.length === 0) {
+        await sendWhatsAppMessage(
+          from,
+          "Sorry, I couldn’t find reliable flight options for that route and date."
+        );
+        return;
+      }
       
       const reply = sortedFlights
         .slice(0, 5)
