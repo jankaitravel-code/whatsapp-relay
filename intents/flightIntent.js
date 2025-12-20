@@ -340,60 +340,6 @@ async function handle(context) {
     );
     return;
   }
-  /* ===============================
-     EXECUTE SEARCH (CONFIRMED ONLY)
-  =============================== */
-  if (conversation?.state === "SEARCHING") {
-    const q = conversation.lockedFlightQuery;
-
-    const flights = await searchFlights({
-      originLocationCode: q.origin.cityCode,
-      destinationLocationCode: q.destination.cityCode,
-      date: q.date
-    });
-
-    if (!flights || flights.length === 0) {
-      await sendWhatsAppMessage(
-        from,
-        "Sorry, I couldn’t find flights for that route and date."
-      );
-      return;
-    }
-
-    const reply = flights
-      .slice(0, 5)
-      .map((f, i) => {
-        const itinerary = f.itineraries[0];
-        const s = itinerary.segments[0];
-    
-        const depTime = formatTime(s.departure.at);
-        const arrTime = formatTime(s.arrival.at);
-        const duration = formatDuration(itinerary.duration);
-    
-        return (
-          `${i + 1}. ${s.carrierCode} ${s.number} — ₹${f.price.total}\n` +
-          `   ${s.departure.iataCode} ${depTime} → ${s.arrival.iataCode} ${arrTime} (${duration})`
-        );
-      })
-      .join("\n\n");
-
-    setConversation(from, {
-      ...conversation,
-      state: "RESULTS"
-    });
-
-    log("state_transition", {
-      intent: "FLIGHT_SEARCH",
-      state: "RESULTS",
-      user: from,
-      requestId: context.requestContext?.requestId
-    });
-
-    await sendWhatsAppMessage(
-      from,
-      `✈️ Here are your flight options:\n\n${reply}`
-    );
-  }
 }
 
 module.exports = {
