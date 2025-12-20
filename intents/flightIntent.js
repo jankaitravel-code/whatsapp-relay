@@ -10,7 +10,10 @@ const { log } = require("../utils/logger");
 const { recordSignal } = require("../utils/abuseSignals");
 
 function formatTime(iso) {
+  if (!iso) return "—";
   const d = new Date(iso);
+  if (isNaN(d.getTime())) return "—";
+
   return d.toLocaleTimeString("en-IN", {
     hour: "2-digit",
     minute: "2-digit",
@@ -19,12 +22,18 @@ function formatTime(iso) {
 }
 
 function formatDuration(isoDuration) {
-  // PT1H45M → 1h 45m
+  if (!isoDuration || typeof isoDuration !== "string") {
+    return "—";
+  }
+
   const match = isoDuration.match(/PT(?:(\d+)H)?(?:(\d+)M)?/);
-  const h = match?.[1] || "0";
-  const m = match?.[2] || "0";
+  if (!match) return "—";
+
+  const h = match[1] || "0";
+  const m = match[2] || "0";
   return `${h}h ${m}m`;
 }
+
 
 function canHandle(text, context) {
   if (!text) return false;
@@ -177,8 +186,12 @@ async function handle(context) {
       const reply = flights
         .slice(0, 5)
         .map((f, i) => {
-          const itinerary = f.itineraries[0];
-          const s = itinerary.segments[0];
+          const itinerary = f.itineraries?.[0];
+          const s = itinerary?.segments?.[0];
+
+          if (!itinerary || !s) {
+            return `${i + 1}. Flight details unavailable`;
+          }
       
           const depTime = formatTime(s.departure.at);
           const arrTime = formatTime(s.arrival.at);
