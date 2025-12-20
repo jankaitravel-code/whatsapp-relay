@@ -9,6 +9,22 @@ const { searchFlights } = require("../services/flightSearchService");
 const { log } = require("../utils/logger");
 const { recordSignal } = require("../utils/abuseSignals");
 
+function formatTime(iso) {
+  const d = new Date(iso);
+  return d.toLocaleTimeString("en-IN", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false
+  });
+}
+
+function formatDuration(isoDuration) {
+  // PT1H45M → 1h 45m
+  const match = isoDuration.match(/PT(?:(\d+)H)?(?:(\d+)M)?/);
+  const h = match?.[1] || "0";
+  const m = match?.[2] || "0";
+  return `${h}h ${m}m`;
+}
 
 function canHandle(text, context) {
   if (!text) return false;
@@ -161,10 +177,19 @@ async function handle(context) {
       const reply = flights
         .slice(0, 5)
         .map((f, i) => {
-          const s = f.itineraries[0].segments[0];
-          return `${i + 1}. ${s.carrierCode} ${s.number} – ₹${f.price.total}`;
+          const itinerary = f.itineraries[0];
+          const s = itinerary.segments[0];
+      
+          const depTime = formatTime(s.departure.at);
+          const arrTime = formatTime(s.arrival.at);
+          const duration = formatDuration(itinerary.duration);
+      
+          return (
+            `${i + 1}. ${s.carrierCode} ${s.number} — ₹${f.price.total}\n` +
+            `   ${s.departure.iataCode} ${depTime} → ${s.arrival.iataCode} ${arrTime} (${duration})`
+          );
         })
-        .join("\n");
+        .join("\n\n");
 
       setConversation(from, {
         intent: "FLIGHT_SEARCH",
@@ -325,10 +350,19 @@ async function handle(context) {
     const reply = flights
       .slice(0, 5)
       .map((f, i) => {
-        const s = f.itineraries[0].segments[0];
-        return `${i + 1}. ${s.carrierCode} ${s.number} - ₹${f.price.total}`;
+        const itinerary = f.itineraries[0];
+        const s = itinerary.segments[0];
+    
+        const depTime = formatTime(s.departure.at);
+        const arrTime = formatTime(s.arrival.at);
+        const duration = formatDuration(itinerary.duration);
+    
+        return (
+          `${i + 1}. ${s.carrierCode} ${s.number} — ₹${f.price.total}\n` +
+          `   ${s.departure.iataCode} ${depTime} → ${s.arrival.iataCode} ${arrTime} (${duration})`
+        );
       })
-      .join("\n");
+      .join("\n\n");
 
     setConversation(from, {
       ...conversation,
