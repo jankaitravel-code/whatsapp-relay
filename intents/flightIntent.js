@@ -217,6 +217,20 @@ async function handle(context) {
         date: locked.date
       });
 
+      if (!Array.isArray(flights)) {
+        log("flight_search_invalid_response", {
+          user: from,
+          type: typeof flights,
+          requestId: context.requestContext?.requestId
+        });
+      
+        await sendWhatsAppMessage(
+          from,
+          "⚠️ I’m having trouble fetching flights right now. Please try again in a moment."
+        );
+        return;
+      }
+      
       console.log("🧪 searchFlights raw return:", flights);
       console.log("🧪 typeof flights:", typeof flights);
       
