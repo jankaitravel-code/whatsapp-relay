@@ -35,8 +35,10 @@ async function searchFlights(input) {
     }
   );
 
-  return response.data.data;
-}
+  return {
+  flights: response.data.data,
+  carriers: response.data.dictionaries?.carriers || {}
+};
 
 module.exports = {
   searchFlights
