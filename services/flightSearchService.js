@@ -30,7 +30,7 @@ async function searchFlights(input) {
         destinationLocationCode,
         departureDate: date,
         adults: 1,
-        max: 3
+        max: 5
       }
     }
   );
