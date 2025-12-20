@@ -187,22 +187,33 @@ async function handle(context) {
         .slice(0, 5)
         .map((f, i) => {
           const itinerary = f.itineraries?.[0];
-          const s = itinerary?.segments?.[0];
-
-          if (!itinerary || !s) {
+          const segments = itinerary?.segments;
+      
+          if (!itinerary || !segments || segments.length === 0) {
             return `${i + 1}. Flight details unavailable`;
           }
       
-          const depTime = formatTime(s.departure.at);
-          const arrTime = formatTime(s.arrival.at);
+          const first = segments[0];
+          const last = segments[segments.length - 1];
+      
+          const depTime = formatTime(first.departure.at);
+          const arrTime = formatTime(last.arrival.at);
           const duration = formatDuration(itinerary.duration);
       
+          const stopsCount = segments.length - 1;
+          const stopsLabel =
+            stopsCount === 0 ? "Non-stop" :
+            stopsCount === 1 ? "1 stop" :
+            `${stopsCount} stops`;
+      
           return (
-            `${i + 1}. ${s.carrierCode} ${s.number} — ₹${f.price.total}\n` +
-            `   ${s.departure.iataCode} ${depTime} → ${s.arrival.iataCode} ${arrTime} (${duration})`
+            `${i + 1}. ${first.carrierCode} ${first.number} — ₹${f.price.total}\n` +
+            `   ${first.departure.iataCode} ${depTime} → ${last.arrival.iataCode} ${arrTime}\n` +
+            `   ${duration} · ${stopsLabel}`
           );
         })
         .join("\n\n");
+      
 
       setConversation(from, {
         intent: "FLIGHT_SEARCH",
