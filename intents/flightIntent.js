@@ -180,16 +180,6 @@ async function handle(context) {
     if (lower === "yes") {
       const locked = { ...conversation.flightQuery };
 
-      const result = await searchFlights({
-        originLocationCode: locked.origin.cityCode,
-        destinationLocationCode: locked.destination.cityCode,
-        date: locked.date
-      });
-
-      console.log("🔍 searchFlights() returned:", JSON.stringify(result, null, 2));
-
-      const { flights, carriers } = result;
-      
       setConversation(from, {
         intent: "FLIGHT_SEARCH",
         state: "SEARCHING",
@@ -212,15 +202,14 @@ async function handle(context) {
         requestId: context.requestContext?.requestId
       });
 
-      const flights = await searchFlights({
+      const { flights, carriers } = await searchFlights({
         originLocationCode: locked.origin.cityCode,
         destinationLocationCode: locked.destination.cityCode,
         date: locked.date
       });
-      
-      // carriers not available yet
-      const carriers = null;
 
+      console.log("🧪 searchFlights raw return:", flights);
+      console.log("🧪 typeof flights:", typeof flights);
       
       if (!flights || flights.length === 0) {
         await sendWhatsAppMessage(
