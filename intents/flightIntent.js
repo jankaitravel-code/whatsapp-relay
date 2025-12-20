@@ -180,6 +180,16 @@ async function handle(context) {
     if (lower === "yes") {
       const locked = { ...conversation.flightQuery };
 
+      const result = await searchFlights({
+        originLocationCode: locked.origin.cityCode,
+        destinationLocationCode: locked.destination.cityCode,
+        date: locked.date
+      });
+
+      console.log("🔍 searchFlights() returned:", JSON.stringify(result, null, 2));
+
+      const { flights, carriers } = result;
+      
       setConversation(from, {
         intent: "FLIGHT_SEARCH",
         state: "SEARCHING",
