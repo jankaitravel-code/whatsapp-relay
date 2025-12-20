@@ -183,7 +183,15 @@ async function handle(context) {
         return;
       }
 
-      const reply = flights
+      const sortedFlights = flights
+        .filter(f => f.itineraries?.[0]?.segments?.[0]?.departure?.at)
+        .sort((a, b) => {
+          const aTime = new Date(a.itineraries[0].segments[0].departure.at).getTime();
+          const bTime = new Date(b.itineraries[0].segments[0].departure.at).getTime();
+          return aTime - bTime; // earliest first
+        });
+      
+      const reply = sortedFlights
         .slice(0, 5)
         .map((f, i) => {
           const itinerary = f.itineraries?.[0];
