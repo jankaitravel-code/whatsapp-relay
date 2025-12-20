@@ -62,8 +62,17 @@ function safeFlightSummary(f, index) {
 }
 
 function getAirlineName(carrierCode, carriersDict) {
-  if (!carrierCode) return "Unknown Airline";
-  if (!carriersDict) return carrierCode;
+  // Absolute safety first
+  if (!carrierCode || typeof carrierCode !== "string") {
+    return "Unknown Airline";
+  }
+
+  // If Amadeus carriers dictionary is missing or invalid
+  if (!carriersDict || typeof carriersDict !== "object") {
+    return carrierCode;
+  }
+
+  // Happy path
   return carriersDict[carrierCode] || carrierCode;
 }
 
