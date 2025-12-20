@@ -12,6 +12,7 @@ const { buildRequestContext } = require("./utils/requestContext");
 const { checkRateLimit } = require("./security/rateLimiter");
 const RATE_LIMIT_WARNING_THRESHOLD = 10;
 const { log } = require("./utils/logger");
+const { recordSignal } = require("./utils/abuseSignals");
 
 const { routeIntent } = require("./intents/intentRouter");
 const {
@@ -115,6 +116,14 @@ app.post("/webhook", async (req, res) => {
       windowMs: rate.windowMs,
       requestId: requestContext.requestId
     });
+
+    // B3: Recording abuse signal - still log only no blocking yet
+    recordSignal("MESSAGE_RECEIVED", {
+      user: from,
+      textLength: rawText.length,
+      requestId: requestContext.requestId
+    });
+
 
     // 🟡 B2: Soft warning (non-blocking, failure-safe)
     if (rate.count === RATE_LIMIT_WARNING_THRESHOLD) {
