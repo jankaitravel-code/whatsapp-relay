@@ -7,6 +7,8 @@
 const { parseFlightQuery } = require("../services/flightParser");
 const { searchFlights } = require("../services/flightSearchService");
 const { log } = require("../utils/logger");
+const { recordSignal } = require("../utils/abuseSignals");
+
 
 function canHandle(text, context) {
   if (!text) return false;
@@ -52,6 +54,11 @@ async function handle(context) {
      GLOBAL CANCEL (always allowed)
   =============================== */
   if (lower === "cancel") {
+    recordSignal("flight_cancelled", {
+      user: from,
+      requestId: context.requestContext?.requestId
+    });
+
     clearConversation(from);
 
     log("state_transition", {
@@ -129,6 +136,14 @@ async function handle(context) {
       });
 
       // 🔥 IMMEDIATELY execute search
+      recordSignal("flight_search_executed", {
+        origin: locked.origin.cityCode,
+        destination: locked.destination.cityCode,
+        date: locked.date,
+        user: from,
+        requestId: context.requestContext?.requestId
+      });
+
       const flights = await searchFlights({
         originLocationCode: locked.origin.cityCode,
         destinationLocationCode: locked.destination.cityCode,
@@ -170,6 +185,13 @@ async function handle(context) {
       );
       return;
     } else if (lower === "change") {
+      recordSignal("flight_state_change", {
+        fromState: "READY_TO_CONFIRM",
+        toState: "COLLECTING",
+        user: from,
+        requestId: context.requestContext?.requestId
+      });
+
       setConversation(from, {
         intent: "FLIGHT_SEARCH",
         state: "COLLECTING",
@@ -204,6 +226,12 @@ async function handle(context) {
     const parsed = await parseFlightQuery(text);
 
     if (parsed?.error === "UNKNOWN_LOCATION") {
+      recordSignal("flight_invalid_location", {
+        user: from,
+        inputLength: rawText.length,
+        requestId: context.requestContext?.requestId
+      });
+      
       await sendWhatsAppMessage(
         from,
         "❌ I couldn’t recognize one of the locations.\nPlease try a major city or airport."
@@ -212,6 +240,12 @@ async function handle(context) {
     }
 
     if (!parsed) {
+      recordSignal("flight_unparseable_query", {
+        user: from,
+        inputLength: rawText.length,
+        requestId: context.requestContext?.requestId
+      });
+
       await sendWhatsAppMessage(
         from,
         "✈️ Try:\nflight from delhi to mumbai on 2025-12-25"
@@ -319,3 +353,5 @@ module.exports = {
   canHandle,
   handle
 };
+
+
