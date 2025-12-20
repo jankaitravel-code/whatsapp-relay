@@ -202,11 +202,15 @@ async function handle(context) {
         requestId: context.requestContext?.requestId
       });
 
-      const { flights, carriers } = await searchFlights({
+      const flights = await searchFlights({
         originLocationCode: locked.origin.cityCode,
         destinationLocationCode: locked.destination.cityCode,
         date: locked.date
       });
+      
+      // carriers not available yet
+      const carriers = null;
+
       
       if (!flights || flights.length === 0) {
         await sendWhatsAppMessage(
