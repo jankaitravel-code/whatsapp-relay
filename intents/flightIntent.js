@@ -139,6 +139,53 @@ async function handle(context) {
     return;
   }
 
+    /* ===============================
+     RESULTS → CHANGE INTENT
+  =============================== */
+  if (conversation?.state === "RESULTS") {
+    if (lower === "change date") {
+      setConversation(from, {
+        ...conversation,
+        state: "RESULTS_CHANGE",
+        changeTarget: "date"
+      });
+
+      await sendWhatsAppMessage(
+        from,
+        "📅 What is the new travel date? (YYYY-MM-DD)"
+      );
+      return;
+    }
+
+    if (lower === "change destination") {
+      setConversation(from, {
+        ...conversation,
+        state: "RESULTS_CHANGE",
+        changeTarget: "destination"
+      });
+
+      await sendWhatsAppMessage(
+        from,
+        "📍 What is the new destination city?"
+      );
+      return;
+    }
+
+    if (lower === "change origin") {
+      setConversation(from, {
+        ...conversation,
+        state: "RESULTS_CHANGE",
+        changeTarget: "origin"
+      });
+
+      await sendWhatsAppMessage(
+        from,
+        "📍 What is the new origin city?"
+      );
+      return;
+    }
+  }
+
        /* ===============================
        DATE-ONLY INPUT (COLLECTING)
     =============================== */
@@ -181,7 +228,66 @@ async function handle(context) {
     );
     return;
   }
- 
+
+    /* ===============================
+     RESULTS_CHANGE → APPLY UPDATE
+  =============================== */
+  if (conversation?.state === "RESULTS_CHANGE") {
+    const target = conversation.changeTarget;
+
+    // Defensive fallback
+    if (!target || !conversation.lockedFlightQuery) {
+      await sendWhatsAppMessage(
+        from,
+        "⚠️ Something went wrong. Please say what you'd like to change again."
+      );
+      return;
+    }
+
+    const updatedQuery = { ...conversation.lockedFlightQuery };
+
+    if (target === "date") {
+      const dateMatch = rawText.match(/^\d{4}-\d{2}-\d{2}$/);
+
+      if (!dateMatch) {
+        await sendWhatsAppMessage(
+          from,
+          "📅 Please provide the date in YYYY-MM-DD format."
+        );
+        return;
+      }
+
+      updatedQuery.date = dateMatch[0];
+    }
+
+    if (target === "origin") {
+      updatedQuery.origin = { cityName: rawText, cityCode: rawText.toUpperCase() };
+    }
+
+    if (target === "destination") {
+      updatedQuery.destination = { cityName: rawText, cityCode: rawText.toUpperCase() };
+    }
+
+    setConversation(from, {
+      intent: "FLIGHT_SEARCH",
+      state: "RESULTS",
+      lockedFlightQuery: updatedQuery
+    });
+
+    await sendWhatsAppMessage(
+      from,
+      `✅ Updated ${target}.
+
+You can:
+• Say "search" to run again
+• Change date
+• Change origin
+• Change destination`
+    );
+    return;
+  }
+
+  
   /* ===============================
      READY_TO_CONFIRM STATE
   =============================== */
