@@ -682,8 +682,8 @@ You can:
         lockedFlightQuery: locked,
         results: {
           items: formattedResults,
-          cursor: 5,
-          pageSize: 5
+          cursor: 3,
+          pageSize: 3
         }
       });
 
