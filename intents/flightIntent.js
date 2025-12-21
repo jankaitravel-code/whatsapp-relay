@@ -287,6 +287,83 @@ You can:
     return;
   }
 
+    /* ===============================
+     RESULTS → RUN SEARCH (EXPLICIT)
+  =============================== */
+  if (
+    conversation?.state === "RESULTS" &&
+    lower === "run search"
+  ) {
+    const locked = conversation.lockedFlightQuery;
+
+    if (!locked?.origin || !locked?.destination || !locked?.date) {
+      await sendWhatsAppMessage(
+        from,
+        "⚠️ I don’t have enough details to run the search again."
+      );
+      return;
+    }
+
+    setConversation(from, {
+      intent: "FLIGHT_SEARCH",
+      state: "SEARCHING",
+      lockedFlightQuery: locked
+    });
+
+    log("state_transition", {
+      intent: "FLIGHT_SEARCH",
+      state: "SEARCHING",
+      user: from,
+      requestId: context.requestContext?.requestId
+    });
+
+    recordSignal("flight_search_reexecuted", {
+      origin: locked.origin.cityCode,
+      destination: locked.destination.cityCode,
+      date: locked.date,
+      user: from,
+      requestId: context.requestContext?.requestId
+    });
+
+    const { flights, carriers } = await searchFlights({
+      originLocationCode: locked.origin.cityCode,
+      destinationLocationCode: locked.destination.cityCode,
+      date: locked.date
+    });
+
+    if (!Array.isArray(flights) || flights.length === 0) {
+      await sendWhatsAppMessage(
+        from,
+        "Sorry, I couldn’t find flights for the updated details."
+      );
+      return;
+    }
+
+    const reply = flights
+      .slice(0, 5)
+      .map((f, i) => safeFlightSummary(f, i + 1))
+      .join("\n\n");
+
+    setConversation(from, {
+      intent: "FLIGHT_SEARCH",
+      state: "RESULTS",
+      lockedFlightQuery: locked
+    });
+
+    log("state_transition", {
+      intent: "FLIGHT_SEARCH",
+      state: "RESULTS",
+      user: from,
+      requestId: context.requestContext?.requestId
+    });
+
+    await sendWhatsAppMessage(
+      from,
+      `✈️ Updated flight options:\n\n${reply}`
+    );
+    return;
+  }
+
   
   /* ===============================
      READY_TO_CONFIRM STATE
