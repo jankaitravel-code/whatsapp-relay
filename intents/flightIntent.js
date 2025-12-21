@@ -366,43 +366,48 @@ You can:
       return;
     }
 
-    const reply = flights
-      .slice(0, 5)
-      .map((f, i) => {
-        const itinerary = f.itineraries?.[0];
-        const segments = itinerary?.segments;
+    const formattedResults = flights.map((f, i) => {
+      const itinerary = f.itineraries?.[0];
+      const segments = itinerary?.segments;
     
-        if (!itinerary || !segments || segments.length === 0) {
-          return `${i + 1}. Flight details unavailable`;
-        }
+      if (!itinerary || !segments || segments.length === 0) {
+        return `${i + 1}. Flight details unavailable`;
+      }
     
-        const first = segments[0];
-        const last = segments[segments.length - 1];
+      const first = segments[0];
+      const last = segments[segments.length - 1];
     
-        const airlineName = getAirlineName(first.carrierCode, carriers);
+      const airlineName = getAirlineName(first.carrierCode, carriers);
     
-        const depTime = formatTime(first.departure.at);
-        const arrTime = formatTime(last.arrival.at);
-        const duration = formatDuration(itinerary.duration);
+      const depTime = formatTime(first.departure.at);
+      const arrTime = formatTime(last.arrival.at);
+      const duration = formatDuration(itinerary.duration);
     
-        const stopsCount = segments.length - 1;
-        const stopsLabel =
-          stopsCount === 0 ? "Non-stop" :
-          stopsCount === 1 ? "1 stop" :
-          `${stopsCount} stops`;
+      const stopsCount = segments.length - 1;
+      const stopsLabel =
+        stopsCount === 0 ? "Non-stop" :
+        stopsCount === 1 ? "1 stop" :
+        `${stopsCount} stops`;
     
-        return (
-          `${i + 1}. ${airlineName} (${first.carrierCode} ${first.number}) — ₹${f.price.total}\n` +
-          `   ${first.departure.iataCode} ${depTime} → ${last.arrival.iataCode} ${arrTime}\n` +
-          `   ${duration} · ${stopsLabel}`
-        );
-      })
-      .join("\n\n");
+      return (
+        `${i + 1}. ${airlineName} (${first.carrierCode} ${first.number}) — ₹${f.price.total}\n` +
+        `   ${first.departure.iataCode} ${depTime} → ${last.arrival.iataCode} ${arrTime}\n` +
+        `   ${duration} · ${stopsLabel}`
+      );
+    });
+
+    const PAGE_SIZE = 3;
+    const firstPage = formattedResults.slice(0, PAGE_SIZE).join("\n\n");
 
     setConversation(from, {
       intent: "FLIGHT_SEARCH",
       state: "RESULTS",
-      lockedFlightQuery: locked
+      lockedFlightQuery: locked,
+      results: {
+        items: formattedResults,
+        cursor: PAGE_SIZE,
+        pageSize: PAGE_SIZE
+      }
     });
 
     log("state_transition", {
@@ -414,7 +419,11 @@ You can:
 
     await sendWhatsAppMessage(
       from,
-      `✈️ Updated flight options:\n\n${reply}`
+      `✈️ Updated flight options:\n\n${reply}
+    Say:
+    • show more — to see more results
+    • change date / origin / destination
+    • run search` 
     );
     return;
   }
@@ -673,8 +682,10 @@ You can:
           `   ${duration} · ${stopsLabel}`
         );
       });
+
+      const PAGE_SIZE = 3;
       
-      const firstPage = formattedResults.slice(0, 5).join("\n\n");
+      const firstPage = formattedResults.slice(0, PAGE_SIZE).join("\n\n");
 
       setConversation(from, {
         intent: "FLIGHT_SEARCH",
@@ -682,8 +693,8 @@ You can:
         lockedFlightQuery: locked,
         results: {
           items: formattedResults,
-          cursor: 3,
-          pageSize: 3
+          cursor: PAGE_SIZE,
+          pageSize: PAGE_SIZE
         }
       });
 
