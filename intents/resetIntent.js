@@ -19,7 +19,7 @@ async function handle({ from, sendWhatsAppMessage, clearConversation }) {
   await sendWhatsAppMessage(
     from,
     "✅ All set. Let’s start fresh.\n\n" +
-    "You can say:\nflight DEL to DXB on 2025-12-25"
+    "You can say:\nflight from delhi to mumbai on 2025-12-25"
   );
 }
 
