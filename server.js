@@ -14,6 +14,9 @@ const RATE_LIMIT_WARNING_THRESHOLD = 10;
 const { log } = require("./utils/logger");
 const { recordSignal } = require("./utils/abuseSignals");
 
+const BLOCKED_RESULTS_INPUTS = ["yes", "ok", "search"];
+
+
 const { routeIntent } = require("./intents/intentRouter");
 const {
   getConversation,
@@ -153,6 +156,29 @@ app.post("/webhook", async (req, res) => {
     // B1: rate limiting is warn-only for now (no blocking)
 
     const conversation = getConversation(from);
+
+    // 🔒 7.2.6.1 — Freeze search execution after RESULTS
+    const normalizedText = rawText.trim().toLowerCase();
+    
+    if (
+      conversation?.state === "RESULTS" &&
+      BLOCKED_RESULTS_INPUTS.includes(normalizedText)
+    ) {
+      await sendWhatsAppMessage(
+        from,
+        `You're already viewing search results.
+    
+    You can:
+    • Change dates
+    • Change destination
+    • Start a new search
+    
+    Tell me what you'd like to change.`
+      );
+    
+      return res.sendStatus(200); // 🔒 HARD STOP
+    }
+    
           
     const intentContext = {
       from,
