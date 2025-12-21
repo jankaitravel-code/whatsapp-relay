@@ -417,14 +417,14 @@ You can:
         `✈️ Here are your flight options:\n\n${reply}`
       );
       return;
-    } else if (lower === "change") {
+    } else if (lower === "change" && conversation.state === "READY_TO_CONFIRM") {
       recordSignal("flight_state_change", {
         fromState: "READY_TO_CONFIRM",
         toState: "COLLECTING",
         user: from,
         requestId: context.requestContext?.requestId
       });
-
+      
       setConversation(from, {
         intent: "FLIGHT_SEARCH",
         state: "COLLECTING",
@@ -446,7 +446,7 @@ You can:
     } else {
       await sendWhatsAppMessage(
         from,
-        "Please reply with *Yes*, *Change*, or *Cancel*."
+        "Please reply with *Yes*, *Change* (to edit), or *Cancel*."
       );
       return;
     }
