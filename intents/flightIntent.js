@@ -279,7 +279,7 @@ async function handle(context) {
       `✅ Updated ${target}.
 
 You can:
-• Say "search" to run again
+• Say "run search" to run again
 • Change date
 • Change origin
 • Change destination`
@@ -341,7 +341,35 @@ You can:
 
     const reply = flights
       .slice(0, 5)
-      .map((f, i) => safeFlightSummary(f, i + 1))
+      .map((f, i) => {
+        const itinerary = f.itineraries?.[0];
+        const segments = itinerary?.segments;
+    
+        if (!itinerary || !segments || segments.length === 0) {
+          return `${i + 1}. Flight details unavailable`;
+        }
+    
+        const first = segments[0];
+        const last = segments[segments.length - 1];
+    
+        const airlineName = getAirlineName(first.carrierCode, carriers);
+    
+        const depTime = formatTime(first.departure.at);
+        const arrTime = formatTime(last.arrival.at);
+        const duration = formatDuration(itinerary.duration);
+    
+        const stopsCount = segments.length - 1;
+        const stopsLabel =
+          stopsCount === 0 ? "Non-stop" :
+          stopsCount === 1 ? "1 stop" :
+          `${stopsCount} stops`;
+    
+        return (
+          `${i + 1}. ${airlineName} (${first.carrierCode} ${first.number}) — ₹${f.price.total}\n` +
+          `   ${first.departure.iataCode} ${depTime} → ${last.arrival.iataCode} ${arrTime}\n` +
+          `   ${duration} · ${stopsLabel}`
+        );
+      })
       .join("\n\n");
 
     setConversation(from, {
