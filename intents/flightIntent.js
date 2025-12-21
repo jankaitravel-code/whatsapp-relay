@@ -289,11 +289,12 @@ async function handle(context) {
         cityCode: rawText.trim().toUpperCase()
       };
     }
-    
+
     setConversation(from, {
       intent: "FLIGHT_SEARCH",
       state: "RESULTS",
-      lockedFlightQuery: updatedQuery
+      lockedFlightQuery: updatedQuery,
+      changeTarget: null
     });
 
     await sendWhatsAppMessage(
