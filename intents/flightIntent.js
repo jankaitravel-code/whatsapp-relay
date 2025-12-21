@@ -296,7 +296,8 @@ async function handle(context) {
       intent: "FLIGHT_SEARCH",
       state: "RESULTS",
       lockedFlightQuery: updatedQuery,
-      changeTarget: null
+      changeTarget: null,
+      results: null
     });
 
     await sendWhatsAppMessage(
@@ -332,7 +333,8 @@ You can:
     setConversation(from, {
       intent: "FLIGHT_SEARCH",
       state: "SEARCHING",
-      lockedFlightQuery: locked
+      lockedFlightQuery: locked,
+      results: null
     });
 
     log("state_transition", {
@@ -520,6 +522,58 @@ You can:
     );
     return;
   }
+
+  /* ===============================
+   RESULTS → SHOW MORE (PAGINATION)
+  =============================== */
+  if (
+    conversation?.state === "RESULTS" &&
+    lower === "show more"
+  ) {
+    const results = conversation.results;
+  
+    if (!results || !Array.isArray(results.items)) {
+      await sendWhatsAppMessage(
+        from,
+        "⚠️ No more results available."
+      );
+      return;
+    }
+  
+    const { items, cursor, pageSize } = results;
+  
+    if (cursor >= items.length) {
+      await sendWhatsAppMessage(
+        from,
+        "No more results to show."
+      );
+      return;
+    }
+  
+    const nextPage = items
+      .slice(cursor, cursor + pageSize)
+      .join("\n\n");
+  
+    setConversation(from, {
+      ...conversation,
+      results: {
+        ...results,
+        cursor: cursor + pageSize
+      }
+    });
+  
+    await sendWhatsAppMessage(
+      from,
+      `${nextPage}
+  
+  Say:
+  • show more — to see more results
+  • change date / origin / destination
+  • run search`
+    );
+    return;
+  }
+  
   /* ===============================
      READY_TO_CONFIRM STATE
   =============================== */
@@ -529,10 +583,15 @@ You can:
 
       setConversation(from, {
         intent: "FLIGHT_SEARCH",
-        state: "SEARCHING",
-        lockedFlightQuery: locked
+        state: "RESULTS",
+        lockedFlightQuery: locked,
+        results: {
+          items: formattedResults,
+          cursor: 5,
+          pageSize: 5
+        }
       });
-
+      
       log("state_transition", {
         intent: "FLIGHT_SEARCH",
         state: "SEARCHING",
@@ -595,42 +654,39 @@ You can:
         );
         return;
       }
-      
-      const reply = sortedFlights
-        .slice(0, 5)
-        .map((f, i) => {
-          const itinerary = f.itineraries?.[0];
-          const segments = itinerary?.segments;
-      
-          if (!itinerary || !segments || segments.length === 0) {
-            return `${i + 1}. Flight details unavailable`;
-          }
-      
-          const first = segments[0];
 
-          const airlineName = getAirlineName(first.carrierCode, carriers);
-
-          const last = segments[segments.length - 1];
+      const formattedResults = sortedFlights.map((f, i) => {
+        const itinerary = f.itineraries?.[0];
+        const segments = itinerary?.segments;
       
-          const depTime = formatTime(first.departure.at);
-          const arrTime = formatTime(last.arrival.at);
-          const duration = formatDuration(itinerary.duration);
+        if (!itinerary || !segments || segments.length === 0) {
+          return `${i + 1}. Flight details unavailable`;
+        }
       
-          const stopsCount = segments.length - 1;
-          const stopsLabel =
-            stopsCount === 0 ? "Non-stop" :
-            stopsCount === 1 ? "1 stop" :
-            `${stopsCount} stops`;
+        const first = segments[0];
+        const last = segments[segments.length - 1];
       
-          return (
-            `${i + 1}. ${airlineName} (${first.carrierCode} ${first.number}) — ₹${f.price.total}\n` +
-            `   ${first.departure.iataCode} ${depTime} → ${last.arrival.iataCode} ${arrTime}\n` +
-            `   ${duration} · ${stopsLabel}`
-          );
-        })
-        .join("\n\n");
+        const airlineName = getAirlineName(first.carrierCode, carriers);
       
-
+        const depTime = formatTime(first.departure.at);
+        const arrTime = formatTime(last.arrival.at);
+        const duration = formatDuration(itinerary.duration);
+      
+        const stopsCount = segments.length - 1;
+        const stopsLabel =
+          stopsCount === 0 ? "Non-stop" :
+          stopsCount === 1 ? "1 stop" :
+          `${stopsCount} stops`;
+      
+        return (
+          `${i + 1}. ${airlineName} (${first.carrierCode} ${first.number}) — ₹${f.price.total}\n` +
+          `   ${first.departure.iataCode} ${depTime} → ${last.arrival.iataCode} ${arrTime}\n` +
+          `   ${duration} · ${stopsLabel}`
+        );
+      });
+      
+      const firstPage = formattedResults.slice(0, 5).join("\n\n");
+      
       setConversation(from, {
         intent: "FLIGHT_SEARCH",
         state: "RESULTS",
@@ -646,7 +702,12 @@ You can:
 
       await sendWhatsAppMessage(
         from,
-        `✈️ Here are your flight options:\n\n${reply}`
+        `✈️ Here are your flight options:\n\n${firstPage}
+      
+      Say:
+      • show more — to see more results
+      • change date / origin / destination
+      • run search`
       );
       return;
 
