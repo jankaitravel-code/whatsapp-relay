@@ -261,33 +261,35 @@ async function handle(context) {
     }
 
     if (target === "origin") {
-      if (!rawText || rawText.trim().length < 2) {
+      const parsed = await parseFlightQuery(
+        `flight from ${rawText.trim()} to ${updatedQuery.destination.cityName}`
+      );
+    
+      if (!parsed?.origin) {
         await sendWhatsAppMessage(
           from,
-          "📍 Please provide a valid origin city."
+          "📍 I couldn’t recognize that origin city. Please try a major city or airport."
         );
         return;
       }
     
-      updatedQuery.origin = {
-        cityName: rawText.trim(),
-        cityCode: rawText.trim().toUpperCase()
-      };
+      updatedQuery.origin = parsed.origin;
     }
-    
+
     if (target === "destination") {
-      if (!rawText || rawText.trim().length < 2) {
+      const parsed = await parseFlightQuery(
+        `flight from ${updatedQuery.origin.cityName} to ${rawText.trim()}`
+      );
+    
+      if (!parsed?.destination) {
         await sendWhatsAppMessage(
           from,
-          "📍 Please provide a valid destination city."
+          "📍 I couldn’t recognize that destination city. Please try a major city or airport."
         );
         return;
       }
     
-      updatedQuery.destination = {
-        cityName: rawText.trim(),
-        cityCode: rawText.trim().toUpperCase()
-      };
+      updatedQuery.destination = parsed.destination;
     }
 
     setConversation(from, {
