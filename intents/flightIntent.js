@@ -261,13 +261,35 @@ async function handle(context) {
     }
 
     if (target === "origin") {
-      updatedQuery.origin = { cityName: rawText, cityCode: rawText.toUpperCase() };
+      if (!rawText || rawText.trim().length < 2) {
+        await sendWhatsAppMessage(
+          from,
+          "📍 Please provide a valid origin city."
+        );
+        return;
+      }
+    
+      updatedQuery.origin = {
+        cityName: rawText.trim(),
+        cityCode: rawText.trim().toUpperCase()
+      };
     }
-
+    
     if (target === "destination") {
-      updatedQuery.destination = { cityName: rawText, cityCode: rawText.toUpperCase() };
+      if (!rawText || rawText.trim().length < 2) {
+        await sendWhatsAppMessage(
+          from,
+          "📍 Please provide a valid destination city."
+        );
+        return;
+      }
+    
+      updatedQuery.destination = {
+        cityName: rawText.trim(),
+        cityCode: rawText.trim().toUpperCase()
+      };
     }
-
+    
     setConversation(from, {
       intent: "FLIGHT_SEARCH",
       state: "RESULTS",
