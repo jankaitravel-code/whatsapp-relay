@@ -580,17 +580,6 @@ You can:
   if (conversation?.state === "READY_TO_CONFIRM") {
     if (lower === "yes") {
       const locked = { ...conversation.flightQuery };
-
-      setConversation(from, {
-        intent: "FLIGHT_SEARCH",
-        state: "RESULTS",
-        lockedFlightQuery: locked,
-        results: {
-          items: formattedResults,
-          cursor: 5,
-          pageSize: 5
-        }
-      });
       
       log("state_transition", {
         intent: "FLIGHT_SEARCH",
@@ -686,11 +675,16 @@ You can:
       });
       
       const firstPage = formattedResults.slice(0, 5).join("\n\n");
-      
+
       setConversation(from, {
         intent: "FLIGHT_SEARCH",
         state: "RESULTS",
-        lockedFlightQuery: locked
+        lockedFlightQuery: locked,
+        results: {
+          items: formattedResults,
+          cursor: 5,
+          pageSize: 5
+        }
       });
 
       log("state_transition", {
