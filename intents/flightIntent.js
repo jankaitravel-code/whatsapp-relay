@@ -419,7 +419,7 @@ You can:
 
     await sendWhatsAppMessage(
       from,
-      `✈️ Updated flight options:\n\n${reply}
+      `✈️ Updated flight options:\n\n${firstPage}
     Say:
     • show more — to see more results
     • change date / origin / destination
