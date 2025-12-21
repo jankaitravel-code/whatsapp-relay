@@ -392,7 +392,109 @@ You can:
     return;
   }
 
-  
+    /* ===============================
+     COLLECTING → SELECT CHANGE TARGET (PRE-SEARCH)
+  =============================== */
+  if (
+    conversation?.state === "COLLECTING" &&
+    conversation.changeTarget === "PENDING"
+  ) {
+    if (lower === "date") {
+      setConversation(from, {
+        ...conversation,
+        changeTarget: "date"
+      });
+
+      await sendWhatsAppMessage(
+        from,
+        "📅 What date would you like to travel? (YYYY-MM-DD)"
+      );
+      return;
+    }
+
+    if (lower === "origin") {
+      setConversation(from, {
+        ...conversation,
+        changeTarget: "origin"
+      });
+
+      await sendWhatsAppMessage(
+        from,
+        "📍 What is the new origin city?"
+      );
+      return;
+    }
+
+    if (lower === "destination") {
+      setConversation(from, {
+        ...conversation,
+        changeTarget: "destination"
+      });
+
+      await sendWhatsAppMessage(
+        from,
+        "📍 What is the new destination city?"
+      );
+      return;
+    }
+
+    await sendWhatsAppMessage(
+      from,
+      "Please reply with: Date, Origin, or Destination."
+    );
+    return;
+  }
+
+    /* ===============================
+     COLLECTING → APPLY CHANGE (PRE-SEARCH)
+  =============================== */
+  if (
+    conversation?.state === "COLLECTING" &&
+    conversation.changeTarget &&
+    conversation.changeTarget !== "PENDING"
+  ) {
+    const updatedQuery = { ...conversation.flightQuery };
+
+    if (conversation.changeTarget === "date") {
+      const dateMatch = rawText.match(/^\d{4}-\d{2}-\d{2}$/);
+
+      if (!dateMatch) {
+        await sendWhatsAppMessage(
+          from,
+          "📅 Please provide the date in YYYY-MM-DD format."
+        );
+        return;
+      }
+
+      updatedQuery.date = dateMatch[0];
+    }
+
+    if (conversation.changeTarget === "origin") {
+      updatedQuery.origin = {
+        cityName: rawText,
+        cityCode: rawText.toUpperCase()
+      };
+    }
+
+    if (conversation.changeTarget === "destination") {
+      updatedQuery.destination = {
+        cityName: rawText,
+        cityCode: rawText.toUpperCase()
+      };
+    }
+
+    setConversation(from, {
+      intent: "FLIGHT_SEARCH",
+      state: "READY_TO_CONFIRM",
+      flightQuery: updatedQuery
+    });
+
+    await sendWhatsAppMessage(
+      from,
+      buildConfirmationMessage(updatedQuery)
+    );
+    return;
+  }
   /* ===============================
      READY_TO_CONFIRM STATE
   =============================== */
@@ -522,30 +624,21 @@ You can:
         `✈️ Here are your flight options:\n\n${reply}`
       );
       return;
-    } else if (lower === "change" && conversation.state === "READY_TO_CONFIRM") {
-      recordSignal("flight_state_change", {
-        fromState: "READY_TO_CONFIRM",
-        toState: "COLLECTING",
-        user: from,
-        requestId: context.requestContext?.requestId
-      });
-      
+
+    } else if (lower === "change") {
       setConversation(from, {
         intent: "FLIGHT_SEARCH",
         state: "COLLECTING",
-        flightQuery: { ...conversation.flightQuery }
+        flightQuery: { ...conversation.flightQuery },
+        changeTarget: "PENDING"
       });
-
-      log("state_transition", {
-        intent: "FLIGHT_SEARCH",
-        state: "COLLECTING",
-        user: from,
-        requestId: context.requestContext?.requestId
-      });
-
+    
       await sendWhatsAppMessage(
         from,
-        "✏️ Okay, what would you like to change?"
+        `What would you like to change?
+    • Date
+    • Origin
+    • Destination`
       );
       return;
     } else {
