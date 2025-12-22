@@ -1,5 +1,12 @@
 const { resolveLocation } = require("./locationService");
 
+const RETURN_MARKERS = [
+  "return",
+  "returning",
+  "round trip",
+  "roundtrip"
+];
+
 /**
  * Parses flight queries like:
  * - flight BLR to DEL on 2025-12-25
@@ -8,12 +15,20 @@ const { resolveLocation } = require("./locationService");
 async function parseFlightQuery(text) {
   const cleaned = text.replace(/,/g, "").trim();
 
+  const normalized = cleaned.toLowerCase();
+  
+  const hasReturnIntent = RETURN_MARKERS.some(marker =>
+    normalized.includes(marker)
+  );
+
   // FULL query with date
   let match = cleaned.match(
     /flight\s+(?:from\s+)?(.+?)\s+to\s+(.+?)\s+on\s+(\d{4}-\d{2}-\d{2})$/i
   );
 
-  let originInput, destinationInput, date = null;
+  let originInput, destinationInput;
+  let outboundDate = null;
+  let returnDate = null;
 
   if (match) {
     originInput = match[1].trim();
@@ -31,6 +46,31 @@ async function parseFlightQuery(text) {
     destinationInput = match[2].trim();
   }
 
+  const dateMatches = normalized.match(/\d{4}-\d{2}-\d{2}/g) || [];
+
+  if (dateMatches.length >= 1) {
+    outboundDate = dateMatches[0];
+  }
+  
+  if (hasReturnIntent && dateMatches.length >= 2) {
+    returnDate = dateMatches[1];
+  }
+
+  if (hasReturnIntent) {
+    // Explicit return intent but missing return date
+    if (!returnDate) {
+      return null;
+    }
+  
+    const out = new Date(outboundDate);
+    const ret = new Date(returnDate);
+  
+    // Return must be after outbound
+    if (!(ret > out)) {
+      return { error: "INVALID_RETURN_DATE" };
+    }
+  }
+
   const origin = await resolveLocation(originInput);
   const destination = await resolveLocation(destinationInput);
 
@@ -41,7 +81,8 @@ async function parseFlightQuery(text) {
   return {
     origin,
     destination,
-    date
+    date: outboundDate,
+    returnDate: returnDate || null
   };
 }
 
