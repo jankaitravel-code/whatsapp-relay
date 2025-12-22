@@ -90,13 +90,17 @@ function canHandle(text, context) {
 function isQueryComplete(q) {
   return Boolean(q?.origin && q?.destination && q?.date);
 }
-
 function buildConfirmationMessage(q) {
+  const returnLine = q.returnDate
+    ? `Return: ${q.returnDate}\n`
+    : "";
+
   return (
     `✈️ Please confirm your flight search:\n\n` +
     `From: ${q.origin.cityName}\n` +
     `To: ${q.destination.cityName}\n` +
-    `Date: ${q.date}\n\n` +
+    `Departure: ${q.date}\n` +
+    returnLine + `\n` +
     `Reply:\n` +
     `• Yes — to search\n` +
     `• Change — to modify\n` +
