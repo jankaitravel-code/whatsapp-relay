@@ -51,6 +51,10 @@ async function parseFlightQuery(text) {
   if (dateMatches.length >= 1) {
     outboundDate = dateMatches[0];
   }
+
+  if (dateMatches.length >= 1) {
+    outboundDate = dateMatches[0];
+  }
   
   if (hasReturnIntent && dateMatches.length >= 2) {
     returnDate = dateMatches[1];
@@ -69,6 +73,13 @@ async function parseFlightQuery(text) {
     if (!(ret > out)) {
       return { error: "INVALID_RETURN_DATE" };
     }
+  }
+
+  // Reject invalid date formats early
+  const invalidDatePattern = /\b\d{2}-\d{2}-\d{4}\b/;
+  
+  if (invalidDatePattern.test(normalized)) {
+    return null;
   }
 
   const origin = await resolveLocation(originInput);
