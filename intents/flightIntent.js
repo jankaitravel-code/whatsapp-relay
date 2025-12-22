@@ -268,7 +268,7 @@ async function handle(context) {
       if (!parsed?.origin) {
         await sendWhatsAppMessage(
           from,
-          "📍 I couldn’t recognize that origin city. Please try a major city or airport."
+          "📍 I couldn’t recognize that city. Please try a major city or airport."
         );
         return;
       }
@@ -284,7 +284,7 @@ async function handle(context) {
       if (!parsed?.destination) {
         await sendWhatsAppMessage(
           from,
-          "📍 I couldn’t recognize that destination city. Please try a major city or airport."
+          "📍 I couldn’t recognize that city. Please try a major city or airport."
         );
         return;
       }
@@ -610,7 +610,7 @@ You can:
     if (!results || !Array.isArray(results.items)) {
       await sendWhatsAppMessage(
         from,
-        "⚠️ No more results available."
+        "⚠️ That's all the results I have for this search."
       );
       return;
     }
@@ -620,7 +620,7 @@ You can:
     if (cursor >= items.length) {
       await sendWhatsAppMessage(
         from,
-        "No more results to show."
+        "⚠️ That's all the results I have for this search."
       );
       return;
     }
