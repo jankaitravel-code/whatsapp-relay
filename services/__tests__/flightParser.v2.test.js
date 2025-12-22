@@ -1,3 +1,14 @@
+jest.mock("../locationService", () => ({
+  resolveLocation: jest.fn(async (input) => {
+    if (!input) return null;
+
+    return {
+      cityName: input,
+      cityCode: input.slice(0, 3).toUpperCase()
+    };
+  })
+}));
+
 const { parseFlightQuery } = require("../flightParser");
 
 describe("parseFlightQuery v2 — Round Trip Support", () => {
