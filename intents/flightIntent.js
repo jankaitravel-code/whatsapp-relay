@@ -321,7 +321,55 @@ You can:
     lower === "run search"
   ) {
     const locked = conversation.lockedFlightQuery;
+    const last = conversation.lastExecutedSearch;
+    const results = conversation.results;
 
+    // If parameters are identical AND we have cached results → reprint page 1
+    if (
+      last &&
+      results &&
+      locked &&
+      last.originCode === locked.origin.cityCode &&
+      last.destinationCode === locked.destination.cityCode &&
+      last.date === locked.date
+    ) {
+      // 🔒 Refinement 2: defensive check
+      if (!Array.isArray(results.items) || results.items.length === 0) {
+        await sendWhatsAppMessage(
+          from,
+          "⚠️ I don’t have previous results to show. Please run the search again."
+        );
+        return;
+      }
+    
+      const PAGE_SIZE = results.pageSize || 3;
+    
+      const firstPage = results.items
+        .slice(0, PAGE_SIZE)
+        .join("\n\n");
+    
+      // 🔒 Refinement 1: explicitly preserve lastExecutedSearch
+      setConversation(from, {
+        ...conversation,
+        lastExecutedSearch: last,
+        results: {
+          ...results,
+          cursor: PAGE_SIZE
+        }
+      });
+    
+      await sendWhatsAppMessage(
+        from,
+        `✈️ Here are your flight options:\n\n${firstPage}
+    
+    Say:
+    • show more — to see more results
+    • change date / origin / destination
+    • run search`
+      );
+      return;
+    }
+     
     if (!locked?.origin || !locked?.destination || !locked?.date) {
       await sendWhatsAppMessage(
         from,
@@ -407,6 +455,11 @@ You can:
         items: formattedResults,
         cursor: PAGE_SIZE,
         pageSize: PAGE_SIZE
+      }, 
+      lastExecutedSearch: {
+        originCode: locked.origin.cityCode,
+        destinationCode: locked.destination.cityCode,
+        date: locked.date
       }
     });
 
@@ -695,6 +748,11 @@ You can:
           items: formattedResults,
           cursor: PAGE_SIZE,
           pageSize: PAGE_SIZE
+        },
+        lastExecutedSearch: {
+          originCode: locked.origin.cityCode,
+          destinationCode: locked.destination.cityCode,
+          date: locked.date
         }
       });
 
