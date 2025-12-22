@@ -2,6 +2,24 @@ jest.mock("../locationService", () => ({
   resolveLocation: jest.fn(async (input) => {
     if (!input) return null;
 
+    const knownCities = [
+      "delhi",
+      "mumbai",
+      "bengaluru",
+      "bangalore",
+      "blr",
+      "london",
+      "lon",
+      "new york",
+      "nyc"
+    ];
+
+    const normalized = input.toLowerCase();
+
+    if (!knownCities.some(city => normalized.includes(city))) {
+      return null; // simulate UNKNOWN_LOCATION
+    }
+
     return {
       cityName: input,
       cityCode: input.slice(0, 3).toUpperCase()
