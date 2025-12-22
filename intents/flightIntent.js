@@ -874,7 +874,8 @@ You can:
     const flightQuery = {
       origin: parsed.origin,
       destination: parsed.destination,
-      date: parsed.date || null
+      date: parsed.date || null,
+      returnDate: parsed.returnDate || null
     };
 
     // Always set base state
