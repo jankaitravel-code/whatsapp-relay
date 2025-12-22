@@ -572,17 +572,36 @@ You can:
     }
 
     if (conversation.changeTarget === "origin") {
-      updatedQuery.origin = {
-        cityName: rawText,
-        cityCode: rawText.toUpperCase()
-      };
+      const parsed = await parseFlightQuery(
+        `flight from ${rawText.trim()} to ${updatedQuery.destination?.cityName || "delhi"}`
+      );
+    
+      if (!parsed?.origin) {
+        await sendWhatsAppMessage(
+          from,
+          "📍 I couldn’t recognize that city.\nPlease try a major city or airport."
+        );
+        return;
+      }
+    
+      updatedQuery.origin = parsed.origin;
     }
+    
 
     if (conversation.changeTarget === "destination") {
-      updatedQuery.destination = {
-        cityName: rawText,
-        cityCode: rawText.toUpperCase()
-      };
+      const parsed = await parseFlightQuery(
+        `flight from ${updatedQuery.origin?.cityName || "delhi"} to ${rawText.trim()}`
+      );
+    
+      if (!parsed?.destination) {
+        await sendWhatsAppMessage(
+          from,
+          "📍 I couldn’t recognize that destination city.\nPlease try a major city or airport."
+        );
+        return;
+      }
+    
+      updatedQuery.destination = parsed.destination;
     }
 
     setConversation(from, {
