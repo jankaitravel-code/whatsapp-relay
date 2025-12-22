@@ -364,14 +364,14 @@ You can:
 
       await sendWhatsAppMessage(
         from,
-        `✈️ Flight options
-      
-      From: ${locked.origin.cityName}
-      To: ${locked.destination.cityName}
-      Date: ${locked.date}
-      
-      ${firstPage}
-      
+        `${locked.returnDate ? "✈️ Round-trip flight options" : "✈️ Flight options"}
+        
+        From: ${locked.origin.cityName}
+        To: ${locked.destination.cityName}
+        Departure: ${locked.date}${locked.returnDate ? `\nReturn: ${locked.returnDate}` : ""}
+        
+        ${firstPage}
+        
       You can:
       • show more
       • change date / origin / destination
@@ -483,14 +483,14 @@ You can:
 
     await sendWhatsAppMessage(
       from,
-      `✈️ Flight options
-    
-    From: ${locked.origin.cityName}
-    To: ${locked.destination.cityName}
-    Date: ${locked.date}
-    
-    ${firstPage}
-    
+      `${locked.returnDate ? "✈️ Round-trip flight options" : "✈️ Flight options"}
+      
+      From: ${locked.origin.cityName}
+      To: ${locked.destination.cityName}
+      Departure: ${locked.date}${locked.returnDate ? `\nReturn: ${locked.returnDate}` : ""}
+      
+      ${firstPage}
+      
     You can:
     • show more
     • change date / origin / destination
@@ -803,14 +803,14 @@ You can:
 
       await sendWhatsAppMessage(
         from,
-        `✈️ Flight options
-      
-      From: ${locked.origin.cityName}
-      To: ${locked.destination.cityName}
-      Date: ${locked.date}
-      
-      ${firstPage}
-      
+        `${locked.returnDate ? "✈️ Round-trip flight options" : "✈️ Flight options"}
+
+        From: ${locked.origin.cityName}
+        To: ${locked.destination.cityName}
+        Departure: ${locked.date}${locked.returnDate ? `\nReturn: ${locked.returnDate}` : ""}
+        
+        ${firstPage}
+
       You can:
       • show more
       • change date / origin / destination
