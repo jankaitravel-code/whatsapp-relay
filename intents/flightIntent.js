@@ -357,15 +357,21 @@ You can:
           cursor: PAGE_SIZE
         }
       });
-    
+
       await sendWhatsAppMessage(
         from,
-        `✈️ Here are your flight options:\n\n${firstPage}
-    
-    Say:
-    • show more — to see more results
-    • change date / origin / destination
-    • run search`
+        `✈️ Flight options
+      
+      From: ${locked.origin.cityName}
+      To: ${locked.destination.cityName}
+      Date: ${locked.date}
+      
+      ${firstPage}
+      
+      You can:
+      • show more
+      • change date / origin / destination
+      • run search`
       );
       return;
     }
@@ -472,11 +478,18 @@ You can:
 
     await sendWhatsAppMessage(
       from,
-      `✈️ Updated flight options:\n\n${firstPage}
-    Say:
-    • show more — to see more results
+      `✈️ Flight options
+    
+    From: ${locked.origin.cityName}
+    To: ${locked.destination.cityName}
+    Date: ${locked.date}
+    
+    ${firstPage}
+    
+    You can:
+    • show more
     • change date / origin / destination
-    • run search` 
+    • run search`
     );
     return;
   }
@@ -765,10 +778,16 @@ You can:
 
       await sendWhatsAppMessage(
         from,
-        `✈️ Here are your flight options:\n\n${firstPage}
+        `✈️ Flight options
       
-      Say:
-      • show more — to see more results
+      From: ${locked.origin.cityName}
+      To: ${locked.destination.cityName}
+      Date: ${locked.date}
+      
+      ${firstPage}
+      
+      You can:
+      • show more
       • change date / origin / destination
       • run search`
       );
