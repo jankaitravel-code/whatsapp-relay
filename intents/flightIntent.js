@@ -413,7 +413,8 @@ You can:
     const { flights, carriers } = await searchFlights({
       originLocationCode: locked.origin.cityCode,
       destinationLocationCode: locked.destination.cityCode,
-      date: locked.date
+      date: locked.date,
+      returnDate: locked.returnDate || null
     });
 
     if (!Array.isArray(flights) || flights.length === 0) {
@@ -698,7 +699,8 @@ You can:
       const { flights, carriers } = await searchFlights({
         originLocationCode: locked.origin.cityCode,
         destinationLocationCode: locked.destination.cityCode,
-        date: locked.date
+        date: locked.date,
+        returnDate: locked.returnDate || null
       });
 
       if (!Array.isArray(flights)) {
