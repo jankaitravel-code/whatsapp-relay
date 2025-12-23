@@ -470,7 +470,7 @@ You can:
       lastExecutedSearch: {
         originCode: locked.origin.cityCode,
         destinationCode: locked.destination.cityCode,
-        date: locked.date
+        date: locked.date,
         returnDate: locked.returnDate || null
       }
     });
