@@ -814,7 +814,8 @@ You can Say:
       setConversation(from, {
         intent: "FLIGHT_SEARCH",
         state: "COLLECTING",
-        flightQuery: downgraded
+        flightQuery: downgraded,
+        changeTarget: null   // 🔴 REQUIRED RESET
       });
 
       if (!downgraded.date) {
