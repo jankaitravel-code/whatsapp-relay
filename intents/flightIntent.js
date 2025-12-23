@@ -413,10 +413,9 @@ You can:
     const { flights, carriers } = await searchFlights({
       originLocationCode: locked.origin.cityCode,
       destinationLocationCode: locked.destination.cityCode,
-      date: locked.date,
-      returnDate: locked.returnDate || null
+      date: locked.date
     });
-
+   
     if (!Array.isArray(flights) || flights.length === 0) {
       await sendWhatsAppMessage(
         from,
@@ -711,10 +710,9 @@ You can:
       const { flights, carriers } = await searchFlights({
         originLocationCode: locked.origin.cityCode,
         destinationLocationCode: locked.destination.cityCode,
-        date: locked.date,
-        returnDate: locked.returnDate || null
+        date: locked.date
       });
-
+        
       if (!Array.isArray(flights)) {
         log("flight_search_invalid_response", {
           user: from,
