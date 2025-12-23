@@ -1018,7 +1018,8 @@ You can Say:
       origin: parsed.origin,
       destination: parsed.destination,
       date: parsed.date || null,
-      returnDate: parsed.returnDate || null
+      returnDate: parsed.returnDate || null,
+      tripType: parsed.tripType || "ONE_WAY"
     };
 
     // STEP 2 — Trip type confirmation gate
