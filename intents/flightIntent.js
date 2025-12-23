@@ -672,13 +672,25 @@ You can:
     );
     return;
   }
-  
+ 
   /* ===============================
      READY_TO_CONFIRM STATE
   =============================== */
   if (conversation?.state === "READY_TO_CONFIRM") {
     if (lower === "yes") {
       const locked = { ...conversation.flightQuery };
+
+      // v2 safety: round-trip execution not supported
+      if (locked.returnDate) {
+        await sendWhatsAppMessage(
+          from,
+          `✈️ Round-trip flights are recognized but not searchable yet.\n\n` +
+          `Departure: ${locked.date}\n` +
+          `Return: ${locked.returnDate}\n\n` +
+          `Please remove the return date to continue.`
+        );
+        return;
+      }
       
       log("state_transition", {
         intent: "FLIGHT_SEARCH",
