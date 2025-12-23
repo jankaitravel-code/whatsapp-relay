@@ -1023,6 +1023,16 @@ You can Say:
       tripType: parsed.tripType || "ONE_WAY"
     };
 
+    // HARD SAFETY — returnDate must NEVER proceed to search
+    if (flightQuery.returnDate && flightQuery.tripType === "ONE_WAY") {
+      await sendWhatsAppMessage(
+        from,
+        "✈️ I detected a return date, but this search is currently one-way.\n\n" +
+        "Please confirm trip type or remove the return date."
+      );
+      return;
+    }
+
     // STEP 2 — Trip type confirmation gate
     if (flightQuery.tripType && flightQuery.tripType !== "ONE_WAY") {
       setConversation(from, {
