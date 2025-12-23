@@ -246,7 +246,6 @@ async function handle(context) {
     conversation?.state === "COLLECTING" &&
     conversation.flightQuery &&
     !conversation.flightQuery.date &&
-    !conversation.flightQuery.returnDate // 🚫 BLOCK ROUND-TRIP HERE
   ) {
     const dateMatch = rawText.match(/^\d{4}-\d{2}-\d{2}$/);
 
@@ -682,13 +681,6 @@ You can Say:
     conversation?.state === "RESULTS" &&
     lower === "show more"
   ) {
-    if (conversation.lockedFlightQuery?.returnDate) {
-      await sendWhatsAppMessage(
-        from,
-        "ℹ️ Pagination is unavailable for round-trip previews."
-      );
-      return;
-    }
     const results = conversation.results;
   
     if (!results || !Array.isArray(results.items)) {
@@ -825,19 +817,6 @@ You can Say:
   if (conversation?.state === "READY_TO_CONFIRM") {
     if (lower === "yes") {
       const locked = { ...conversation.flightQuery };
-
-      // v2 safety: round-trip execution not supported
-      if (locked.returnDate) {
-        await sendWhatsAppMessage(
-          from,
-          `✈️ Round-trip flights are recognized but not searchable yet.\n\n` +
-          `Departure: ${locked.date}\n` +
-          `Return: ${locked.returnDate}\n\n` +
-          `Please remove the return date to continue.`
-          
-        );
-        return;
-      }
       
       log("state_transition", {
         intent: "FLIGHT_SEARCH",
@@ -1006,16 +985,6 @@ You can Say:
   =============================== */
   if (lower.startsWith("flight")) {
     const parsed = await parseFlightQuery(text);
-
-    if (parsed?.error === "ROUND_TRIP_NOT_SUPPORTED") {
-      await sendWhatsAppMessage(
-        from,
-        `✈️ Round-trip flights aren’t supported yet.\n\n` +
-        `Please search one-way for now.\n\n` +
-        `Example:\nflight from mumbai to new york on 2025-12-25`
-      );
-      return;
-    }
 
     if (parsed?.error === "UNKNOWN_LOCATION") {
       recordSignal("flight_invalid_location", {
