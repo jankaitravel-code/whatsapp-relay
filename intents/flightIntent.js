@@ -300,6 +300,17 @@ async function handle(context) {
       requestId: context.requestContext?.requestId
     });
 
+    // 🔒 FIX 1 — invariant guard before confirmation
+    if (!updatedQuery.origin || !updatedQuery.destination) {
+      clearConversation(from);
+      await sendWhatsAppMessage(
+        from,
+        "⚠️ Something went wrong while confirming your trip.\n\n" +
+        "Please start again:\nflight from mumbai to new york on 2025-12-25"
+      );
+      return;
+    }
+
     await sendWhatsAppMessage(
       from,
       buildConfirmationMessage(updatedQuery)
@@ -800,6 +811,16 @@ You can Say:
         state: "COLLECTING",
         flightQuery: downgraded
       });
+
+      if (!downgraded.origin || !downgraded.destination) {
+        clearConversation(from);
+        await sendWhatsAppMessage(
+          from,
+          "⚠️ I lost the route details while switching to one-way.\n\n" +
+          "Please try again:\nflight from mumbai to new york on 2025-12-25"
+        );
+        return;
+      }
   
       if (!downgraded.date) {
         await sendWhatsAppMessage(
@@ -1108,6 +1129,17 @@ You can Say:
       user: from,
       requestId: context.requestContext?.requestId
     });
+
+    // 🔒 FIX 1 — invariant guard before confirmation
+    if (!flightQuery.origin || !flightQuery.destination) {
+      clearConversation(from);
+      await sendWhatsAppMessage(
+        from,
+        "⚠️ Something went wrong while confirming your trip.\n\n" +
+        "Please start again:\nflight from mumbai to new york on 2025-12-25"
+      );
+      return;
+    }
 
     await sendWhatsAppMessage(
       from,
