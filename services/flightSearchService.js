@@ -40,6 +40,9 @@ async function searchFlights(input) {
     carriers: response.data.dictionaries?.carriers || {}
   };
 }
+if (params.returnDate) {
+  throw new Error("RETURN_DATE_NOT_SUPPORTED");
+}
 
 module.exports = {
   searchFlights
