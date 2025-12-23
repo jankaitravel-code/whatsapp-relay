@@ -869,6 +869,16 @@ You can:
   if (lower.startsWith("flight")) {
     const parsed = await parseFlightQuery(text);
 
+    if (parsed?.error === "ROUND_TRIP_NOT_SUPPORTED") {
+      await sendWhatsAppMessage(
+        from,
+        `✈️ Round-trip flights aren’t supported yet.\n\n` +
+        `Please search one-way for now.\n\n` +
+        `Example:\nflight from mumbai to new york on 2025-12-25`
+      );
+      return;
+    }
+
     if (parsed?.error === "UNKNOWN_LOCATION") {
       recordSignal("flight_invalid_location", {
         user: from,
