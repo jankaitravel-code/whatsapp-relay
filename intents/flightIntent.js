@@ -144,6 +144,33 @@ async function handle(context) {
   } = context;
 
   const lower = (rawText || text || "").toLowerCase();
+
+
+  /* ===============================
+   HARD ROUND-TRIP ENTRY GATE (V3)
+  =============================== */
+  if (
+    !conversation &&
+    lower.startsWith("flight") &&
+    lower.includes("return")
+  ) {
+    const parsed = await parseFlightQuery(text);
+  
+    if (parsed?.tripType === "ROUND_TRIP") {
+      setConversation(from, {
+        intent: "FLIGHT_SEARCH",
+        state: "TRIP_TYPE_CONFIRM",
+        flightQuery: parsed
+      });
+  
+      await sendWhatsAppMessage(
+        from,
+        buildTripTypeConfirmMessage("ROUND_TRIP")
+      );
+      return;
+    }
+  }
+
   
   /* ===============================
    GLOBAL RESULTS STATE SAFETY
