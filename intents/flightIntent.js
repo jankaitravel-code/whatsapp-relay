@@ -335,7 +335,8 @@ You can:
       locked &&
       last.originCode === locked.origin.cityCode &&
       last.destinationCode === locked.destination.cityCode &&
-      last.date === locked.date
+      last.date === locked.date &&
+      last.returnDate === locked.returnDate
     ) {
       // 🔒 Refinement 2: defensive check
       if (!Array.isArray(results.items) || results.items.length === 0) {
@@ -470,6 +471,7 @@ You can:
         originCode: locked.origin.cityCode,
         destinationCode: locked.destination.cityCode,
         date: locked.date
+        returnDate: locked.returnDate || null
       }
     });
 
