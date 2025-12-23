@@ -143,7 +143,7 @@ async function handle(context) {
     clearConversation
   } = context;
 
-  const lower = rawText.toLowerCase();
+  const lower = (rawText || text || "").toLowerCase();
 
   /* ===============================
    GLOBAL RESULTS STATE SAFETY
