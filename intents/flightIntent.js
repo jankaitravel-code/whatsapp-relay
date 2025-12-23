@@ -122,6 +122,23 @@ async function handle(context) {
   const lower = rawText.toLowerCase();
 
   /* ===============================
+   GLOBAL RESULTS STATE SAFETY
+  =============================== */
+  if (
+    conversation?.intent === "FLIGHT_SEARCH" &&
+    conversation?.state === "RESULTS" &&
+    !conversation.lockedFlightQuery
+  ) {
+    clearConversation(from);
+    await sendWhatsAppMessage(
+      from,
+      "⚠️ Your session was reset due to an internal error.\n\nPlease try again:\nflight from delhi to mumbai on 2025-12-25"
+    );
+    return;
+  }
+
+
+  /* ===============================
      GLOBAL CANCEL (always allowed)
   =============================== */
   if (lower === "cancel") {
@@ -147,6 +164,14 @@ async function handle(context) {
      RESULTS → CHANGE INTENT
   =============================== */
   if (conversation?.state === "RESULTS") {
+    if (!conversation.lockedFlightQuery) {
+      clearConversation(from);
+      await sendWhatsAppMessage(
+        from,
+        "⚠️ Something went wrong. Let’s start fresh.\n\nTry:\nflight from delhi to mumbai on 2025-12-25"
+      );
+      return;
+    }
     if (lower === "change date") {
       setConversation(from, {
         ...conversation,
@@ -356,7 +381,9 @@ You can:
     
       // 🔒 Refinement 1: explicitly preserve lastExecutedSearch
       setConversation(from, {
-        ...conversation,
+        intent: "FLIGHT_SEARCH",
+        state: "RESULTS",
+        lockedFlightQuery: locked,
         lastExecutedSearch: last,
         results: {
           ...results,
@@ -663,7 +690,10 @@ You can:
       .join("\n\n");
   
     setConversation(from, {
-      ...conversation,
+      intent: "FLIGHT_SEARCH",
+      state: "RESULTS",
+      lockedFlightQuery: conversation.lockedFlightQuery,
+      lastExecutedSearch: conversation.lastExecutedSearch,
       results: {
         ...results,
         cursor: cursor + pageSize
