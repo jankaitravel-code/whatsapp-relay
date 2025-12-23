@@ -19,6 +19,15 @@ const RETURN_MARKERS = [
  * - flight bengaluru to del
  */
 async function parseFlightQuery(text) {
+  // 🔒 FIX A — HARD EARLY EXIT FOR ROUND-TRIP (V3 SAFETY)
+  const lowered = text.toLowerCase();
+  if (RETURN_MARKERS.some(marker => lowered.includes(marker))) {
+    return {
+      tripType: TRIP_TYPES.ROUND_TRIP
+    };
+  }
+
+  // 👇 existing code continues unchanged
   const cleaned = text.replace(/,/g, "").trim();
 
   const normalized = cleaned.toLowerCase();
