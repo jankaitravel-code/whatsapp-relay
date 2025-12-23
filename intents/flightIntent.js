@@ -108,6 +108,30 @@ function buildConfirmationMessage(q) {
   );
 }
 
+function buildTripTypeConfirmMessage(tripType) {
+  if (tripType === "ROUND_TRIP") {
+    return (
+      "✈️ I detected a *round-trip* search.\n\n" +
+      "Reply:\n" +
+      "• Yes — continue with round-trip\n" +
+      "• One way — change to one-way\n" +
+      "• Cancel"
+    );
+  }
+
+  if (tripType === "MULTI_CITY") {
+    return (
+      "✈️ I detected a *multi-city* trip.\n\n" +
+      "Reply:\n" +
+      "• Yes — continue with multi-city\n" +
+      "• One way — change to one-way\n" +
+      "• Cancel"
+    );
+  }
+
+  return null;
+}
+
 async function handle(context) {
   const {
     from,
@@ -334,8 +358,8 @@ async function handle(context) {
       from,
       `✅ Updated ${target}.
 
-You can:
-• Say "run search" to run again
+You can Say:
+• run search - to search again
 • Change date
 • Change origin
 • Change destination`
@@ -401,7 +425,7 @@ You can:
         
         ${firstPage}
         
-      You can:
+      You can say:
       • show more
       • change date / origin / destination
       • run search`
@@ -520,7 +544,7 @@ You can:
       
       ${firstPage}
       
-    You can:
+    You can say:
     • show more
     • change date / origin / destination
     • run search`
@@ -711,7 +735,90 @@ You can:
     );
     return;
   }
- 
+
+  /* ===============================
+   TRIP TYPE CONFIRM
+  =============================== */
+  if (conversation?.state === "TRIP_TYPE_CONFIRM") {
+    const q = conversation.flightQuery;
+  
+    if (lower === "yes") {
+      // proceed exactly as v2 — no behavior change yet
+      setConversation(from, {
+        intent: "FLIGHT_SEARCH",
+        state: "COLLECTING",
+        flightQuery: q
+      });
+  
+      if (!q.date) {
+        await sendWhatsAppMessage(
+          from,
+          "📅 What date would you like to travel? (YYYY-MM-DD)"
+        );
+        return;
+      }
+  
+      setConversation(from, {
+        intent: "FLIGHT_SEARCH",
+        state: "READY_TO_CONFIRM",
+        flightQuery: q
+      });
+  
+      await sendWhatsAppMessage(
+        from,
+        buildConfirmationMessage(q)
+      );
+      return;
+    }
+  
+    if (lower === "one way") {
+      const downgraded = {
+        ...q,
+        tripType: "ONE_WAY",
+        returnDate: null
+      };
+  
+      setConversation(from, {
+        intent: "FLIGHT_SEARCH",
+        state: "COLLECTING",
+        flightQuery: downgraded
+      });
+  
+      if (!downgraded.date) {
+        await sendWhatsAppMessage(
+          from,
+          "📅 What date would you like to travel? (YYYY-MM-DD)"
+        );
+        return;
+      }
+  
+      setConversation(from, {
+        intent: "FLIGHT_SEARCH",
+        state: "READY_TO_CONFIRM",
+        flightQuery: downgraded
+      });
+  
+      await sendWhatsAppMessage(
+        from,
+        buildConfirmationMessage(downgraded)
+      );
+      return;
+    }
+  
+    if (lower === "cancel") {
+      clearConversation(from);
+      await sendWhatsAppMessage(from, "❌ Flight search cancelled.");
+      return;
+    }
+  
+    await sendWhatsAppMessage(
+      from,
+      "Please reply with *Yes*, *One way*, or *Cancel*."
+    );
+    return;
+  }
+  
+   
   /* ===============================
      READY_TO_CONFIRM STATE
   =============================== */
@@ -862,7 +969,7 @@ You can:
         
         ${firstPage}
 
-      You can:
+      You can say:
       • show more
       • change date / origin / destination
       • run search`
@@ -945,14 +1052,17 @@ You can:
       returnDate: parsed.returnDate || null
     };
 
-    // 🚫 V2 SAFETY — block round-trip immediately after parsing
-    if (flightQuery.returnDate) {
+    // STEP 2 — Trip type confirmation gate
+    if (flightQuery.tripType && flightQuery.tripType !== "ONE_WAY") {
+      setConversation(from, {
+        intent: "FLIGHT_SEARCH",
+        state: "TRIP_TYPE_CONFIRM",
+        flightQuery
+      });
+    
       await sendWhatsAppMessage(
         from,
-        `✈️ Round-trip flights are recognized but not searchable yet.\n\n` +
-        `Departure: ${flightQuery.date}\n` +
-        `Return: ${flightQuery.returnDate}\n\n` +
-        `Please remove the return date to continue.`
+        buildTripTypeConfirmMessage(flightQuery.tripType)
       );
       return;
     }
