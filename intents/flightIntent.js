@@ -804,17 +804,7 @@ You can Say:
       return;
     }
   
-    if (lower === "one way") {
-      if (!q.origin || !q.destination) {
-        clearConversation(from);
-        await sendWhatsAppMessage(
-          from,
-          "⚠️ I lost the route details while switching to one-way.\n\n" +
-          "Please try again:\nflight from mumbai to new york on 2025-12-25"
-        );
-        return;
-      }
-      
+    if (lower === "one way") {     
       const downgraded = {
         ...q,
         tripType: "ONE_WAY",
@@ -1072,16 +1062,6 @@ You can Say:
       returnDate: parsed.returnDate || null,
       tripType: parsed.tripType || "ONE_WAY"
     };
-
-    // HARD SAFETY — returnDate must NEVER proceed to search
-    if (flightQuery.returnDate && flightQuery.tripType === "ONE_WAY") {
-      await sendWhatsAppMessage(
-        from,
-        "✈️ I detected a return date, but this search is currently one-way.\n\n" +
-        "Please confirm trip type or remove the return date."
-      );
-      return;
-    }
 
     // STEP 2 — Trip type confirmation gate
     if (flightQuery.tripType && flightQuery.tripType !== "ONE_WAY") {
