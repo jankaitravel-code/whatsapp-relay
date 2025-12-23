@@ -1,3 +1,9 @@
+const TRIP_TYPES = {
+  ONE_WAY: "ONE_WAY",
+  ROUND_TRIP: "ROUND_TRIP",
+  MULTI_CITY: "MULTI_CITY"
+};
+
 const { resolveLocation } = require("./locationService");
 
 const RETURN_MARKERS = [
@@ -20,6 +26,11 @@ async function parseFlightQuery(text) {
   const hasReturnIntent = RETURN_MARKERS.some(marker =>
     normalized.includes(marker)
   );
+
+  const hasMultiCityIntent =
+  normalized.includes(" via ") ||
+  normalized.includes(" stopover ") ||
+  normalized.includes(" multi ");
 
   // FULL query with date
   let match = cleaned.match(
@@ -56,11 +67,13 @@ async function parseFlightQuery(text) {
     returnDate = dateMatches[1];
   }
 
-  // 🚫 V2 SAFETY — round-trip explicitly not supported
-  // NOTE: unreachable in v2 — kept for v3 structural support
-    if (hasReturnIntent) {
-      return { error: "ROUND_TRIP_NOT_SUPPORTED" };
-    }
+  let tripType = TRIP_TYPES.ONE_WAY;
+  
+  if (hasMultiCityIntent) {
+    tripType = TRIP_TYPES.MULTI_CITY;
+  } else if (hasReturnIntent || dateMatches.length >= 2) {
+    tripType = TRIP_TYPES.ROUND_TRIP;
+  }
   
   // V2 EARLY EXIT: round-trip parsing is structural only
     if (returnDate) {
@@ -97,7 +110,8 @@ async function parseFlightQuery(text) {
     origin,
     destination,
     date: outboundDate,
-    returnDate: returnDate || null
+    returnDate: returnDate || null,
+    tripType
   };
 }
 
