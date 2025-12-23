@@ -904,6 +904,18 @@ You can:
       returnDate: parsed.returnDate || null
     };
 
+    // 🚫 V2 SAFETY — block round-trip immediately after parsing
+    if (flightQuery.returnDate) {
+      await sendWhatsAppMessage(
+        from,
+        `✈️ Round-trip flights are recognized but not searchable yet.\n\n` +
+        `Departure: ${flightQuery.date}\n` +
+        `Return: ${flightQuery.returnDate}\n\n` +
+        `Please remove the return date to continue.`
+      );
+      return;
+    }
+
     // Always set base state
     setConversation(from, {
       intent: "FLIGHT_SEARCH",
