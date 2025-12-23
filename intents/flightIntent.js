@@ -244,9 +244,11 @@ async function handle(context) {
     =============================== */
   if (
     conversation?.state === "COLLECTING" &&
-    conversation.flightQuery &&
-    !conversation.flightQuery.date &&
-  + !conversation.flightQuery.returnDate
+      conversation.flightQuery &&
+      conversation.flightQuery.tripType === "ONE_WAY" &&
+      conversation.flightQuery.origin &&
+      conversation.flightQuery.destination &&
+      !conversation.flightQuery.date
   ) {
     const dateMatch = rawText.match(/^\d{4}-\d{2}-\d{2}$/);
 
@@ -776,19 +778,7 @@ You can Say:
     }
   
     if (lower === "one way") {
-      const downgraded = {
-        ...q,
-        tripType: "ONE_WAY",
-        returnDate: null
-      };
-  
-      setConversation(from, {
-        intent: "FLIGHT_SEARCH",
-        state: "COLLECTING",
-        flightQuery: downgraded
-      });
-
-      if (!downgraded.origin || !downgraded.destination) {
+      if (!q.origin || !q.destination) {
         clearConversation(from);
         await sendWhatsAppMessage(
           from,
@@ -797,7 +787,19 @@ You can Say:
         );
         return;
       }
-  
+      
+      const downgraded = {
+        ...q,
+        tripType: "ONE_WAY",
+        returnDate: null
+      };
+      
+      setConversation(from, {
+        intent: "FLIGHT_SEARCH",
+        state: "COLLECTING",
+        flightQuery: downgraded
+      });
+
       if (!downgraded.date) {
         await sendWhatsAppMessage(
           from,
