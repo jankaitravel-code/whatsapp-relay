@@ -33,7 +33,7 @@ async function parseFlightQuery(text) {
   if (match) {
     originInput = match[1].trim();
     destinationInput = match[2].trim();
-    date = match[3];
+    outboundDate = match[3];
   } else {
     // PARTIAL query (no date)
     match = cleaned.match(
@@ -51,16 +51,13 @@ async function parseFlightQuery(text) {
   if (dateMatches.length >= 1) {
     outboundDate = dateMatches[0];
   }
-
-  if (dateMatches.length >= 1) {
-    outboundDate = dateMatches[0];
-  }
   
   if (hasReturnIntent && dateMatches.length >= 2) {
     returnDate = dateMatches[1];
   }
 
   // 🚫 V2 SAFETY — round-trip explicitly not supported
+  // NOTE: unreachable in v2 — kept for v3 structural support
     if (hasReturnIntent) {
       return { error: "ROUND_TRIP_NOT_SUPPORTED" };
     }
