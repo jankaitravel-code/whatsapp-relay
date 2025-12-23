@@ -196,7 +196,8 @@ async function handle(context) {
   if (
     conversation?.state === "COLLECTING" &&
     conversation.flightQuery &&
-    !conversation.flightQuery.date
+    !conversation.flightQuery.date &&
+    !conversation.flightQuery.returnDate // 🚫 BLOCK ROUND-TRIP HERE
   ) {
     const dateMatch = rawText.match(/^\d{4}-\d{2}-\d{2}$/);
 
