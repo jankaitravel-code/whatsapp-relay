@@ -803,56 +803,40 @@ You can Say:
       );
       return;
     }
-  
-    if (lower === "one way") {     
+
+    if (lower === "one way") {
       const downgraded = {
         ...q,
         tripType: "ONE_WAY",
         returnDate: null
       };
-      
-      setConversation(from, {
-        intent: "FLIGHT_SEARCH",
-        state: "COLLECTING",
-        flightQuery: downgraded,
-        changeTarget: null   // 🔴 REQUIRED RESET
-      });
-
-      if (!downgraded.date) {
+    
+      // 🔒 invariant: route + date must already exist here
+      if (!downgraded.origin || !downgraded.destination || !downgraded.date) {
+        clearConversation(from);
         await sendWhatsAppMessage(
           from,
-          "📅 What date would you like to travel? (YYYY-MM-DD)"
+          "⚠️ I lost some trip details while switching to one-way.\n\n" +
+          "Please try again:\nflight from mumbai to new york on 2025-12-25"
         );
         return;
       }
-  
+    
+      // ✅ go straight to confirmation
       setConversation(from, {
         intent: "FLIGHT_SEARCH",
         state: "READY_TO_CONFIRM",
-        flightQuery: downgraded
+        flightQuery: downgraded,
+        changeTarget: null
       });
-  
+    
       await sendWhatsAppMessage(
         from,
         buildConfirmationMessage(downgraded)
       );
       return;
     }
-  
-    if (lower === "cancel") {
-      clearConversation(from);
-      await sendWhatsAppMessage(from, "❌ Flight search cancelled.");
-      return;
-    }
-  
-    await sendWhatsAppMessage(
-      from,
-      "Please reply with *Yes*, *One way*, or *Cancel*."
-    );
-    return;
-  }
-  
-   
+
   /* ===============================
      READY_TO_CONFIRM STATE
   =============================== */
