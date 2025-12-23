@@ -144,30 +144,6 @@ async function handle(context) {
   } = context;
 
   const lower = (rawText || text || "").toLowerCase();
-
-  // 🚫 GLOBAL HARD SAFETY — block round-trip execution at entry
-  if (
-    !conversation &&
-    rawText.toLowerCase().includes("return")
-  ) {
-    setConversation(from, {
-      intent: "FLIGHT_SEARCH",
-      state: "TRIP_TYPE_CONFIRM",
-      flightQuery: {
-        tripType: "ROUND_TRIP"
-      }
-    });
-  
-    await sendWhatsAppMessage(
-      from,
-      "✈️ I detected a *round-trip* search.\n\n" +
-      "Round-trip flights are not supported yet.\n\n" +
-      "Reply:\n" +
-      "• One way — continue as one-way\n" +
-      "• Cancel"
-    );
-    return;
-  }
   
   /* ===============================
    GLOBAL RESULTS STATE SAFETY
