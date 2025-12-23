@@ -630,6 +630,13 @@ You can:
     conversation?.state === "RESULTS" &&
     lower === "show more"
   ) {
+    if (conversation.lockedFlightQuery?.returnDate) {
+      await sendWhatsAppMessage(
+        from,
+        "ℹ️ Pagination is unavailable for round-trip previews."
+      );
+      return;
+    }
     const results = conversation.results;
   
     if (!results || !Array.isArray(results.items)) {
@@ -689,6 +696,7 @@ You can:
           `Departure: ${locked.date}\n` +
           `Return: ${locked.returnDate}\n\n` +
           `Please remove the return date to continue.`
+          
         );
         return;
       }
