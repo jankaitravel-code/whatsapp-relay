@@ -837,6 +837,19 @@ You can Say:
       return;
     }
 
+    if (lower === "cancel") {
+      clearConversation(from);
+      await sendWhatsAppMessage(from, "❌ Flight search cancelled.");
+      return;
+    }
+
+    await sendWhatsAppMessage(
+      from,
+      "Please reply with *Yes*, *One way*, or *Cancel*."
+    );
+    return;
+  } // ✅ CLOSES TRIP_TYPE_CONFIRM
+
   /* ===============================
      READY_TO_CONFIRM STATE
   =============================== */
