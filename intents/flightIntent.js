@@ -145,6 +145,22 @@ async function handle(context) {
 
   const lower = (rawText || text || "").toLowerCase();
 
+  // 🚫 GLOBAL HARD SAFETY — block round-trip execution at entry
+  if (
+    !conversation &&
+    rawText.toLowerCase().includes("return")
+  ) {
+    await sendWhatsAppMessage(
+      from,
+      "✈️ I detected a round-trip search.\n\n" +
+      "Round-trip flights are not supported yet.\n\n" +
+      "You can:\n" +
+      "• Search one-way\n" +
+      "• Or reply with *One way* to continue"
+    );
+    return;
+  }
+
   /* ===============================
    GLOBAL RESULTS STATE SAFETY
   =============================== */
