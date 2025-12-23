@@ -11,6 +11,10 @@ const AMADEUS_BASE_URL = "https://test.api.amadeus.com";
 async function searchFlights(input) {
   const { originLocationCode, destinationLocationCode, date } = input;
 
+  if (params.returnDate) {
+    throw new Error("RETURN_DATE_NOT_SUPPORTED");
+  }
+
   console.log("🛫 Amadeus flight search params:", {
     originLocationCode,
     destinationLocationCode,
@@ -40,10 +44,6 @@ async function searchFlights(input) {
     carriers: response.data.dictionaries?.carriers || {}
   };
 }
-if (params.returnDate) {
-  throw new Error("RETURN_DATE_NOT_SUPPORTED");
-}
-
 module.exports = {
   searchFlights
 };
