@@ -60,21 +60,11 @@ async function parseFlightQuery(text) {
     returnDate = dateMatches[1];
   }
 
-  if (hasReturnIntent) {
-    // Explicit return intent but missing return date
-    if (!returnDate) {
-      return null;
+  // 🚫 V2 SAFETY — round-trip explicitly not supported
+    if (hasReturnIntent) {
+      return { error: "ROUND_TRIP_NOT_SUPPORTED" };
     }
   
-    const out = new Date(outboundDate);
-    const ret = new Date(returnDate);
-  
-    // Return must be after outbound
-    if (!(ret > out)) {
-      return { error: "INVALID_RETURN_DATE" };
-    }
-  }
-
   // V2 EARLY EXIT: round-trip parsing is structural only
     if (returnDate) {
       const origin = await resolveLocation(originInput);
