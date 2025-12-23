@@ -75,6 +75,23 @@ async function parseFlightQuery(text) {
     }
   }
 
+  // V2 EARLY EXIT: round-trip parsing is structural only
+    if (returnDate) {
+      const origin = await resolveLocation(originInput);
+      const destination = await resolveLocation(destinationInput);
+    
+      if (!origin || !destination) {
+        return { error: "UNKNOWN_LOCATION" };
+      }
+    
+      return {
+        origin,
+        destination,
+        date: outboundDate,
+        returnDate
+      };
+    }
+
   // Reject invalid date formats early
   const invalidDatePattern = /\b\d{2}-\d{2}-\d{4}\b/;
   
