@@ -150,17 +150,25 @@ async function handle(context) {
     !conversation &&
     rawText.toLowerCase().includes("return")
   ) {
+    setConversation(from, {
+      intent: "FLIGHT_SEARCH",
+      state: "TRIP_TYPE_CONFIRM",
+      flightQuery: {
+        tripType: "ROUND_TRIP"
+      }
+    });
+  
     await sendWhatsAppMessage(
       from,
-      "✈️ I detected a round-trip search.\n\n" +
+      "✈️ I detected a *round-trip* search.\n\n" +
       "Round-trip flights are not supported yet.\n\n" +
-      "You can:\n" +
-      "• Search one-way\n" +
-      "• Or reply with *One way* to continue"
+      "Reply:\n" +
+      "• One way — continue as one-way\n" +
+      "• Cancel"
     );
     return;
   }
-
+  
   /* ===============================
    GLOBAL RESULTS STATE SAFETY
   =============================== */
