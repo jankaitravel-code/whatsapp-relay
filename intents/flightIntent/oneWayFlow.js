@@ -59,6 +59,7 @@ async function start(context) {
 
   setConversation(from, {
     intent: "FLIGHT_SEARCH",
+    flow: "ONE_WAY",
     state: "COLLECTING",
     flightQuery: {
       tripType: "ONE_WAY"
