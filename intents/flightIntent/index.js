@@ -82,4 +82,7 @@ async function handle(context) {
       return;
   }
 }
-
+module.exports = {
+  canHandle,
+  handle
+};
