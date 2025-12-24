@@ -13,8 +13,7 @@ async function handle(context) {
 
   await sendWhatsAppMessage(
     context.from,
-    "✈️ Hi! I’m Jank.ai.\n\nI can help with flights.\n\n" +
-    "Reply:\n" +
+    "✈️ Say:\n" +
     "• 1 — One-way flight\n" +
     "• 2 — Round-trip (coming soon)\n" +
     "• 3 — Multi-city (coming soon)"
