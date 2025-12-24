@@ -693,29 +693,36 @@ You can Say:
     const q = conversation.flightQuery;
   
     if (lower === "one way") {
-      // 🔒 HARD INVARIANT — route must exist here
-      if (!q?.origin || !q?.destination || !q?.date) {
+      if (!q?.origin || !q?.destination) {
         clearConversation(from);
         await sendWhatsAppMessage(
           from,
-          "⚠️ I lost the trip details while switching to one-way.\n\n" +
+          "⚠️ I lost the route details while switching to one-way.\n\n" +
           "Please try again:\nflight from mumbai to new york on 2025-12-25"
         );
         return;
       }
-      
+ 
       const downgraded = {
         ...q,
         tripType: "ONE_WAY",
         returnDate: null
       };
-  
+
       setConversation(from, {
         intent: "FLIGHT_SEARCH",
-        state: "READY_TO_CONFIRM",
+        state: downgraded.date ? "READY_TO_CONFIRM" : "COLLECTING",
         flightQuery: downgraded
       });
-  
+      
+      if (!downgraded.date) {
+        await sendWhatsAppMessage(
+          from,
+          "📅 What date would you like to travel? (YYYY-MM-DD)"
+        );
+        return;
+      }
+      
       await sendWhatsAppMessage(
         from,
         buildConfirmationMessage(downgraded)
