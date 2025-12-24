@@ -97,8 +97,69 @@ async function handle(context) {
      recordSignal("flight_cancelled", { user: from });
      clearConversation(from);
      await sendWhatsAppMessage(from, "❌ Flight search cancelled.");
-     return;
+     return true;
    }
+
+   /* ===============================
+      ROUTE INPUT (COLLECTING)
+   =============================== */
+   if (
+     conversation?.state === "COLLECTING" &&
+     !conversation.flightQuery?.origin &&
+     !conversation.flightQuery?.destination
+   ) {
+     let queryText = text;
+   
+     // Allow "mumbai to new york"
+     if (!queryText.toLowerCase().includes("flight")) {
+       queryText = `flight from ${queryText}`;
+     }
+   
+     const parsed = await parseFlightQuery(queryText);
+   
+     if (!parsed?.origin || !parsed?.destination) {
+       await sendWhatsAppMessage(
+         from,
+         "❌ I couldn’t understand the route.\n\nExample:\nmumbai to new york"
+       );
+       return true;
+     }
+   
+     const updated = {
+       ...conversation.flightQuery,
+       origin: parsed.origin,
+       destination: parsed.destination,
+       date: parsed.date || null
+     };
+   
+     // If date already present → confirm
+     if (updated.date) {
+       setConversation(from, {
+         intent: "FLIGHT_SEARCH",
+         flow: "ONE_WAY",
+         state: "READY_TO_CONFIRM",
+         flightQuery: updated
+       });
+   
+       await sendWhatsAppMessage(from, buildConfirmationMessage(updated));
+       return true;
+     }
+   
+     // Else ask for date
+     setConversation(from, {
+       intent: "FLIGHT_SEARCH",
+       flow: "ONE_WAY",
+       state: "COLLECTING",
+       flightQuery: updated
+     });
+   
+     await sendWhatsAppMessage(
+       from,
+       "📅 What date would you like to travel? (YYYY-MM-DD)"
+     );
+     return true;
+   }
+
    
    /* ===============================
       DATE-ONLY INPUT
@@ -123,12 +184,13 @@ async function handle(context) {
 
      setConversation(from, {
        intent: "FLIGHT_SEARCH",
+       flow: "ONE_WAY", 
        state: "READY_TO_CONFIRM",
        flightQuery: updated
      });
 
      await sendWhatsAppMessage(from, buildConfirmationMessage(updated));
-     return;
+     return true;
    }
 
    /* ===============================
@@ -144,7 +206,7 @@ async function handle(context) {
            from,
            "⚠️ Missing trip details. Please start again."
          );
-         return;
+         return true;
        }
 
        recordSignal("flight_search_executed", {
@@ -165,7 +227,7 @@ async function handle(context) {
            from,
            "Sorry, I couldn’t find flights for that route and date."
          );
-         return;
+         return true;
        }
 
        const formatted = flights
@@ -187,6 +249,7 @@ async function handle(context) {
 
        setConversation(from, {
          intent: "FLIGHT_SEARCH",
+         flow: "ONE_WAY",
          state: "RESULTS",
          lockedFlightQuery: q,
          results: {
@@ -201,7 +264,7 @@ async function handle(context) {
          `✈️ Flight options\n\n${formatted.slice(0, PAGE_SIZE).join("\n\n")}\n\n` +
          `Say:\n• show more\n• change date / origin / destination`
        );
-       return;
+       return true;
      }
    
      if (lower === "change") {
@@ -222,56 +285,6 @@ async function handle(context) {
      await sendWhatsAppMessage(
        from,
        "Please reply with *Yes*, *Change*, or *Cancel*."
-     );
-     return;
-   }
-
-  /* ===============================
-     ROUTE PARSING
-  =============================== */
-   if (conversation.state === "ONEWAY_AWAITING_ROUTE") {
-     let queryText = text;
-   
-     if (!text.toLowerCase().includes("flight")) {
-       queryText = `flight from ${text}`;
-     }
-   
-     const parsed = await parseFlightQuery(queryText);
-   
-     if (!parsed?.origin || !parsed?.destination) {
-       await sendWhatsAppMessage(
-         from,
-         "❌ I couldn’t understand the route.\n\n" +
-         "Please try:\nmumbai to new york"
-       );
-       return true;
-     }
-   
-     const flightQuery = {
-       origin: parsed.origin,
-       destination: parsed.destination,
-       date: parsed.date || null,
-       tripType: "ONE_WAY"
-     };
-   
-     if (!flightQuery.date) {
-       setConversation(from, {
-         intent: "FLIGHT_SEARCH",
-         flow: "ONE_WAY",
-         state: "ONEWAY_AWAITING_DATE",
-         flightQuery
-       });
-   
-       await sendWhatsAppMessage(
-         from,
-         "📅 What date would you like to travel? (YYYY-MM-DD)"
-       );
-       return true;
-     }
-   
-     await sendWhatsAppMessage(
-       from,
-       "✅ Route and date received.\n(Confirmation step comes next)"
      );
      return true;
    }
