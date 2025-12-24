@@ -1,24 +1,20 @@
-async function start(context) {
-  const {
-    from,
-    sendWhatsAppMessage,
-    setConversation
-  } = context;
+async function handle(context) {
+  const { text, conversation, from, sendWhatsAppMessage } = context;
 
-  // Initialize one-way flow
-  setConversation(from, {
-    intent: "FLIGHT_SEARCH",
-    flow: "ONE_WAY",
-    state: "AWAITING_ROUTE"
-  });
+  // We only handle our own flow
+  if (conversation?.flow !== "ONE_WAY") return false;
 
-  await sendWhatsAppMessage(
-    from,
-    "✈️ One-way flight selected.\n\n" +
-    "Please tell me your route.\n\n" +
-    "Example:\n" +
-    "flight from mumbai to new york on 2025-12-25"
-  );
+  if (conversation.state === "AWAITING_ROUTE") {
+    await sendWhatsAppMessage(
+      from,
+      "✅ Got it.\n\nNow I’ll parse this route next."
+    );
+
+    // TEMP: stop here for now
+    return true;
+  }
+
+  return false;
 }
 
 module.exports = {
