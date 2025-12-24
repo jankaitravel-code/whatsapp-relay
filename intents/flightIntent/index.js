@@ -51,6 +51,24 @@ async function handle(context) {
     return;
   }
 
+    // ▶️ CONTINUE ACTIVE FLOW
+  if (conversation?.intent === "FLIGHT_SEARCH") {
+    if (conversation.flow === "ONE_WAY") {
+      const handled = await oneWayFlow.handle(context);
+      if (handled) return;
+    }
+
+    if (conversation.flow === "ROUND_TRIP") {
+      const handled = await roundTripFlow.handle(context);
+      if (handled) return;
+    }
+
+    if (conversation.flow === "MULTI_CITY") {
+      const handled = await multiCityFlow.handle(context);
+      if (handled) return;
+    }
+  }
+
   // 🔒 TEMPORARY fallback (until flows expand)
   await context.sendWhatsAppMessage(
     context.from,
