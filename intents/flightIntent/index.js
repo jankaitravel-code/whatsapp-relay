@@ -3,6 +3,18 @@ const roundTripFlow = require("./roundTripFlow");
 const multiCityFlow = require("./multiCityFlow");
 const { parseFlightQuery } = require("../../services/flightParser");
 
+function canHandle(text, context) {
+  if (!text) return false;
+
+  // Any ongoing flight flow
+  if (context?.conversation?.intent === "FLIGHT_SEARCH") {
+    return true;
+  }
+
+  // New flight-related message
+  return text.toLowerCase().includes("flight");
+}
+
 async function canHandle(text, context) {
   if (!text) return false;
   if (text.toLowerCase().includes("flight")) return true;
