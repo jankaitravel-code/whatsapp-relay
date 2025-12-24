@@ -1,16 +1,29 @@
+// intents/flightIntent/oneWayFlow.js
+
+async function start(context) {
+  const { from, setConversation, sendWhatsAppMessage } = context;
+
+  setConversation(from, {
+    intent: "FLIGHT_SEARCH",
+    flow: "ONE_WAY",
+    state: "ASK_ROUTE"
+  });
+
+  await sendWhatsAppMessage(
+    from,
+    "✈️ One-way flight selected.\n\nPlease tell me your route.\nExample:\nflight from mumbai to new york on 2025-12-25"
+  );
+}
+
 async function handle(context) {
-  const { text, conversation, from, sendWhatsAppMessage } = context;
+  const { conversation, sendWhatsAppMessage } = context;
 
-  // We only handle our own flow
-  if (conversation?.flow !== "ONE_WAY") return false;
-
-  if (conversation.state === "AWAITING_ROUTE") {
+  // TEMP — we’ll expand this next
+  if (conversation.state === "ASK_ROUTE") {
     await sendWhatsAppMessage(
-      from,
-      "✅ Got it.\n\nNow I’ll parse this route next."
+      context.from,
+      "✅ Route received. (Parsing comes next)"
     );
-
-    // TEMP: stop here for now
     return true;
   }
 
@@ -18,5 +31,6 @@ async function handle(context) {
 }
 
 module.exports = {
-  start
+  start,
+  handle
 };
