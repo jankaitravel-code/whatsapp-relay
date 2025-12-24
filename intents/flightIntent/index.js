@@ -1,3 +1,6 @@
+const oneWayFlow = require("./oneWayFlow");
+
+
 function canHandle(text, context) {
   if (!text) return false;
 
@@ -9,14 +12,38 @@ function canHandle(text, context) {
 }
 
 async function handle(context) {
-  const { sendWhatsAppMessage } = context;
+  const { text, rawText } = context;
+  const input = (rawText || text || "").trim().toLowerCase();
 
-  await sendWhatsAppMessage(
+  // ENTRY MENU
+  if (input === "1") {
+    return oneWayFlow.start(context);
+  }
+
+  if (input === "2") {
+    await context.sendWhatsAppMessage(
+      context.from,
+      "🚧 Round-trip is coming soon.\n\nReply *1* for one-way."
+    );
+    return;
+  }
+
+  if (input === "3") {
+    await context.sendWhatsAppMessage(
+      context.from,
+      "🚧 Multi-city is coming soon.\n\nReply *1* for one-way."
+    );
+    return;
+  }
+
+  // Default welcome
+  await context.sendWhatsAppMessage(
     context.from,
-    "✈️ Say:\n" +
-    "• 1 — One-way flight\n" +
-    "• 2 — Round-trip (coming soon)\n" +
-    "• 3 — Multi-city (coming soon)"
+    "✈️ You have selected flights.\n\n" +
+    "Say:\n" +
+    "• 1 — One-way\n" +
+    "• 2 — Round-trip\n" +
+    "• 3 — Multi-city"
   );
 }
 
