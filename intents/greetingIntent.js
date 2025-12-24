@@ -18,9 +18,9 @@ function canHandle(text, context) {
 async function handle({ from, sendWhatsAppMessage }) {
   await sendWhatsAppMessage(
     from,
-    "Hello 👋 I’m your travel assistant.\n\n" +
-    "I can help you find flights.\n" +
-    "Try:\nflight from Delhi to Mumbai on 2025-12-25"
+    "Hi 👋 I’m am Jank, your travel assistant.\n\n" +
+    "Currently, I can help you find flights.\n" +
+    "Try:\nFlights"
   );
 }
 
