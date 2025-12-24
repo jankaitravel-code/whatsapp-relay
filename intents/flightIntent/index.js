@@ -11,9 +11,10 @@ async function canHandle(text, context) {
 }
 
 async function handle(context) {
-  const { text, conversation, sendWhatsAppMessage } = context;
+  const { text, conversation, sendWhatsAppMessage, from } = context;
+  const lower = (text || "").toLowerCase();
 
-  // Existing flow → continue
+  // 1️⃣ Continue existing flow
   if (conversation?.flow === "ONE_WAY") {
     return oneWayFlow.handle(context);
   }
@@ -24,22 +25,31 @@ async function handle(context) {
     return multiCityFlow.handle(context);
   }
 
-  // New message → detect trip type
-  const parsed = await parseFlightQuery(text);
-
-  if (!parsed?.tripType) {
+  // 2️⃣ Ignore non-flight small talk
+  if (!lower.includes("flight")) {
     await sendWhatsAppMessage(
-      context.from,
-      "✈️ I can help with flights.\n\n" +
-      "Reply:\n" +
-      "1️⃣ One-way flight\n" +
-      "2️⃣ Round-trip flight\n" +
-      "3️⃣ Multi-city trip"
+      from,
+      "✈️ Hi! I am Jank.ai. I can help you with flights.\n\n" +
+      "Try:\nflight from mumbai to new york on 2025-12-25"
     );
     return;
   }
 
-  switch (parsed.tripType) {
+  // 3️⃣ ONLY NOW parse flight query
+  let parsed;
+  try {
+    parsed = await parseFlightQuery(text);
+  } catch (err) {
+    await sendWhatsAppMessage(
+      from,
+      "✈️ I couldn’t understand that flight request.\n\n" +
+      "Try:\nflight from mumbai to new york on 2025-12-25"
+    );
+    return;
+  }
+
+  // 4️⃣ Route by trip type
+  switch (parsed?.tripType) {
     case "ONE_WAY":
       return oneWayFlow.start(context, parsed);
 
@@ -51,13 +61,13 @@ async function handle(context) {
 
     default:
       await sendWhatsAppMessage(
-        context.from,
-        "✈️ I can help with flights. Please try again."
+        from,
+        "✈️ I can help with:\n" +
+        "• One-way flights\n" +
+        "• Round-trip flights\n" +
+        "• Multi-city trips"
       );
+      return;
   }
 }
 
-module.exports = {
-  canHandle,
-  handle
-};
