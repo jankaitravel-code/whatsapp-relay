@@ -5,7 +5,7 @@
 
 const resetIntent = require("./resetIntent");
 const greetingIntent = require("./greetingIntent");
-const flightIntent = require("./flightIntent");
+const flightIntent = require("./flightIntent/index");
 const fallbackIntent = require("./fallbackIntent");
 const { log } = require("../utils/logger");
 
