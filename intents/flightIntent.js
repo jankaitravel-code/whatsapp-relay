@@ -144,33 +144,6 @@ async function handle(context) {
   } = context;
 
   const lower = (rawText || text || "").toLowerCase();
-
-
-  /* ===============================
-   HARD ROUND-TRIP ENTRY GATE (V3)
-  =============================== */
-  if (
-    !conversation &&
-    lower.startsWith("flight") &&
-    lower.includes("return")
-  ) {
-    const parsed = await parseFlightQuery(text);
-  
-    if (parsed?.tripType === "ROUND_TRIP") {
-      setConversation(from, {
-        intent: "FLIGHT_SEARCH",
-        state: "TRIP_TYPE_CONFIRM",
-        flightQuery: parsed
-      });
-  
-      await sendWhatsAppMessage(
-        from,
-        buildTripTypeConfirmMessage("ROUND_TRIP")
-      );
-      return;
-    }
-  }
-
   
   /* ===============================
    GLOBAL RESULTS STATE SAFETY
@@ -264,63 +237,6 @@ async function handle(context) {
       );
       return;
     }
-  }
-
-       /* ===============================
-       DATE-ONLY INPUT (COLLECTING)
-    =============================== */
-  if (
-    conversation?.state === "COLLECTING" &&
-      conversation.flightQuery &&
-      conversation.flightQuery.tripType === "ONE_WAY" &&
-      conversation.flightQuery.origin &&
-      conversation.flightQuery.destination &&
-      !conversation.flightQuery.date
-  ) {
-    const dateMatch = rawText.match(/^\d{4}-\d{2}-\d{2}$/);
-
-    if (!dateMatch) {
-      await sendWhatsAppMessage(
-        from,
-        "📅 Please provide the date in YYYY-MM-DD format."
-      );
-      return;
-    }
-
-    const updatedQuery = {
-      ...conversation.flightQuery,
-      date: dateMatch[0]
-    };
-
-    setConversation(from, {
-      intent: "FLIGHT_SEARCH",
-      state: "READY_TO_CONFIRM",
-      flightQuery: updatedQuery
-    });
-
-    log("state_transition", {
-      intent: "FLIGHT_SEARCH",
-      state: "READY_TO_CONFIRM",
-      user: from,
-      requestId: context.requestContext?.requestId
-    });
-
-    // 🔒 FIX 1 — invariant guard before confirmation
-    if (!updatedQuery.origin || !updatedQuery.destination) {
-      clearConversation(from);
-      await sendWhatsAppMessage(
-        from,
-        "⚠️ Something went wrong while confirming your trip.\n\n" +
-        "Please start again:\nflight from mumbai to new york on 2025-12-25"
-      );
-      return;
-    }
-
-    await sendWhatsAppMessage(
-      from,
-      buildConfirmationMessage(updatedQuery)
-    );
-    return;
   }
 
     /* ===============================
@@ -772,83 +688,52 @@ You can Say:
   /* ===============================
    TRIP TYPE CONFIRM
   =============================== */
+
   if (conversation?.state === "TRIP_TYPE_CONFIRM") {
     const q = conversation.flightQuery;
   
-    if (lower === "yes") {
-      // proceed exactly as v2 — no behavior change yet
-      setConversation(from, {
-        intent: "FLIGHT_SEARCH",
-        state: "COLLECTING",
-        flightQuery: q
-      });
-  
-      if (!q.date) {
-        await sendWhatsAppMessage(
-          from,
-          "📅 What date would you like to travel? (YYYY-MM-DD)"
-        );
-        return;
-      }
-  
-      setConversation(from, {
-        intent: "FLIGHT_SEARCH",
-        state: "READY_TO_CONFIRM",
-        flightQuery: q
-      });
-  
-      await sendWhatsAppMessage(
-        from,
-        buildConfirmationMessage(q)
-      );
-      return;
-    }
-
     if (lower === "one way") {
       const downgraded = {
         ...q,
         tripType: "ONE_WAY",
         returnDate: null
       };
-    
-      // 🔒 invariant: route + date must already exist here
-      if (!downgraded.origin || !downgraded.destination || !downgraded.date) {
-        clearConversation(from);
-        await sendWhatsAppMessage(
-          from,
-          "⚠️ I lost some trip details while switching to one-way.\n\n" +
-          "Please try again:\nflight from mumbai to new york on 2025-12-25"
-        );
-        return;
-      }
-    
-      // ✅ go straight to confirmation
+  
       setConversation(from, {
         intent: "FLIGHT_SEARCH",
         state: "READY_TO_CONFIRM",
-        flightQuery: downgraded,
-        changeTarget: null
+        flightQuery: downgraded
       });
-    
+  
       await sendWhatsAppMessage(
         from,
         buildConfirmationMessage(downgraded)
       );
       return;
     }
-
+  
+    if (lower === "yes") {
+      // round-trip not supported yet
+      await sendWhatsAppMessage(
+        from,
+        "🚧 Round-trip searches are not supported yet.\n\n" +
+        "Reply *One way* to continue."
+      );
+      return;
+    }
+  
     if (lower === "cancel") {
       clearConversation(from);
       await sendWhatsAppMessage(from, "❌ Flight search cancelled.");
       return;
     }
-
+  
     await sendWhatsAppMessage(
       from,
-      "Please reply with *Yes*, *One way*, or *Cancel*."
+      "Please reply with *One way* or *Cancel*."
     );
     return;
-  } // ✅ CLOSES TRIP_TYPE_CONFIRM
+  }
 
   /* ===============================
      READY_TO_CONFIRM STATE
@@ -1061,8 +946,8 @@ You can Say:
       tripType: parsed.tripType || "ONE_WAY"
     };
 
-    // STEP 2 — Trip type confirmation gate
-    if (flightQuery.tripType && flightQuery.tripType !== "ONE_WAY") {
+    // STEP — Trip type confirmation (single gate)
+    if (flightQuery.tripType !== "ONE_WAY") {
       setConversation(from, {
         intent: "FLIGHT_SEARCH",
         state: "TRIP_TYPE_CONFIRM",
@@ -1112,17 +997,6 @@ You can Say:
       user: from,
       requestId: context.requestContext?.requestId
     });
-
-    // 🔒 FIX 1 — invariant guard before confirmation
-    if (!flightQuery.origin || !flightQuery.destination) {
-      clearConversation(from);
-      await sendWhatsAppMessage(
-        from,
-        "⚠️ Something went wrong while confirming your trip.\n\n" +
-        "Please start again:\nflight from mumbai to new york on 2025-12-25"
-      );
-      return;
-    }
 
     await sendWhatsAppMessage(
       from,
