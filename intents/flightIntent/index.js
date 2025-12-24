@@ -41,9 +41,9 @@ async function handle(context) {
     context.from,
     "✈️ You have selected flights.\n\n" +
     "Say:\n" +
-    "• 1 — One-way\n" +
-    "• 2 — Round-trip\n" +
-    "• 3 — Multi-city"
+    "• 1 for One-way\n" +
+    "• 2 for Round-trip\n" +
+    "• 3 for Multi-city"
   );
 }
 
