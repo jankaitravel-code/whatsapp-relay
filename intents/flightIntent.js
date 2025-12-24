@@ -693,7 +693,8 @@ You can Say:
     const q = conversation.flightQuery;
   
     if (lower === "one way") {
-      if (!q?.origin || !q?.destination) {
+      // 🔒 HARD INVARIANT — must exist before confirmation
+      if (!q.origin || !q.destination || !q.date) {
         clearConversation(from);
         await sendWhatsAppMessage(
           from,
