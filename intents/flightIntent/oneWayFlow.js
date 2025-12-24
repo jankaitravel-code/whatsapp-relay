@@ -4,10 +4,10 @@
  * Scope: ONE_WAY only
  */
 
-const { parseFlightQuery } = require("../services/flightParser");
-const { searchFlights } = require("../services/flightSearchService");
-const { log } = require("../utils/logger");
-const { recordSignal } = require("../utils/abuseSignals");
+const { parseFlightQuery } = require("../../services/flightParser");
+const { searchFlights } = require("../../services/flightSearchService");
+const { log } = require("../../utils/logger");
+const { recordSignal } = require("../../utils/abuseSignals");
 
 /* ===============================
    Helpers (unchanged)
