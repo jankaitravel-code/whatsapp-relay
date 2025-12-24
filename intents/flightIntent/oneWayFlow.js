@@ -194,6 +194,56 @@ async function handle(context) {
    }
 
    /* ===============================
+   RESULTS → SHOW MORE
+   =============================== */
+   if (
+     conversation?.state === "RESULTS" &&
+     lower === "show more"
+   ) {
+     const results = conversation.results;
+   
+     if (!results || !Array.isArray(results.items)) {
+       await sendWhatsAppMessage(
+         from,
+         "⚠️ No more results available."
+       );
+       return true;
+     }
+   
+     const { items, cursor, pageSize } = results;
+   
+     if (cursor >= items.length) {
+       await sendWhatsAppMessage(
+         from,
+         "⚠️ That's all the results I have."
+       );
+       return true;
+     }
+   
+     const nextPage = items
+       .slice(cursor, cursor + pageSize)
+       .join("\n\n");
+   
+     setConversation(from, {
+       intent: "FLIGHT_SEARCH",
+       flow: "ONE_WAY",
+       state: "RESULTS",
+       lockedFlightQuery: conversation.lockedFlightQuery,
+       results: {
+         ...results,
+         cursor: cursor + pageSize
+       }
+     });
+   
+     await sendWhatsAppMessage(
+       from,
+       `${nextPage}\n\nSay:\n• show more\n• change date / origin / destination`
+     );
+   
+     return true;
+   }
+
+   /* ===============================
       READY_TO_CONFIRM
    =============================== */
    if (conversation?.state === "READY_TO_CONFIRM") {
@@ -288,6 +338,16 @@ async function handle(context) {
      );
      return true;
    }
+
+   /* ===============================
+   FLOW CATCH-ALL (LAST!)
+   =============================== */
+   await sendWhatsAppMessage(
+     from,
+     "I didn’t understand that. You can say:\n• show more\n• change\n• cancel"
+   );
+   return true;
+
  }
 
  module.exports = {
