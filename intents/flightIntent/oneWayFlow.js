@@ -45,7 +45,7 @@ function buildConfirmationMessage(q) {
     `Departure: ${q.date}\n\n` +
     `Reply:\n` +
     `• Yes — to search\n` +
-    `• Change date — to modify date\n` +
+    `• Change date/origin — to modify date/origin\n` +
     `• Cancel — to stop`
   );
 }
@@ -249,6 +249,67 @@ async function handle(context) {
      return true;
    }
 
+   if (
+     conversation?.state === "RESULTS" &&
+     lower === "change origin"
+   ) {
+     log("CHANGE_ORIGIN_FROM_RESULTS", { user: from });
+   
+     setConversation(from, {
+       intent: "FLIGHT_SEARCH",
+       flow: "ONE_WAY",
+       state: "AWAITING_NEW_ORIGIN",
+       flightQuery: conversation.lockedFlightQuery
+     });
+   
+     await sendWhatsAppMessage(
+       from,
+       "📍 Sure — where will you be departing from?"
+     );
+     return true;
+   }
+
+   if (conversation?.state === "AWAITING_NEW_ORIGIN") {
+     let queryText = rawText;
+   
+     // Force deterministic parsing
+     if (!queryText.toLowerCase().includes("flight")) {
+       queryText = `flight from ${queryText}`;
+     }
+   
+     const parsed = await parseFlightQuery(queryText);
+   
+     if (!parsed?.origin) {
+       await sendWhatsAppMessage(
+         from,
+         "❌ I couldn’t understand the origin city.\n\nExample:\nMumbai"
+       );
+       return true;
+     }
+   
+     const updatedQuery = {
+       ...conversation.flightQuery,
+       origin: parsed.origin
+     };
+   
+     log("ORIGIN_UPDATED", {
+       user: from,
+       origin: parsed.origin.cityCode
+     });
+   
+     setConversation(from, {
+       intent: "FLIGHT_SEARCH",
+       flow: "ONE_WAY",
+       state: "AWAITING_RECONFIRMATION",
+       flightQuery: updatedQuery
+     });
+   
+     await sendWhatsAppMessage(
+       from,
+       buildConfirmationMessage(updatedQuery)
+     );
+     return true;
+   }
 
    /* ===============================
    RESULTS → SHOW MORE
@@ -294,7 +355,7 @@ async function handle(context) {
    
       await sendWhatsAppMessage(
         from,
-        `${nextPage}\n\nReply:\n• show more\n• change date`
+        `${nextPage}\n\nReply:\n• show more\n• change date/origin`
       );
    
       return true;
@@ -357,7 +418,7 @@ async function handle(context) {
        await sendWhatsAppMessage(
          from,
          `✈️ Flight options\n\n${formatted.slice(0, PAGE_SIZE).join("\n\n")}\n\n` +
-         `Reply:\n• show more\n• change date\n• cancel`
+         `Reply:\n• show more\n• change date/origin\n• cancel`
        );
    
        return true;
@@ -391,6 +452,21 @@ async function handle(context) {
         await sendWhatsAppMessage(
           from,
           "📅 Sure — what new date would you like to travel? (YYYY-MM-DD)"
+        );
+        return true;
+      }
+
+      if (lower === "change origin") {
+        log("CHANGE_ORIGIN_AT_CONFIRMATION", { user: from });
+      
+        setConversation(from, {
+          ...conversation,
+          state: "AWAITING_NEW_ORIGIN"
+        });
+      
+        await sendWhatsAppMessage(
+          from,
+          "📍 Sure — where will you be departing from?"
         );
         return true;
       }
@@ -467,7 +543,7 @@ async function handle(context) {
    
       await sendWhatsAppMessage(
         from,
-        "Please reply with *Yes*, *Change date*, or *Cancel*."
+        "Please reply with *Yes*, *Change date/origin*, or *Cancel*."
       );
       return true;
     }
@@ -477,7 +553,7 @@ async function handle(context) {
    =============================== */
    await sendWhatsAppMessage(
       from,
-      "I didn’t understand that. You can reply:\n• show more\n• change date\n• cancel"
+      "I didn’t understand that. You can reply:\n• show more\n• change date/origin\n• cancel"
     );
     return true;
   }
