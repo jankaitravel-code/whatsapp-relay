@@ -45,7 +45,7 @@ function buildConfirmationMessage(q) {
     `Departure: ${q.date}\n\n` +
     `Reply:\n` +
     `• Yes — to search\n` +
-    `• Change date/origin — to modify date/origin\n` +
+    `• Change date / origin / destination — to modify\n` +
     `• Cancel — to stop`
   );
 }
@@ -316,6 +316,73 @@ async function handle(context) {
      return true;
    }
 
+   if (
+     conversation?.state === "RESULTS" &&
+     lower === "change destination"
+   ) {
+     log("CHANGE_DESTINATION_FROM_RESULTS", { user: from });
+   
+     setConversation(from, {
+       intent: "FLIGHT_SEARCH",
+       flow: "ONE_WAY",
+       state: "AWAITING_NEW_DESTINATION",
+       flightQuery: conversation.lockedFlightQuery
+     });
+   
+     await sendWhatsAppMessage(
+       from,
+       "📍 Sure — where do you want to fly to?"
+     );
+     return true;
+   }
+   if (conversation?.state === "AWAITING_NEW_DESTINATION") {
+     const origin = conversation.flightQuery?.origin;
+   
+     if (!origin) {
+       await sendWhatsAppMessage(
+         from,
+         "⚠️ Missing origin context. Please cancel and start again."
+       );
+       return true;
+     }
+   
+     // 🔥 Force a full route so parser can resolve destination
+     const syntheticQuery = `flight from ${origin.cityName} to ${rawText}`;
+   
+     const parsed = await parseFlightQuery(syntheticQuery);
+   
+     if (!parsed?.destination) {
+       await sendWhatsAppMessage(
+         from,
+         "❌ I couldn’t understand the destination city.\n\nExample:\nGoa"
+       );
+       return true;
+     }
+   
+     const updatedQuery = {
+       ...conversation.flightQuery,
+       destination: parsed.destination
+     };
+   
+     log("DESTINATION_UPDATED", {
+       user: from,
+       destination: parsed.destination.cityCode
+     });
+   
+     setConversation(from, {
+       intent: "FLIGHT_SEARCH",
+       flow: "ONE_WAY",
+       state: "AWAITING_RECONFIRMATION",
+       flightQuery: updatedQuery
+     });
+   
+     await sendWhatsAppMessage(
+       from,
+       buildConfirmationMessage(updatedQuery)
+     );
+     return true;
+   }
+
    /* ===============================
    RESULTS → SHOW MORE
    =============================== */
@@ -360,7 +427,7 @@ async function handle(context) {
    
       await sendWhatsAppMessage(
         from,
-        `${nextPage}\n\nReply:\n• show more\n• change date/origin`
+        `${nextPage}\n\nReply:\n• show more\n• change date / origin / destination`
       );
    
       return true;
@@ -396,8 +463,23 @@ async function handle(context) {
          "📍 Sure — where will you be departing from?"
        );
        return true;
-     }
-   
+   }
+
+     if (lower === "change destination") {
+       log("CHANGE_DESTINATION_FROM_RECONFIRMATION", { user: from });
+      
+       setConversation(from, {
+         ...conversation,
+         state: "AWAITING_NEW_DESTINATION"
+       });
+      
+       await sendWhatsAppMessage(
+         from,
+         "📍 Sure — where do you want to fly to?"
+       );
+       return true;
+   }
+
      if (lower === "yes") {
        const q = conversation.flightQuery;
    
@@ -454,7 +536,7 @@ async function handle(context) {
        await sendWhatsAppMessage(
          from,
          `✈️ Flight options\n\n${formatted.slice(0, PAGE_SIZE).join("\n\n")}\n\n` +
-         `Reply:\n• show more\n• change date\n• change origin\n• cancel`
+         `Reply:\n• show more\n• change date / origin / destination\n• cancel`
        );
    
        return true;
@@ -468,7 +550,7 @@ async function handle(context) {
    
      await sendWhatsAppMessage(
        from,
-       "Please reply with *Yes*, *Change date*, *Change origin*, or *Cancel*."
+       "Please reply with *Yes*, *Change date / origin / destination*, or *Cancel*."
      );
      return true;
    }
@@ -503,6 +585,21 @@ async function handle(context) {
         await sendWhatsAppMessage(
           from,
           "📍 Sure — where will you be departing from?"
+        );
+        return true;
+      }
+
+      if (lower === "change destination") {
+        log("CHANGE_DESTINATION_AT_CONFIRMATION", { user: from });
+      
+        setConversation(from, {
+          ...conversation,
+          state: "AWAITING_NEW_DESTINATION"
+        });
+      
+        await sendWhatsAppMessage(
+          from,
+          "📍 Sure — where do you want to fly to?"
         );
         return true;
       }
@@ -579,7 +676,7 @@ async function handle(context) {
    
       await sendWhatsAppMessage(
         from,
-        "Please reply with *Yes*, *Change date/origin*, or *Cancel*."
+        "Please reply with *Yes*, *Change date / origin / destination*, or *Cancel*."
       );
       return true;
     }
@@ -589,7 +686,7 @@ async function handle(context) {
    =============================== */
    await sendWhatsAppMessage(
       from,
-      "I didn’t understand that. You can reply:\n• show more\n• change date/origin\n• cancel"
+      "I didn’t understand that. You can reply:\n• show more\n• change date / origin / destination\n• cancel"
     );
     return true;
   }
