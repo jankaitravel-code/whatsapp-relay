@@ -7,7 +7,7 @@ async function handle({ from, sendWhatsAppMessage }) {
   await sendWhatsAppMessage(
     from,
     "I can help with flights ✈️\n\n" +
-    "Try saying:\nflights"
+    "Try replying:\nflights"
   );
 }
 
