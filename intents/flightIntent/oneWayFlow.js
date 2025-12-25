@@ -215,7 +215,7 @@ async function handle(context) {
      if (cursor >= items.length) {
        await sendWhatsAppMessage(
          from,
-         "⚠️ That's all the results I have."
+         "⚠️ That's all the results I have. You can reply cancel or reset to search again."
        );
        return true;
      }
