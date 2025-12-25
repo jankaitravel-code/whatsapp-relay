@@ -367,6 +367,37 @@ async function handle(context) {
     }
 
    if (conversation?.state === "AWAITING_RECONFIRMATION") {
+
+     if (lower === "change date") {
+       log("CHANGE_DATE_FROM_RECONFIRMATION", { user: from });
+   
+       setConversation(from, {
+         ...conversation,
+         state: "AWAITING_NEW_DATE"
+       });
+   
+       await sendWhatsAppMessage(
+         from,
+         "📅 Sure — what new date would you like to travel? (YYYY-MM-DD)"
+       );
+       return true;
+     }
+   
+     if (lower === "change origin") {
+       log("CHANGE_ORIGIN_FROM_RECONFIRMATION", { user: from });
+   
+       setConversation(from, {
+         ...conversation,
+         state: "AWAITING_NEW_ORIGIN"
+       });
+   
+       await sendWhatsAppMessage(
+         from,
+         "📍 Sure — where will you be departing from?"
+       );
+       return true;
+     }
+   
      if (lower === "yes") {
        const q = conversation.flightQuery;
    
@@ -423,7 +454,7 @@ async function handle(context) {
        await sendWhatsAppMessage(
          from,
          `✈️ Flight options\n\n${formatted.slice(0, PAGE_SIZE).join("\n\n")}\n\n` +
-         `Reply:\n• show more\n• change date/origin\n• cancel`
+         `Reply:\n• show more\n• change date\n• change origin\n• cancel`
        );
    
        return true;
@@ -437,11 +468,11 @@ async function handle(context) {
    
      await sendWhatsAppMessage(
        from,
-       "Please reply with *Yes* to search or *Cancel* to stop."
+       "Please reply with *Yes*, *Change date*, *Change origin*, or *Cancel*."
      );
      return true;
    }
-
+   
    /* ===============================
       READY_TO_CONFIRM
    =============================== */
