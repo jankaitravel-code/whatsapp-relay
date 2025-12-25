@@ -237,7 +237,7 @@ async function handle(context) {
    
      await sendWhatsAppMessage(
        from,
-       `${nextPage}\n\nSay:\n• show more\n• change date / origin / destination`
+       `${nextPage}\n\nReply:\n• show more\n• change date / origin / destination`
      );
    
      return true;
@@ -312,7 +312,7 @@ async function handle(context) {
        await sendWhatsAppMessage(
          from,
          `✈️ Flight options\n\n${formatted.slice(0, PAGE_SIZE).join("\n\n")}\n\n` +
-         `Say:\n• show more\n• change date / origin / destination`
+         `Reply:\n• show more\n• change date / origin / destination`
        );
        return true;
      }
@@ -344,7 +344,7 @@ async function handle(context) {
    =============================== */
    await sendWhatsAppMessage(
      from,
-     "I didn’t understand that. You can say:\n• show more\n• change\n• cancel"
+     "I didn’t understand that. You can reply:\n• show more\n• change\n• cancel"
    );
    return true;
 
