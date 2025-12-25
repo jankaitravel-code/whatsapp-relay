@@ -270,15 +270,53 @@ async function handle(context) {
    }
 
    if (conversation?.state === "AWAITING_NEW_ORIGIN") {
-     let queryText = rawText;
+     const destination = conversation.flightQuery?.destination;
    
-     // Force deterministic parsing
-     if (!queryText.toLowerCase().includes("flight")) {
-       queryText = `flight from ${queryText}`;
+     if (!destination) {
+       await sendWhatsAppMessage(
+         from,
+         "⚠️ Missing destination context. Please cancel and start again."
+       );
+       return true;
      }
    
-     const parsed = await parseFlightQuery(queryText);
+     // 🔥 Force a full route so parser can resolve origin
+     const syntheticQuery = `flight from ${rawText} to ${destination.cityName}`;
    
+     const parsed = await parseFlightQuery(syntheticQuery);
+   
+     if (!parsed?.origin) {
+       await sendWhatsAppMessage(
+         from,
+         "❌ I couldn’t understand the origin city.\n\nExample:\nMumbai"
+       );
+       return true;
+     }
+   
+     const updatedQuery = {
+       ...conversation.flightQuery,
+       origin: parsed.origin
+     };
+   
+     log("ORIGIN_UPDATED", {
+       user: from,
+       origin: parsed.origin.cityCode
+     });
+   
+     setConversation(from, {
+       intent: "FLIGHT_SEARCH",
+       flow: "ONE_WAY",
+       state: "AWAITING_RECONFIRMATION",
+       flightQuery: updatedQuery
+     });
+   
+     await sendWhatsAppMessage(
+       from,
+       buildConfirmationMessage(updatedQuery)
+     );
+     return true;
+   }
+
      if (!parsed?.origin) {
        await sendWhatsAppMessage(
          from,
