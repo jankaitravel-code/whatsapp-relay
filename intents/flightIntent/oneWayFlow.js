@@ -302,15 +302,64 @@ async function handle(context) {
 
    if (conversation?.state === "AWAITING_RECONFIRMATION") {
      if (lower === "yes") {
-       setConversation(from, {
-         ...conversation,
-         state: "READY_TO_CONFIRM"
+       const q = conversation.flightQuery;
+   
+       recordSignal("flight_search_executed", {
+         origin: q.origin.cityCode,
+         destination: q.destination.cityCode,
+         date: q.date,
+         user: from
        });
-      
+   
+       const { flights, carriers } = await searchFlights({
+         originLocationCode: q.origin.cityCode,
+         destinationLocationCode: q.destination.cityCode,
+         date: q.date
+       });
+   
+       if (!Array.isArray(flights) || flights.length === 0) {
+         await sendWhatsAppMessage(
+           from,
+           "Sorry, I couldn’t find flights for that route and date."
+         );
+         return true;
+       }
+   
+       const formatted = flights
+         .filter(f => f.itineraries?.[0]?.segments?.length)
+         .map((f, i) => {
+           const segs = f.itineraries[0].segments;
+           const first = segs[0];
+           const last = segs[segs.length - 1];
+   
+           return (
+             `${i + 1}. ${getAirlineName(first.carrierCode, carriers)} — ₹${f.price.total}\n` +
+             `   ${first.departure.iataCode} ${formatTime(first.departure.at)} → ` +
+             `${last.arrival.iataCode} ${formatTime(last.arrival.at)}\n` +
+             `   ${formatDuration(f.itineraries[0].duration)} · ${segs.length - 1} stop(s)`
+           );
+         });
+   
+       const PAGE_SIZE = 3;
+   
+       setConversation(from, {
+         intent: "FLIGHT_SEARCH",
+         flow: "ONE_WAY",
+         state: "RESULTS",
+         lockedFlightQuery: q,
+         results: {
+           items: formatted,
+           cursor: PAGE_SIZE,
+           pageSize: PAGE_SIZE
+         }
+       });
+   
        await sendWhatsAppMessage(
          from,
-         buildConfirmationMessage(conversation.flightQuery)
+         `✈️ Flight options\n\n${formatted.slice(0, PAGE_SIZE).join("\n\n")}\n\n` +
+         `Reply:\n• show more\n• change date\n• cancel`
        );
+   
        return true;
      }
    
@@ -326,7 +375,6 @@ async function handle(context) {
      );
      return true;
    }
-
 
    /* ===============================
       READY_TO_CONFIRM
