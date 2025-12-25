@@ -19,7 +19,7 @@ async function handle({ from, sendWhatsAppMessage, clearConversation }) {
   await sendWhatsAppMessage(
     from,
     "✅ All set. Let’s start fresh.\n\n" +
-    "You can reply:\n delhi to mumbai"
+    "You can reply: Flights"
   );
 }
 
