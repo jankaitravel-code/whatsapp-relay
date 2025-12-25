@@ -52,7 +52,7 @@ async function handle(context) {
     await context.sendWhatsAppMessage(
       context.from,
       "✈️ You have selected flights.\n\n" +
-        "Say:\n" +
+        "Reply:\n" +
         "1️⃣ for One-way\n" +
         "2️⃣ for Round-trip\n" +
         "3️⃣ for Multi-city"
