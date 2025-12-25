@@ -68,7 +68,7 @@ async function start(context) {
 
   await sendWhatsAppMessage(
     from,
-    "✈️ One-way flight selected.\n\nPlease tell me your route.\nExample:\nflight from mumbai to new york"
+    "✈️ One-way flight selected.\n\nPlease tell me your route.\nExample:\n mumbai to new york"
   );
 }
 
