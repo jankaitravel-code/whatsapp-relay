@@ -282,41 +282,8 @@ async function handle(context) {
    
      // 🔥 Force a full route so parser can resolve origin
      const syntheticQuery = `flight from ${rawText} to ${destination.cityName}`;
-   
      const parsed = await parseFlightQuery(syntheticQuery);
-   
-     if (!parsed?.origin) {
-       await sendWhatsAppMessage(
-         from,
-         "❌ I couldn’t understand the origin city.\n\nExample:\nMumbai"
-       );
-       return true;
-     }
-   
-     const updatedQuery = {
-       ...conversation.flightQuery,
-       origin: parsed.origin
-     };
-   
-     log("ORIGIN_UPDATED", {
-       user: from,
-       origin: parsed.origin.cityCode
-     });
-   
-     setConversation(from, {
-       intent: "FLIGHT_SEARCH",
-       flow: "ONE_WAY",
-       state: "AWAITING_RECONFIRMATION",
-       flightQuery: updatedQuery
-     });
-   
-     await sendWhatsAppMessage(
-       from,
-       buildConfirmationMessage(updatedQuery)
-     );
-     return true;
-   }
-
+      
      if (!parsed?.origin) {
        await sendWhatsAppMessage(
          from,
