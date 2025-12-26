@@ -387,10 +387,10 @@ async function handle(context) {
 
    if (conversation?.state === "AWAITING_CABIN_CLASS") {
      const map = {
-       "1 for" : "ECONOMY",
-       "2 for" : "PREMIUM_ECONOMY",
-       "3 for" : "BUSINESS",
-       "4 for" : "FIRST"
+       "1" : "ECONOMY",
+       "2" : "PREMIUM_ECONOMY",
+       "3" : "BUSINESS",
+       "4" : "FIRST"
      };
    
      const selected = map[lower];
@@ -534,7 +534,7 @@ async function handle(context) {
       
         await sendWhatsAppMessage(
           from,
-          "Choose cabin class:\n1. Economy\n2. Premium Economy\n3. Business\n4. First"
+          "Choose cabin class:\n1 for Economy\n2 for Premium Economy\n3 for Business\n4 for First"
         );
         return true;
       }
