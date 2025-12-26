@@ -752,7 +752,7 @@ async function handle(context) {
    
       await sendWhatsAppMessage(
         from,
-        "Please reply with *Yes*, *Change date / origin / destination*, or *Cancel*."
+        "Please reply with *Yes*, *Change date / origin / destination / class*, or *Cancel*."
       );
       return true;
     }
@@ -775,7 +775,7 @@ async function handle(context) {
    =============================== */
    await sendWhatsAppMessage(
       from,
-      "I didn’t understand that. You can reply:\n• show more\n• change date / origin / destination / class\n• cancel"
+      "I didn’t understand that. You can reply:\n• show more\n• change date / origin / destination\n• cancel"
     );
     return true;
   }
