@@ -42,7 +42,8 @@ function buildConfirmationMessage(q) {
     `✈️ Please confirm your flight search:\n\n` +
     `From: ${q.origin.cityName}\n` +
     `To: ${q.destination.cityName}\n` +
-    `Departure: ${q.date}\n\n` +
+    `Departure: ${q.date}\n` +
+   `Class: ${q.cabinClass.replace("_", " ")}\n\n` +
     `Reply:\n` +
     `• Yes — to search\n` +
     `• Change date / origin / destination — to modify\n` +
@@ -62,7 +63,8 @@ async function start(context) {
     flow: "ONE_WAY",
     state: "COLLECTING",
     flightQuery: {
-      tripType: "ONE_WAY"
+      tripType: "ONE_WAY",
+      cabinClass: "ECONOMY" // 🔒 default
     }
   });
 
@@ -626,7 +628,8 @@ async function handle(context) {
         const { flights, carriers } = await searchFlights({
           originLocationCode: q.origin.cityCode,
           destinationLocationCode: q.destination.cityCode,
-          date: q.date
+          date: q.date,
+          travelClass: q.cabinClass // 🔥 critical
         });
 
         if (!Array.isArray(flights) || flights.length === 0) {
@@ -680,6 +683,19 @@ async function handle(context) {
       );
       return true;
     }
+
+    if (
+      (conversation?.state === "RESULTS" ||
+      conversation?.state === "AWAITING_RECONFIRMATION") &&
+      lower === "change class"
+    ) {
+      await sendWhatsAppMessage(
+        from,
+        "✋ Cabin class can’t be changed after search. Please restart the search to choose a different class."
+      );
+      return true;
+    }
+
 
    /* ===============================
    FLOW CATCH-ALL (LAST!)
