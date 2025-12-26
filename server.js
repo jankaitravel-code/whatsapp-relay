@@ -168,10 +168,9 @@ app.post("/webhook", async (req, res) => {
         from,
         `You're already viewing search results.
     
-    You can:
-    • Change dates
-    • Change destination
-    • Start a new search
+    You can reply:
+    • Change dates / origin / destination
+    • Restart
     
     Tell me what you'd like to change.`
       );
