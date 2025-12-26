@@ -49,6 +49,11 @@ async function handle(context) {
   }
 
   if (lower === "flights" || lower === "flight") {
+    context.setConversation(context.from, {
+      intent: "FLIGHT_MENU",
+      state: "MENU"
+    });
+  
     await context.sendWhatsAppMessage(
       context.from,
       "✈️ You have selected flights.\n\n" +
@@ -60,6 +65,26 @@ async function handle(context) {
     return;
   }
 
+  if (
+    conversation?.intent === "FLIGHT_MENU" &&
+    conversation.state === "MENU"
+  ) {
+    if (lower === "1") return oneWayFlow.start(context);
+    if (lower === "2") return roundTripFlow.start(context);
+    if (lower === "3") return multiCityFlow.start(context);
+  
+    // 🔒 Invalid input → repeat same menu
+    await context.sendWhatsAppMessage(
+      context.from,
+      "✈️ Flights menu\n\n" +
+        "Reply:\n" +
+        "1️⃣ for One-way\n" +
+        "2️⃣ for Round-trip\n" +
+        "3️⃣ for Multi-city"
+    );
+    return;
+  }
+  
   /* ===============================
      FALLBACK
   =============================== */
