@@ -674,7 +674,7 @@ async function handle(context) {
       
         await sendWhatsAppMessage(
           from,
-          "Choose cabin class:\n1. Economy\n2. Premium Economy\n3. Business\n4. First"
+          "Choose cabin class:\n1 for Economy\n2 for Premium Economy\n3 for Business\n4 for First"
         );
         return true;
       }
