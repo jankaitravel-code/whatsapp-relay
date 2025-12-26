@@ -10,6 +10,7 @@ function canHandle(text) {
     normalized === "cancel" ||
     normalized === "reset" ||
     normalized === "New Search" ||
+    normalized === "Restart" ||
     normalized === "start over"
   );
 }
