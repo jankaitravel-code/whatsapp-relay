@@ -10,7 +10,12 @@ function canHandle(text, context) {
   if (lower === "flights" || lower === "flight") return true;
   if (["1", "2", "3"].includes(lower)) return true;
 
-  if (context?.conversation?.intent === "FLIGHT_SEARCH") return true;
+  if (
+    context?.conversation?.intent === "FLIGHT_SEARCH" ||
+    context?.conversation?.intent === "FLIGHT_MENU"
+  ) {
+    return true;
+  }
 
   return false;
 }
