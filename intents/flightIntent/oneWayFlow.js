@@ -13,6 +13,17 @@ const { recordSignal } = require("../../utils/abuseSignals");
    Helpers (unchanged)
 =============================== */
 
+function isValidISODate(dateStr) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return false;
+
+  const d = new Date(dateStr);
+
+  if (isNaN(d.getTime())) return false;
+
+  // Ensure no overflow (e.g. 2025-02-35 → Mar 7)
+  return d.toISOString().slice(0, 10) === dateStr;
+}
+
 function formatTime(iso) {
   if (!iso) return "—";
   const d = new Date(iso);
@@ -166,23 +177,38 @@ async function handle(context) {
    /* ===============================
       DATE-ONLY INPUT
    =============================== */
-   
+
    if (
      conversation?.state === "COLLECTING" &&
      conversation.flightQuery?.origin &&
      conversation.flightQuery?.destination &&
      !conversation.flightQuery.date
    ) {
-     const match = rawText.match(/^\d{4}-\d{2}-\d{2}$/);
-     if (!match) {
-       await sendWhatsAppMessage(from, "📅 Please provide date as YYYY-MM-DD.");
-       return;
+     const dateStr = rawText.trim();
+   
+     if (!isValidISODate(dateStr)) {
+       await sendWhatsAppMessage(
+         from,
+         "📅 Please provide a valid date in YYYY-MM-DD format.\nExample: 2025-12-25"
+       );
+       return true;
      }
-
+   
      const updated = {
        ...conversation.flightQuery,
-       date: match[0]
+       date: dateStr
      };
+   
+     setConversation(from, {
+       intent: "FLIGHT_SEARCH",
+       flow: "ONE_WAY",
+       state: "READY_TO_CONFIRM",
+       flightQuery: updated
+     });
+   
+     await sendWhatsAppMessage(from, buildConfirmationMessage(updated));
+     return true;
+   }
 
      setConversation(from, {
        intent: "FLIGHT_SEARCH",
@@ -217,20 +243,39 @@ async function handle(context) {
    }
 
    if (conversation?.state === "AWAITING_NEW_DATE") {
-     const match = rawText.match(/^\d{4}-\d{2}-\d{2}$/);
+     const dateStr = rawText.trim();
    
-     if (!match) {
+     if (!isValidISODate(dateStr)) {
        await sendWhatsAppMessage(
          from,
-         "📅 Please provide the date in YYYY-MM-DD format."
+         "📅 Please provide a valid date in YYYY-MM-DD format.\nExample: 2025-12-25"
        );
        return true;
      }
    
      const updatedQuery = {
        ...conversation.flightQuery,
-       date: match[0]
+       date: dateStr
      };
+   
+     log("DATE_UPDATED", {
+       user: from,
+       newDate: dateStr
+     });
+   
+     setConversation(from, {
+       intent: "FLIGHT_SEARCH",
+       flow: "ONE_WAY",
+       state: "AWAITING_RECONFIRMATION",
+       flightQuery: updatedQuery
+     });
+   
+     await sendWhatsAppMessage(
+       from,
+       buildConfirmationMessage(updatedQuery)
+     );
+     return true;
+   }
    
      log("DATE_UPDATED", {
        user: from,
@@ -550,12 +595,32 @@ async function handle(context) {
          user: from
        });
    
-       const { flights, carriers } = await searchFlights({
-         originLocationCode: q.origin.cityCode,
-         destinationLocationCode: q.destination.cityCode,
-         date: q.date
-       });
-   
+      let flights, carriers;
+      
+      try {
+        const result = await searchFlights({
+          originLocationCode: q.origin.cityCode,
+          destinationLocationCode: q.destination.cityCode,
+          date: q.date,
+          travelClass: q.cabinClass
+        });
+      
+        flights = result.flights;
+        carriers = result.carriers;
+      } catch (err) {
+        log("FLIGHT_SEARCH_ERROR", {
+          user: from,
+          date: q.date,
+          error: err?.message
+        });
+      
+        await sendWhatsAppMessage(
+          from,
+          "⚠️ I couldn’t search flights for that date. Please try a different date."
+        );
+        return true;
+      }
+
        if (!Array.isArray(flights) || flights.length === 0) {
          await sendWhatsAppMessage(
            from,
@@ -698,12 +763,31 @@ async function handle(context) {
           user: from 
          });
 
-        const { flights, carriers } = await searchFlights({
-          originLocationCode: q.origin.cityCode,
-          destinationLocationCode: q.destination.cityCode,
-          date: q.date,
-          travelClass: q.cabinClass // 🔥 critical
-        });
+         let flights, carriers;
+
+         try {
+           const result = await searchFlights({
+             originLocationCode: q.origin.cityCode,
+             destinationLocationCode: q.destination.cityCode,
+             date: q.date,
+             travelClass: q.cabinClass
+           });
+         
+           flights = result.flights;
+           carriers = result.carriers;
+         } catch (err) {
+           log("FLIGHT_SEARCH_ERROR", {
+             user: from,
+             date: q.date,
+             error: err?.message
+           });
+         
+           await sendWhatsAppMessage(
+             from,
+             "⚠️ I couldn’t search flights for that date. Please try a different date."
+           );
+           return true;
+         }
 
         if (!Array.isArray(flights) || flights.length === 0) {
           await sendWhatsAppMessage(
