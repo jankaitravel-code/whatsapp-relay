@@ -387,10 +387,10 @@ async function handle(context) {
 
    if (conversation?.state === "AWAITING_CABIN_CLASS") {
      const map = {
-       "1" : "ECONOMY",
-       "2" : "PREMIUM_ECONOMY",
-       "3" : "BUSINESS",
-       "4" : "FIRST"
+       "1 for" : "ECONOMY",
+       "2 for" : "PREMIUM_ECONOMY",
+       "3 for" : "BUSINESS",
+       "4 for" : "FIRST"
      };
    
      const selected = map[lower];
