@@ -89,15 +89,25 @@ async function handle(context) {
     );
     return;
   }
-  
+
   /* ===============================
      FALLBACK
   =============================== */
+  
+  // 🔒 If a search flow is active, do NOT show menu fallback
+  if (conversation?.intent === "FLIGHT_SEARCH") {
+    return;
+  }
+  
   await context.sendWhatsAppMessage(
     context.from,
-    "Please choose:\n1️⃣ for One-way\n2️⃣ for Round-trip\n3️⃣ for Multi-city"
+    "✈️ Flights menu\n\n" +
+      "Reply:\n" +
+      "1️⃣ for One-way\n" +
+      "2️⃣ for Round-trip\n" +
+      "3️⃣ for Multi-city"
   );
-}
+  }
 
 module.exports = {
   canHandle,
