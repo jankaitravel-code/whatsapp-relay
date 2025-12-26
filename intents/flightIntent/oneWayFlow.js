@@ -595,7 +595,7 @@ async function handle(context) {
    
        await sendWhatsAppMessage(
          from,
-         `✈️ Flight options with base price (final price may change)\n\n${formatted.slice(0, PAGE_SIZE).join("\n\n")}\n\n` +
+         `✈️ Flight options with base fare (final price may change)\n\n${formatted.slice(0, PAGE_SIZE).join("\n\n")}\n\n` +
          `Reply:\n• show more\n• change date / origin / destination\n• cancel`
        );
    
@@ -744,7 +744,7 @@ async function handle(context) {
 
         await sendWhatsAppMessage(
           from,
-          `✈️ Flight options with base price (final price may change)\n\n${formatted.slice(0, PAGE_SIZE).join("\n\n")}\n\n` +
+          `✈️ Flight options with base fare (final price may change)\n\n${formatted.slice(0, PAGE_SIZE).join("\n\n")}\n\n` +
           `Reply:\n• show more\n• change date / origin / destination`
         );
         return true;
