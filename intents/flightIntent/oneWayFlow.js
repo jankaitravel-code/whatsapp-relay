@@ -265,25 +265,6 @@ async function handle(context) {
      );
      return true;
    }
-   
-     log("DATE_UPDATED", {
-       user: from,
-       newDate: match[0]
-     });
-   
-     setConversation(from, {
-       intent: "FLIGHT_SEARCH",
-       flow: "ONE_WAY",
-       state: "AWAITING_RECONFIRMATION",
-       flightQuery: updatedQuery
-     });
-   
-     await sendWhatsAppMessage(
-       from,
-       buildConfirmationMessage(updatedQuery)
-     );
-     return true;
-   }
 
    if (
      conversation?.state === "RESULTS" &&
