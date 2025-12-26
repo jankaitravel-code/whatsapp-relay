@@ -210,17 +210,6 @@ async function handle(context) {
      return true;
    }
 
-     setConversation(from, {
-       intent: "FLIGHT_SEARCH",
-       flow: "ONE_WAY", 
-       state: "READY_TO_CONFIRM",
-       flightQuery: updated
-     });
-
-     await sendWhatsAppMessage(from, buildConfirmationMessage(updated));
-     return true;
-   }
-
    if (
      conversation?.state === "RESULTS" &&
      lower === "change date"
@@ -840,19 +829,6 @@ async function handle(context) {
       );
       return true;
     }
-
-    if (
-      (conversation?.state === "RESULTS" ||
-      conversation?.state === "AWAITING_RECONFIRMATION") &&
-      lower === "change class"
-    ) {
-      await sendWhatsAppMessage(
-        from,
-        "✋ Cabin class can’t be changed after search. Please restart the search to choose a different class."
-      );
-      return true;
-    }
-
 
    /* ===============================
    FLOW CATCH-ALL (LAST!)
