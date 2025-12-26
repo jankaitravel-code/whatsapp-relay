@@ -46,7 +46,7 @@ function buildConfirmationMessage(q) {
    `Class: ${q.cabinClass.replace("_", " ")}\n\n` +
     `Reply:\n` +
     `• Yes — to search\n` +
-    `• Change date / origin / destination — to modify\n` +
+    `• Change date / origin / destination / class — to modify\n` +
     `• Cancel — to stop`
   );
 }
@@ -385,6 +385,48 @@ async function handle(context) {
      return true;
    }
 
+   if (conversation?.state === "AWAITING_CABIN_CLASS") {
+     const map = {
+       "1": "ECONOMY",
+       "2": "PREMIUM_ECONOMY",
+       "3": "BUSINESS",
+       "4": "FIRST"
+     };
+   
+     const selected = map[lower];
+   
+     if (!selected) {
+       await sendWhatsAppMessage(
+         from,
+         "❌ Please choose a valid option:\n1. Economy\n2. Premium Economy\n3. Business\n4. First"
+       );
+       return true;
+     }
+   
+     const updatedQuery = {
+       ...conversation.flightQuery,
+       cabinClass: selected
+     };
+   
+     log("CABIN_CLASS_UPDATED", {
+       user: from,
+       cabinClass: selected
+     });
+   
+     setConversation(from, {
+       intent: "FLIGHT_SEARCH",
+       flow: "ONE_WAY",
+       state: "AWAITING_RECONFIRMATION",
+       flightQuery: updatedQuery
+     });
+   
+     await sendWhatsAppMessage(
+       from,
+       buildConfirmationMessage(updatedQuery)
+     );
+     return true;
+   }
+
    /* ===============================
    RESULTS → SHOW MORE
    =============================== */
@@ -465,7 +507,7 @@ async function handle(context) {
          "📍 Sure — where will you be departing from?"
        );
        return true;
-   }
+      }
 
      if (lower === "change destination") {
        log("CHANGE_DESTINATION_FROM_RECONFIRMATION", { user: from });
@@ -480,7 +522,23 @@ async function handle(context) {
          "📍 Sure — where do you want to fly to?"
        );
        return true;
-   }
+      }
+
+      if (lower === "change class") {
+        log("CHANGE_CLASS_FROM_RECONFIRMATION", { user: from });
+      
+        setConversation(from, {
+          ...conversation,
+          state: "AWAITING_CABIN_CLASS"
+        });
+      
+        await sendWhatsAppMessage(
+          from,
+          "Choose cabin class:\n1. Economy\n2. Premium Economy\n3. Business\n4. First"
+        );
+        return true;
+      }
+
 
      if (lower === "yes") {
        const q = conversation.flightQuery;
@@ -552,7 +610,7 @@ async function handle(context) {
    
      await sendWhatsAppMessage(
        from,
-       "Please reply with *Yes*, *Change date / origin / destination*, or *Cancel*."
+       "Please reply with *Yes*, *Change date / origin / destination / CLASS*, or *Cancel*."
      );
      return true;
    }
@@ -602,6 +660,21 @@ async function handle(context) {
         await sendWhatsAppMessage(
           from,
           "📍 Sure — where do you want to fly to?"
+        );
+        return true;
+      }
+
+      if (lower === "change class") {
+        log("CHANGE_CLASS_AT_CONFIRMATION", { user: from });
+      
+        setConversation(from, {
+          ...conversation,
+          state: "AWAITING_CABIN_CLASS"
+        });
+      
+        await sendWhatsAppMessage(
+          from,
+          "Choose cabin class:\n1. Economy\n2. Premium Economy\n3. Business\n4. First"
         );
         return true;
       }
@@ -702,7 +775,7 @@ async function handle(context) {
    =============================== */
    await sendWhatsAppMessage(
       from,
-      "I didn’t understand that. You can reply:\n• show more\n• change date / origin / destination\n• cancel"
+      "I didn’t understand that. You can reply:\n• show more\n• change date / origin / destination / class\n• cancel"
     );
     return true;
   }
