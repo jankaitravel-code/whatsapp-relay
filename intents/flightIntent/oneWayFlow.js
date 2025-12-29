@@ -491,6 +491,55 @@ async function handle(context) {
    
       return true;
     }
+   
+   /* ===============================
+      RESULTS → SELECT FLIGHT
+   =============================== */
+   
+   if (
+     conversation?.state === "RESULTS" &&
+     /^\d+$/.test(lower)
+   ) {
+     const index = Number(lower) - 1;
+     const results = conversation.results;
+   
+     if (
+       !results ||
+       !Array.isArray(results.items) ||
+       !results.items[index]
+     ) {
+       await sendWhatsAppMessage(
+         from,
+         "❌ Please select a valid flight number from the list."
+       );
+       return true;
+     }
+   
+     const selectedFlight = results.rawFlights[index];
+   
+     // 🔐 HANDOFF TO BOOKING FLOW
+     setConversation(from, {
+       intent: "FLIGHT_BOOKING",
+       flow: "ONE_WAY",
+       state: "BOOKING_PREFERENCES",
+       booking: {
+         selectedFlight,
+         flightQuery: conversation.lockedFlightQuery,
+         passengersCount: 1, // TODO: replace when pax capture is added
+         searchContext: {
+           carriers: results.carriers,
+           date: conversation.lockedFlightQuery.date
+         }
+       }
+     });
+   
+     await sendWhatsAppMessage(
+       from,
+       "🧾 Great choice!\n\nLet’s customise your booking preferences."
+     );
+   
+     return true;
+   }
 
    if (conversation?.state === "AWAITING_RECONFIRMATION") {
 
@@ -622,9 +671,11 @@ async function handle(context) {
          state: "RESULTS",
          lockedFlightQuery: q,
          results: {
-           items: formatted,
+           displayItems: formatted,   // strings for WhatsApp
+           rawFlights: flights,       // 🔥 full Amadeus flight objects
            cursor: PAGE_SIZE,
            pageSize: PAGE_SIZE
+           carriers
          }
        });
    
