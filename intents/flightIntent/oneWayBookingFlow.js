@@ -43,6 +43,36 @@ async function handle(context) {
   }
 
   const lower = (rawText || text || "").toLowerCase();
+
+  if (conversation.state === "BOOKING_PREFERENCES") {
+    const included = getIncludedBaggage(
+      conversation.booking.selectedFlight
+    );
+  
+    setConversation(from, {
+      ...conversation,
+      state: "BOOKING_BAGGAGE",
+      booking: {
+        ...conversation.booking,
+        includedBaggage: included,
+        preferences: getEmptyPreferences()
+      }
+    });
+  
+    await sendWhatsAppMessage(
+      from,
+      "🧳 Let’s customise your booking\n\n" +
+      `Your flight includes:\n` +
+      `• Cabin baggage: ${included.cabinKg} kg\n` +
+      `• Check-in baggage: ${included.checkinKg} kg\n\n` +
+      "If you need extra baggage allawance, reply with the total additional weight.\n" +
+      "Reply 0 if you don’t need extra baggage.\n\n" +
+      "Example: 0, 5, 10 or 15"
+    );
+  
+    return true;
+  }
+
   
   if (conversation.state === "BOOKING_BAGGAGE") {
     const kg = Number(rawText);
@@ -110,7 +140,7 @@ async function handle(context) {
       ...conversation.booking,
       preferences: {
         ...conversation.booking.preferences,
-        meal: selectedMeal
+        meals: selectedMeal
       }
     }
   });
@@ -118,13 +148,25 @@ async function handle(context) {
   await sendWhatsAppMessage(
     from,
     "🍽️ Meal preference saved.\n\n" +
-    "Next, let's look at travel insurance."
+    "🛡️ Would you like to add travel insurance?\n\n" +
+    "1️⃣ Yes, add insurance\n" +
+    "2️⃣ No, continue without insurance"
   );
 
   return true;
   }
 
   if (conversation.state === "BOOKING_INSURANCE") {
+    if (lower === "ok") {
+      await sendWhatsAppMessage(
+        from,
+        "🛡️ Would you like to add travel insurance?\n\n" +
+        "1️⃣ Yes, add insurance\n" +
+        "2️⃣ No, continue without insurance"
+      );
+      return true;
+    }
+    
     if (lower !== "1" && lower !== "2") {
       await sendWhatsAppMessage(
         from,
@@ -159,10 +201,21 @@ async function handle(context) {
     return true;
   }
 
+  if (conversation.state === "BOOKING_FLEXIBILITY") {
+    await sendWhatsAppMessage(
+      from,
+      "🕒 Flexibility options will be shown here.\n" +
+      "(Stub — implementation coming next)"
+    );
   
-
+    setConversation(from, {
+      ...conversation,
+      state: "BOOKING_ANALYTICS"
+    });
+  
+    return true;
+  }
  
-
   /* ===============================
      GLOBAL CANCEL
   =============================== */
@@ -172,46 +225,7 @@ async function handle(context) {
     await sendWhatsAppMessage(from, "❌ Booking cancelled.");
     return true;
   }
-
-  /* ===============================
-     BOOKING_PREFERENCES
-  =============================== */
-
-  if (conversation.state === "BOOKING_PREFERENCES") {
-    const included = getIncludedBaggage(
-      conversation.booking.selectedFlight
-    );
   
-    setConversation(from, {
-      ...conversation,
-      state: "BOOKING_BAGGAGE",
-      booking: {
-        ...conversation.booking,
-        preferences: {
-          baggageKg: 0,
-          seats: null,
-          meal: null,
-          insurance: false,
-          flexibility: null
-        },
-        includedBaggage: included
-      }
-    });
-  
-    await sendWhatsAppMessage(
-      from,
-      "🧳 Let’s customise your booking\n\n" +
-      `Your flight includes:\n` +
-      `• Cabin baggage: ${included.cabinKg} kg\n` +
-      `• Check-in baggage: ${included.checkinKg} kg\n\n` +
-      "If you need extra baggage, reply with the total additional weight.\n" +
-      "Reply **0** if you don’t need extra baggage.\n\n" +
-      "Example: 0, 5, 10 or 15"
-    );
-  
-    return true;
-  }
-
   /* ===============================
      BOOKING_ANALYTICS
   =============================== */
