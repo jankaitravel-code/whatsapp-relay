@@ -10,8 +10,8 @@ const { recordSignal } = require("../../utils/abuseSignals");
 function getEmptyPreferences() {
   return {
     baggageKg: 0,
+    Meas: null,
     seats: null,
-    meals: null,
     insurance: false,
     flexibility: null
   };
@@ -122,61 +122,13 @@ async function handle(context) {
     await sendWhatsAppMessage(
       from,
       `✅ Extra baggage set to ${kg} kg.\n\n` +
-      "Please select your meal preference:\n\n" +
-      "1️⃣ No meals\n" +
-      "2️⃣ Vegetarian\n" +
-      "3️⃣ Non-Vegetarian\n" +
-      "4️⃣ Vegan"
-    );
-    
-    return true;
-  }
-
-  if (conversation.state === "BOOKING_MEALS") {
-  const mealMap = {
-    "1": "NO_MEALS",
-    "2": "VEGETARIAN",
-    "3": "NON_VEGETARIAN",
-    "4": "VEGAN"
-  };
-
-  const selectedMeal = mealMap[lower];
-
-  if (!selectedMeal) {
-    await sendWhatsAppMessage(
-      from,
-      "❌ Please select a valid meal option:\n" +
-      "1️⃣ No meals\n" +
-      "2️⃣ Vegetarian\n" +
-      "3️⃣ Non-Vegetarian\n" +
-      "4️⃣ Vegan"
-    );
-    return true;
-  }
-
-  setConversation(from, {
-    ...conversation,
-    state: "BOOKING_INSURANCE",
-    booking: {
-      ...conversation.booking,
-      preferences: {
-        ...conversation.booking.preferences,
-        meals: selectedMeal
-      }
+      "🛡️ Would you like to add travel insurance?\n\n" +
+      "1️⃣ Yes, add insurance\n" +
+      "2️⃣ No, continue without insurance"
+      );
+      return true;
     }
-  });
-
-  await sendWhatsAppMessage(
-    from,
-    "🍽️ Meal preference saved.\n\n" +
-    "🛡️ Would you like to add travel insurance?\n\n" +
-    "1️⃣ Yes, add insurance\n" +
-    "2️⃣ No, continue without insurance"
-  );
-
-  return true;
-  }
-
+    
   if (conversation.state === "BOOKING_INSURANCE") {
     if (lower !== "1" && lower !== "2") {
       await sendWhatsAppMessage(
@@ -263,58 +215,249 @@ async function handle(context) {
   /* ===============================
      BOOKING_DISCOUNT
   =============================== */
-  
+
   if (conversation.state === "BOOKING_DISCOUNT") {
     const input = rawText.trim();
   
-    // User explicitly says no discount
-    if (
-      input.toLowerCase() === "none" ||
-      input.toLowerCase() === "no" ||
-      input.toLowerCase() === "skip"
-    ) {
-      setConversation(from, {
-        ...conversation,
-        state: "BOOKING_PRICE_COMPUTE",
-        booking: {
-          ...conversation.booking,
-          preferences: {
-            ...conversation.booking.preferences,
-            discountCode: null
-          }
-        }
-      });
-  
-      await sendWhatsAppMessage(
-        from,
-        "⏭️ No discount applied.\n\nCalculating final price…"
-      );
-      return true;
-    }
-  
-    // Accept whatever user typed as coupon code
     setConversation(from, {
       ...conversation,
-      state: "BOOKING_PRICE_COMPUTE",
+      state: "BOOKING_TRAVELLERS_INIT",
       booking: {
         ...conversation.booking,
-        preferences: {
-          ...conversation.booking.preferences,
-          discountCode: input
-        }
+        discountCode: input === "NONE" ? null : input
       }
     });
   
     await sendWhatsAppMessage(
       from,
-      `🏷️ Discount code *${input}* noted.\n\n` +
-      "Calculating final price…"
+      input === "NONE"
+        ? "🏷️ No discount code applied.\n\nLet’s add traveller details."
+        : `🏷️ Discount code *${input}* noted.\n\nLet’s add traveller details.`
     );
   
     return true;
   }
 
- 
+    /* ===============================
+       TRAVELLER INFORMATION
+    =============================== */
+
+
+  if (conversation.state === "BOOKING_TRAVELLERS_INIT") {
+    const total = conversation.booking.passengersCount;
+  
+    setConversation(from, {
+      ...conversation,
+      state: "BOOKING_TRAVELLER_NAME",
+      booking: {
+        ...conversation.booking,
+        travellers: [],
+        currentTravellerIndex: 0
+      }
+    });
+  
+    await sendWhatsAppMessage(
+      from,
+      `🧑 Traveller details\n\n` +
+      `Traveller 1 of ${total}\n` +
+      `Please enter first name and last name.\n\n` +
+      `Example: Rahul Sharma`
+    );
+  
+    return true;
+  }
+  
+  //NAME INPUT
+
+  if (conversation.state === "BOOKING_TRAVELLER_NAME") {
+    const parts = rawText.trim().split(" ");
+  
+    if (parts.length < 2) {
+      await sendWhatsAppMessage(
+        from,
+        "❌ Please enter both first and last name.\nExample: Rahul Sharma"
+      );
+      return true;
+    }
+  
+    const traveller = {
+      index: conversation.booking.currentTravellerIndex + 1,
+      firstName: parts[0],
+      lastName: parts.slice(1).join(" "),
+      ageCategory: "ADULT",
+      specialFare: "NONE",
+      seat: null,
+      meal: null
+    };
+  
+    setConversation(from, {
+      ...conversation,
+      state: "BOOKING_TRAVELLER_SPECIAL_FARE",
+      booking: {
+        ...conversation.booking,
+        travellers: [...conversation.booking.travellers, traveller]
+      }
+    });
+  
+    await sendWhatsAppMessage(
+      from,
+      `🎫 Special fares for ${traveller.firstName} ${traveller.lastName}\n\n` +
+      "1️⃣ None\n" +
+      "2️⃣ Senior Citizen\n" +
+      "3️⃣ Student"
+    );
+  
+    return true;
+  }
+
+  //SPECIAL FARE
+
+  if (conversation.state === "BOOKING_TRAVELLER_SPECIAL_FARE") {
+    const map = {
+      "1": "NONE",
+      "2": "SENIOR",
+      "3": "STUDENT"
+    };
+  
+    if (!map[lower]) {
+      await sendWhatsAppMessage(
+        from,
+        "❌ Please choose:\n1 None\n2 Senior Citizen\n3 Student"
+      );
+      return true;
+    }
+  
+    const travellers = [...conversation.booking.travellers];
+    travellers[travellers.length - 1].specialFare = map[lower];
+  
+    setConversation(from, {
+      ...conversation,
+      state: "BOOKING_TRAVELLER_SEAT",
+      booking: {
+        ...conversation.booking,
+        travellers
+      }
+    });
+  
+    await sendWhatsAppMessage(
+      from,
+      "💺 Seat selection\n\n" +
+      "1️⃣ Any free seat\n" +
+      "2️⃣ Choose a paid seat"
+    );
+  
+    return true;
+  }
+
+  //SEAT SELECTION
+
+  if (conversation.state === "BOOKING_TRAVELLER_SEAT") {
+    if (lower !== "1" && lower !== "2") {
+      await sendWhatsAppMessage(
+        from,
+        "❌ Please choose:\n1 Any free seat\n2 Paid seat"
+      );
+      return true;
+    }
+  
+    const travellers = [...conversation.booking.travellers];
+    travellers[travellers.length - 1].seat =
+      lower === "1" ? "FREE_AUTO" : "PAID_MANUAL";
+  
+    setConversation(from, {
+      ...conversation,
+      state: "BOOKING_TRAVELLER_MEAL",
+      booking: {
+        ...conversation.booking,
+        travellers
+      }
+    });
+  
+    await sendWhatsAppMessage(
+      from,
+      "🍽️ Meal preference\n\n" +
+      "1️⃣ No meal\n" +
+      "2️⃣ Vegetarian\n" +
+      "3️⃣ Non-Vegetarian\n" +
+      "4️⃣ Vegan"
+    );
+  
+    return true;
+  }
+
+  //MEAL SELECTION
+
+  if (conversation.state === "BOOKING_TRAVELLER_MEAL") {
+    const map = {
+      "1": "NO_MEAL",
+      "2": "VEG",
+      "3": "NON_VEG",
+      "4": "VEGAN"
+    };
+  
+    if (!map[lower]) {
+      await sendWhatsAppMessage(
+        from,
+        "❌ Please select a valid meal option."
+      );
+      return true;
+    }
+  
+    const travellers = [...conversation.booking.travellers];
+    travellers[travellers.length - 1].meal = map[lower];
+  
+    setConversation(from, {
+      ...conversation,
+      state: "BOOKING_TRAVELLER_NEXT",
+      booking: {
+        ...conversation.booking,
+        travellers
+      }
+    });
+  
+    return true;
+  }
+
+
+  //NEXT TRAVELLER LOOP
+
+  if (conversation.state === "BOOKING_TRAVELLER_NEXT") {
+    const next = conversation.booking.currentTravellerIndex + 1;
+    const total = conversation.booking.passengersCount;
+  
+    if (next >= total) {
+      setConversation(from, {
+        ...conversation,
+        state: "BOOKING_PRICE_COMPUTE"
+      });
+  
+      await sendWhatsAppMessage(
+        from,
+        "✅ Traveller details completed.\n\nCalculating final price…"
+      );
+  
+      return true;
+    }
+  
+    setConversation(from, {
+      ...conversation,
+      state: "BOOKING_TRAVELLER_NAME",
+      booking: {
+        ...conversation.booking,
+        currentTravellerIndex: next
+      }
+    });
+  
+    await sendWhatsAppMessage(
+      from,
+      `🧑 Traveller ${next + 1} of ${total}\n\n` +
+      "Please enter first name and last name."
+    );
+  
+    return true;
+  }
+
+  
   /* ===============================
      GLOBAL CANCEL
   =============================== */
