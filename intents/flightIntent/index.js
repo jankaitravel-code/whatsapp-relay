@@ -1,6 +1,7 @@
 const oneWayFlow = require("./oneWayFlow");
 const roundTripFlow = require("./roundTripFlow");
 const multiCityFlow = require("./multiCityFlow");
+const oneWayBookingFlow = require("./oneWayBookingFlow");
 
 function canHandle(text, context) {
   if (!text) return false;
@@ -12,7 +13,8 @@ function canHandle(text, context) {
 
   if (
     context?.conversation?.intent === "FLIGHT_SEARCH" ||
-    context?.conversation?.intent === "FLIGHT_MENU"
+    context?.conversation?.intent === "FLIGHT_MENU" ||
+    context?.conversation?.intent === "FLIGHT_BOOKING"
   ) {
     return true;
   }
@@ -23,6 +25,14 @@ function canHandle(text, context) {
 async function handle(context) {
   const { text, conversation } = context;
   const lower = text.toLowerCase();
+
+  /* ===============================
+   BOOKING FLOW (HIGHEST PRIORITY)
+  =============================== */
+  if (conversation?.intent === "FLIGHT_BOOKING") {
+    return oneWayBookingFlow.handle(context);
+  }
+
 
   /* ===============================
      CONTINUE ACTIVE FLOW
