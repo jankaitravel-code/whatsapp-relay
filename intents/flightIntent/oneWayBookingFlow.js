@@ -25,6 +25,27 @@ function getIncludedBaggage(selectedFlight) {
   };
 }
 
+function getFlexibilityOptions(selectedFlight) {
+  // 🔒 Stub pricing — replace with fare rules later
+  return [
+    {
+      code: "NONE",
+      label: "No flexibility",
+      price: 0
+    },
+    {
+      code: "DATE_CHANGE",
+      label: "Free date change (no change fee)",
+      price: 899
+    },
+    {
+      code: "FULL_FLEX",
+      label: "Free date change + cancellation",
+      price: 1499
+    }
+  ];
+}
+
 async function handle(context) {
   const {
     from,
@@ -157,16 +178,6 @@ async function handle(context) {
   }
 
   if (conversation.state === "BOOKING_INSURANCE") {
-    if (lower === "ok") {
-      await sendWhatsAppMessage(
-        from,
-        "🛡️ Would you like to add travel insurance?\n\n" +
-        "1️⃣ Yes, add insurance\n" +
-        "2️⃣ No, continue without insurance"
-      );
-      return true;
-    }
-    
     if (lower !== "1" && lower !== "2") {
       await sendWhatsAppMessage(
         from,
@@ -193,28 +204,116 @@ async function handle(context) {
   
     await sendWhatsAppMessage(
       from,
-      insuranceSelected
-        ? "🛡️ Travel insurance added.\n\nNext, let’s choose flexibility options."
-        : "⏭️ Skipping travel insurance.\n\nNext, let’s choose flexibility options."
+      (insuranceSelected
+        ? "🛡️ Travel insurance added.\n\n"
+        : "⏭️ Skipping travel insurance.\n\n") +
+      "Now choose your flexibility option:\n\n" +
+      "1️⃣ No flexibility (lowest price)\n" +
+      "2️⃣ Free date change (₹X)\n" +
+      "3️⃣ Free date + flight change (₹Y)\n\n" +
+      "Reply with 1, 2 or 3"
     );
   
     return true;
   }
 
   if (conversation.state === "BOOKING_FLEXIBILITY") {
-    await sendWhatsAppMessage(
-      from,
-      "🕒 Flexibility options will be shown here.\n" +
-      "(Stub — implementation coming next)"
-    );
+    const flexibilityMap = {
+      "1": { type: "NONE", label: "No flexibility" },
+      "2": { type: "DATE_CHANGE", label: "Free date change" },
+      "3": { type: "DATE_FLIGHT_CHANGE", label: "Free date & flight change" }
+    };
+  
+    const selectedFlex = flexibilityMap[lower];
+  
+    if (!selectedFlex) {
+      await sendWhatsAppMessage(
+        from,
+        "❌ Please choose a valid flexibility option:\n\n" +
+        "1️⃣ No flexibility (lowest price)\n" +
+        "2️⃣ Free date change\n" +
+        "3️⃣ Free date + flight change\n\n" +
+        "Reply with 1, 2 or 3"
+      );
+      return true;
+    }
   
     setConversation(from, {
       ...conversation,
-      state: "BOOKING_ANALYTICS"
+      state: "BOOKING_DISCOUNT",
+      booking: {
+        ...conversation.booking,
+        preferences: {
+          ...conversation.booking.preferences,
+          flexibility: selectedFlex
+        }
+      }
     });
+  
+    await sendWhatsAppMessage(
+      from,
+      `🔁 Flexibility selected: ${selectedFlex.label}.\n\n` +
+      "If you have a discount or coupon code, please enter it now.\n" +
+      "Reply **NONE** if you don’t have one."
+    );
   
     return true;
   }
+
+  /* ===============================
+     BOOKING_DISCOUNT
+  =============================== */
+  
+  if (conversation.state === "BOOKING_DISCOUNT") {
+    const input = rawText.trim();
+  
+    // User explicitly says no discount
+    if (
+      input.toLowerCase() === "none" ||
+      input.toLowerCase() === "no" ||
+      input.toLowerCase() === "skip"
+    ) {
+      setConversation(from, {
+        ...conversation,
+        state: "BOOKING_PRICE_COMPUTE",
+        booking: {
+          ...conversation.booking,
+          preferences: {
+            ...conversation.booking.preferences,
+            discountCode: null
+          }
+        }
+      });
+  
+      await sendWhatsAppMessage(
+        from,
+        "⏭️ No discount applied.\n\nCalculating final price…"
+      );
+      return true;
+    }
+  
+    // Accept whatever user typed as coupon code
+    setConversation(from, {
+      ...conversation,
+      state: "BOOKING_PRICE_COMPUTE",
+      booking: {
+        ...conversation.booking,
+        preferences: {
+          ...conversation.booking.preferences,
+          discountCode: input
+        }
+      }
+    });
+  
+    await sendWhatsAppMessage(
+      from,
+      `🏷️ Discount code *${input}* noted.\n\n` +
+      "Calculating final price…"
+    );
+  
+    return true;
+  }
+
  
   /* ===============================
      GLOBAL CANCEL
