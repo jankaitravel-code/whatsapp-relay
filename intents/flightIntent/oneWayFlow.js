@@ -542,7 +542,7 @@ async function handle(context) {
    
      await sendWhatsAppMessage(
        from,
-       "🧾 Great choice!\n\nLet’s customise your booking preferences."
+       "🧾 Great choice!\n\nReply Ok to move ahead or cancle to restart the search"
      );
    
      return true;
