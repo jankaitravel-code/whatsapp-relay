@@ -451,7 +451,11 @@ async function handle(context) {
     ) {
       const results = conversation.results;
    
-      if (!results || !Array.isArray(results.items)) {
+      if (
+        !results ||
+        !Array.isArray(results.displayItems) ||
+        !Array.isArray(results.rawFlights)
+      ) {
         await sendWhatsAppMessage(
           from,
           "⚠️ No more results available."
@@ -459,9 +463,9 @@ async function handle(context) {
         return true;
       }
    
-      const { items, cursor, pageSize } = results;
-   
-      if (cursor >= items.length) {
+      const { displayItems, cursor, pageSize } = results;
+
+      if (cursor >= displayItems.length) {
         await sendWhatsAppMessage(
           from,
           "⚠️ That's all the results I have. You can reply cancel or reset to search again."
@@ -469,7 +473,7 @@ async function handle(context) {
         return true;
       }
    
-      const nextPage = items
+      const nextPage = displayItems
         .slice(cursor, cursor + pageSize)
         .join("\n\n");
    
@@ -479,8 +483,11 @@ async function handle(context) {
         state: "RESULTS",
         lockedFlightQuery: conversation.lockedFlightQuery,
         results: {
-          ...results,
-          cursor: cursor + pageSize
+          displayItems: results.displayItems,
+          rawFlights: results.rawFlights,
+          carriers: results.carriers,
+          pageSize: results.pageSize,
+          cursor: results.cursor + results.pageSize
         }
       });
    
@@ -495,18 +502,18 @@ async function handle(context) {
    /* ===============================
       RESULTS → SELECT FLIGHT
    =============================== */
-   
+
    if (
      conversation?.state === "RESULTS" &&
      /^\d+$/.test(lower)
    ) {
      const index = Number(lower) - 1;
-     const results = conversation.results;
+     const results = conversation.results || {};
    
      if (
        !results ||
-       !Array.isArray(results.items) ||
-       !results.items[index]
+       !Array.isArray(results.rawFlights) ||
+       !results.rawFlights[index]
      ) {
        await sendWhatsAppMessage(
          from,
@@ -517,15 +524,15 @@ async function handle(context) {
    
      const selectedFlight = results.rawFlights[index];
    
-     // 🔐 HANDOFF TO BOOKING FLOW
+     // 🔐 HANDOFF TO BOOKING FLOW (STRICT)
      setConversation(from, {
        intent: "FLIGHT_BOOKING",
        flow: "ONE_WAY",
        state: "BOOKING_PREFERENCES",
        booking: {
-         selectedFlight,
+         selectedFlight,                // ✅ full Amadeus flight object
          flightQuery: conversation.lockedFlightQuery,
-         passengersCount: 1, // TODO: replace when pax capture is added
+         passengersCount: 1,            // placeholder (future pax capture)
          searchContext: {
            carriers: results.carriers,
            date: conversation.lockedFlightQuery.date
@@ -672,10 +679,10 @@ async function handle(context) {
          lockedFlightQuery: q,
          results: {
            displayItems: formatted,   // strings for WhatsApp
-           rawFlights: flights,       // 🔥 full Amadeus flight objects
+           rawFlights: flights,
+           carriers,
            cursor: PAGE_SIZE,
-           pageSize: PAGE_SIZE,
-           carriers
+           pageSize: PAGE_SIZE
          }
        });
    
@@ -841,7 +848,9 @@ async function handle(context) {
           state: "RESULTS",
           lockedFlightQuery: q,
           results: {
-            items: formatted,
+            displayItems: formatted,   // strings for WhatsApp
+            rawFlights: flights,
+            carriers,
             cursor: PAGE_SIZE,
             pageSize: PAGE_SIZE
           }
