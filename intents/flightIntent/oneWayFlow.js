@@ -532,7 +532,7 @@ async function handle(context) {
        booking: {
          selectedFlight,                // ✅ full Amadeus flight object
          flightQuery: conversation.lockedFlightQuery,
-         passengersCount: 1,            // placeholder (future pax capture)
+         passengersCount: conversation.lockedFlightQuery.passengers || 1,            // placeholder (future pax capture)
          searchContext: {
            carriers: results.carriers,
            date: conversation.lockedFlightQuery.date
