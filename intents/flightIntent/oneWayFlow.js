@@ -674,7 +674,7 @@ async function handle(context) {
            displayItems: formatted,   // strings for WhatsApp
            rawFlights: flights,       // 🔥 full Amadeus flight objects
            cursor: PAGE_SIZE,
-           pageSize: PAGE_SIZE
+           pageSize: PAGE_SIZE,
            carriers
          }
        });
