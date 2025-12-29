@@ -532,7 +532,7 @@ async function handle(context) {
        booking: {
          selectedFlight,                // ✅ full Amadeus flight object
          flightQuery: conversation.lockedFlightQuery,
-         passengersCount: conversation.lockedFlightQuery.passengers || 1,            // placeholder (future pax capture)
+         passengersCount: conversation.lockedFlightQuery.passengers || 2,            // placeholder (future pax capture)
          searchContext: {
            carriers: results.carriers,
            date: conversation.lockedFlightQuery.date
@@ -542,7 +542,7 @@ async function handle(context) {
    
      await sendWhatsAppMessage(
        from,
-       "🧾 Great choice!\n\nReply Ok to move ahead or cancle to restart the search"
+       "🧾 Great choice!\n\n Reply ok to move ahead or cancel to restart the search"
      );
    
      return true;
