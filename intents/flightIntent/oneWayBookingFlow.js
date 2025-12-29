@@ -109,7 +109,7 @@ async function handle(context) {
 
     setConversation(from, {
       ...conversation,
-      state: "BOOKING_MEALS",
+      state: "BOOKING_INSURANCE",
       booking: {
         ...conversation.booking,
         preferences: {
