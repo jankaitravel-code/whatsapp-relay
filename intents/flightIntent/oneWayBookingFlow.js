@@ -552,7 +552,7 @@ async function handle(context) {
         booking: {
           ...conversation.booking,
           currentTravellerIndex: nextIndex,
-          travellerLocked: true
+          travellerLocked: false
         }
       });
     
@@ -567,6 +567,7 @@ async function handle(context) {
     /* ===============================
      Booking_price_computation
     =============================== */
+
   if (conversation.state === "BOOKING_PRICE_COMPUTE") {
     const price = computeOneWayFinalPrice({
       flight: conversation.booking.selectedFlight,
@@ -576,13 +577,29 @@ async function handle(context) {
     });
     
     log("FINAL_PRICE_COMPUTED", price);
-
+  
+    setConversation(from, {
+      ...conversation,
+      state: "BOOKING_PRICE_REVIEW", // 👈 next logical step
+      booking: {
+        ...conversation.booking,
+        priceSnapshot: price
+      }
+    });
+  
     await sendWhatsAppMessage(
       from,
-      `💰 Price breakdown (test):\n\nTotal: ₹${price.grandTotal}`
+      `💰 Final Price\n\n` +
+      `Base Fare: ₹${price.baseFare}\n` +
+      `Extras: ₹${price.extrasTotal}\n` +
+      `Discount: -₹${price.discount}\n` +
+      `Taxes: ₹${price.taxes}\n\n` +
+      `*Total Payable: ₹${price.grandTotal}*\n\n` +
+      `Reply 1️⃣ to continue to payment\n2️⃣ to cancel`
     );
-  }
- 
+  
+    return true;
+  }   
   /* ===============================
      GLOBAL CANCEL
   =============================== */
