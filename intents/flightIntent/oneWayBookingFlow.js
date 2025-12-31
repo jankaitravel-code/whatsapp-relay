@@ -64,6 +64,9 @@ async function handle(context) {
   }
 
   const lower = (rawText || text || "").toLowerCase();
+  const travellers = conversation.booking?.travellers
+    ? [...conversation.booking.travellers]
+    : [];
 
   if (conversation.state === "BOOKING_PREFERENCES") {
     const included = getIncludedBaggage(
@@ -317,7 +320,6 @@ async function handle(context) {
       return true;
     }
   
-    const travellers = [...conversation.booking.travellers];
     const t = travellers[travellers.length - 1];
   
     t.age = age;
@@ -355,8 +357,7 @@ async function handle(context) {
       "3": "STUDENT"
     };
 
-    const travellers = [...conversation.booking.travellers];
-    const t = travellers[travellers.length - 1];
+    const t = travellers[travellers.length - 1].specialFare = map[lower];
     
     if (!map[lower]) {
       await sendWhatsAppMessage(from, "❌ Invalid choice.");
@@ -379,7 +380,6 @@ async function handle(context) {
       return true;
     }
   
-    const travellers = [...conversation.booking.travellers];
     travellers[travellers.length - 1].specialFare = map[lower];
   
     setConversation(from, {
@@ -412,7 +412,6 @@ async function handle(context) {
       return true;
     }
   
-    const travellers = [...conversation.booking.travellers];
     travellers[travellers.length - 1].seat =
       lower === "1" ? "FREE_AUTO" : "PAID_MANUAL";
   
@@ -454,8 +453,7 @@ async function handle(context) {
       );
       return true;
     }
-  
-    const travellers = [...conversation.booking.travellers];
+
     travellers[travellers.length - 1].meal = map[lower];
   
     setConversation(from, {
