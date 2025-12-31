@@ -245,8 +245,8 @@ async function handle(context) {
     await sendWhatsAppMessage(
       from,
       input === "NONE"
-        ? "🏷️ No discount code applied.\n\nReady add traveller details?"
-        : `🏷️ Discount code *${input}* noted.\n\nReady add traveller details?`
+        ? "🏷️ No discount code applied.\n\nReady to add traveller details?"
+        : `🏷️ Discount code *${input}* noted.\n\nReady to add traveller details?`
     );
   
     return true;
@@ -543,7 +543,7 @@ async function handle(context) {
     
         await sendWhatsAppMessage(
           from,
-          "✅ Traveller details completed.\n\nCalculating final price…"
+          "✅ Traveller details completed.\n\nPlease enter your frequent flyer number or type None to skip."
         );
         return true;
       }
@@ -660,7 +660,7 @@ async function handle(context) {
   
     await sendWhatsAppMessage(
       from,
-      "✅ Frequent flyer number saved.\n\nNow let’s add GST details (optional)."
+      "✅ Frequent flyer number saved.\n\n Enter your GST number or type None if you dont have one."
     );
     return true;
   }
