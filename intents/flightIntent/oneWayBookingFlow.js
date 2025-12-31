@@ -283,7 +283,7 @@ async function handle(context) {
 
   if (conversation.state === "BOOKING_TRAVELLER_NAME") {
     const parts = rawText.trim().split(" ");
-  
+
     if (parts.length < 2) {
       await sendWhatsAppMessage(
         from,
@@ -307,7 +307,8 @@ async function handle(context) {
     state: "BOOKING_TRAVELLER_AGE",
     booking: {
       ...conversation.booking,
-      travellers: [...conversation.booking.travellers, traveller]
+      travellers: [...conversation.booking.travellers, traveller],
+      travellerLocked: false
     }
   });
   
@@ -513,7 +514,8 @@ async function handle(context) {
         state: "BOOKING_TRAVELLER_NAME",
         booking: {
           ...conversation.booking,
-          travellers
+          travellers,
+          travellerLocked: false
         }
       });
     
@@ -524,44 +526,55 @@ async function handle(context) {
       return true;
     }
   
-    if (lower !== "1") {
+    /* if (lower !== "1") {
       await sendWhatsAppMessage(from, "❌ Reply 1 to confirm or 2 to edit.");
       return true;
     }
 
-    const next = conversation.booking.currentTravellerIndex + 1;
-    const total = conversation.booking.passengersCount;
+    if (lower === "1") {
+      if (conversation.booking.travellerLocked) {
+        // 🧯 Safety: ignore duplicate confirms
+        return true;
+      }*/
     
-    if (next >= total) {
+      const nextIndex = conversation.booking.currentTravellerIndex + 1;
+      const total = conversation.booking.passengersCount;
+    
+      if (nextIndex >= total) {
+        setConversation(from, {
+          ...conversation,
+          state: "BOOKING_PRICE_COMPUTE",
+          booking: {
+            ...conversation.booking,
+            travellerLocked: true
+          }
+        });
+    
+        await sendWhatsAppMessage(
+          from,
+          "✅ Traveller details completed.\n\nCalculating final price…"
+        );
+        return true;
+      }
+    
       setConversation(from, {
         ...conversation,
-        state: "BOOKING_PRICE_COMPUTE"
+        state: "BOOKING_TRAVELLER_NAME",
+        booking: {
+          ...conversation.booking,
+          currentTravellerIndex: nextIndex,
+          travellerLocked: true
+        }
       });
     
       await sendWhatsAppMessage(
         from,
-        "✅ Traveller details completed.\n\nCalculating final price…"
+        `🧑 Traveller ${nextIndex + 1} of ${total}\n\nPlease enter first and last name.`
       );
+    
       return true;
     }
-    
-    // move to next traveller
-    setConversation(from, {
-      ...conversation,
-      state: "BOOKING_TRAVELLER_NAME",
-      booking: {
-        ...conversation.booking,
-        currentTravellerIndex: next
-      }
-    });
-    
-    await sendWhatsAppMessage(
-      from,
-      `🧑 Traveller ${next + 1} of ${total}\n\nPlease enter first and last name.`
-    );
-    
-    return true;
-  }
+
 
   
   /* ===============================
