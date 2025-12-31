@@ -642,6 +642,71 @@ async function handle(context) {
   }
 
   /* ===============================
+     BOOKING_PRICE_REVIEW
+  =============================== */
+  
+  if (conversation.state === "BOOKING_PRICE_REVIEW") {
+    const price = conversation.booking?.priceSnapshot;
+  
+    // 🔒 Safety guard
+    if (!price) {
+      await sendWhatsAppMessage(
+        from,
+        "⚠️ Price details missing. Please restart booking."
+      );
+      return true;
+    }
+  
+    if (lower !== "1" && lower !== "2") {
+      await sendWhatsAppMessage(
+        from,
+        "❌ Please reply with:\n" +
+        "1️⃣ Continue to payment\n" +
+        "2️⃣ Cancel booking"
+      );
+      return true;
+    }
+  
+    /* ===============================
+       CANCEL BOOKING
+    =============================== */
+    if (lower === "2") {
+      recordSignal("booking_cancelled_at_price_review", { user: from });
+  
+      clearConversation(from);
+  
+      await sendWhatsAppMessage(
+        from,
+        "❌ Booking cancelled.\n\nYou can start a new search anytime."
+      );
+      return true;
+    }
+  
+    /* ===============================
+       PROCEED TO PAYMENT
+    =============================== */
+    if (lower === "1") {
+      setConversation(from, {
+        ...conversation,
+        state: "BOOKING_PAYMENT_INIT",
+        booking: {
+          ...conversation.booking,
+          paymentStatus: "INITIATED"
+        }
+      });
+  
+      await sendWhatsAppMessage(
+        from,
+        "💳 Redirecting to payment…\n\n" +
+        "Please wait while we secure your fare."
+      );
+  
+      return true;
+    }
+  }
+
+
+  /* ===============================
      GLOBAL CANCEL
   =============================== */
   if (lower === "cancel") {
