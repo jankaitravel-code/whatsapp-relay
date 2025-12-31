@@ -602,14 +602,13 @@ async function handle(context) {
   
     return true;
   } catch (err) {
-    log("PRICE_COMPUTE_ERROR", { err: err.message });
-    await sendWhatsAppMessage(
-      from,
-      "⚠️ Something went wrong while calculating the price. Please try again."
-    );
-    return true;
-  }
-}  
+      log("PRICE_COMPUTE_ERROR", { err: err.message });
+      await sendWhatsAppMessage(
+        from,
+        "⚠️ Something went wrong while calculating the price. Please try again."
+      );
+      return true;
+    }
   /* ===============================
      GLOBAL CANCEL
   =============================== */
