@@ -581,14 +581,8 @@ async function handle(context) {
       from,
       `💰 Price breakdown (test):\n\nTotal: ₹${price.grandTotal}`
     );
-
-
-
-    
-
-
-
-  
+  }
+ 
   /* ===============================
      GLOBAL CANCEL
   =============================== */
