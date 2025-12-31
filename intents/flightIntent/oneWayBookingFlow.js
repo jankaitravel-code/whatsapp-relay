@@ -534,7 +534,7 @@ async function handle(context) {
       if (nextIndex >= total) {
         setConversation(from, {
           ...conversation,
-          state: "BOOKING_PRICE_COMPUTE",
+          state: "BOOKING_FREQUENT_FLYER",
           booking: {
             ...conversation.booking,
             travellerLocked: true
@@ -565,6 +565,154 @@ async function handle(context) {
     
       return true;
     }
+
+  /* ===============================
+     BOOKING_FREQUENT_FLYER
+  =============================== */
+  
+  if (conversation.state === "BOOKING_FREQUENT_FLYER") {
+    const profileFF = conversation.profile?.frequentFlyer;
+  
+    // Profile FF detected → confirmation step
+    if (profileFF && !conversation.booking.frequentFlyer?.confirmed) {
+      if (lower === "1") {
+        setConversation(from, {
+          ...conversation,
+          state: "BOOKING_GST_DETAILS",
+          booking: {
+            ...conversation.booking,
+            frequentFlyer: {
+              ...profileFF,
+              confirmed: true
+            }
+          }
+        });
+  
+        await sendWhatsAppMessage(
+          from,
+          "✅ Frequent flyer number saved.\n\nNow let’s add GST details (optional)."
+        );
+        return true;
+      }
+  
+      if (lower === "2") {
+        await sendWhatsAppMessage(
+          from,
+          "✏️ Please enter your frequent flyer number."
+        );
+        return true;
+      }
+  
+      if (lower === "3") {
+        setConversation(from, {
+          ...conversation,
+          state: "BOOKING_GST_DETAILS"
+        });
+  
+        await sendWhatsAppMessage(
+          from,
+          "⏭️ Skipped frequent flyer.\n\nNow let’s add GST details (optional)."
+        );
+        return true;
+      }
+  
+      await sendWhatsAppMessage(
+        from,
+        "❌ Reply:\n1 Use\n2 Change\n3 Skip"
+      );
+      return true;
+    }
+  
+    // Manual entry
+    if (lower === "none") {
+      setConversation(from, {
+        ...conversation,
+        state: "BOOKING_GST_DETAILS"
+      });
+  
+      await sendWhatsAppMessage(
+        from,
+        "⏭️ Skipped frequent flyer.\n\nNow let’s add GST details (optional)."
+      );
+      return true;
+    }
+  
+    if (!rawText || rawText.length < 5) {
+      await sendWhatsAppMessage(
+        from,
+        "❌ Please enter a valid frequent flyer number or reply NONE."
+      );
+      return true;
+    }
+  
+    setConversation(from, {
+      ...conversation,
+      state: "BOOKING_GST_DETAILS",
+      booking: {
+        ...conversation.booking,
+        frequentFlyer: {
+          airline: conversation.booking.selectedFlight.validatingAirlineCodes?.[0],
+          number: rawText.trim(),
+          confirmed: true
+        }
+      }
+    });
+  
+    await sendWhatsAppMessage(
+      from,
+      "✅ Frequent flyer number saved.\n\nNow let’s add GST details (optional)."
+    );
+    return true;
+  }
+
+  /* ===============================
+     BOOKING_GST_DETAILS
+  =============================== */
+  
+  if (conversation.state === "BOOKING_GST_DETAILS") {
+    if (lower === "none") {
+      setConversation(from, {
+        ...conversation,
+        state: "BOOKING_PRICE_COMPUTE"
+      });
+  
+      await sendWhatsAppMessage(
+        from,
+        "⏭️ GST details skipped.\n\nCalculating final price…"
+      );
+      return true;
+    }
+  
+    const gstRegex =
+      /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/;
+  
+    if (!gstRegex.test(rawText)) {
+      await sendWhatsAppMessage(
+        from,
+        "❌ Invalid GST number.\nPlease re-enter or reply NONE to skip."
+      );
+      return true;
+    }
+  
+    setConversation(from, {
+      ...conversation,
+      state: "BOOKING_PRICE_COMPUTE",
+      booking: {
+        ...conversation.booking,
+        gst: {
+          gstin: rawText.trim().toUpperCase()
+        }
+      }
+    });
+  
+    await sendWhatsAppMessage(
+      from,
+      "✅ GST details saved.\n\nCalculating final price…"
+    );
+    return true;
+  }
+
+
 
   /* ===============================
    BOOKING_PRICE_COMPUTE
