@@ -69,9 +69,9 @@ function getDiscountDelta(code) {
  */
 function computeOneWayFinalPrice({
   selectedFlight,
-  travellers,
-  preferences,
-  discountCode
+  travellers = [],
+  preferences = {},
+  discountCode = null
 }) {
   if (!selectedFlight || !Array.isArray(travellers)) {
     throw new Error("Invalid input to computeOneWayFinalPrice()");
