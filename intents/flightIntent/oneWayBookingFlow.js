@@ -569,46 +569,50 @@ async function handle(context) {
     /* ===============================
      Booking_price_computation
     =============================== */
-
-  if (conversation.state === "BOOKING_PRICE_COMPUTE") {
-    const price = computeOneWayFinalPrice({
-      flight: conversation.booking.selectedFlight,
-      passengers: conversation.booking.travellers,
-      preferences: conversation.booking.preferences,
-      discountCode: conversation.booking.discountCode
-    });
+    if (conversation.state === "BOOKING_PRICE_COMPUTE") {
+      try {
+        const price = computeOneWayFinalPrice({
+          flight: conversation.booking.selectedFlight,
+          passengers: conversation.booking.travellers,
+          preferences: conversation.booking.preferences,
+          discountCode: conversation.booking.discountCode
+        });
     
-    log("FINAL_PRICE_COMPUTED", price);
-  
-    setConversation(from, {
-      ...conversation,
-      state: "BOOKING_PRICE_REVIEW", // 👈 next logical step
-      booking: {
-        ...conversation.booking,
-        priceSnapshot: price
+        log("FINAL_PRICE_COMPUTED", price);
+    
+        setConversation(from, {
+          ...conversation,
+          state: "BOOKING_PRICE_REVIEW",
+          booking: {
+            ...conversation.booking,
+            priceSnapshot: price
+          }
+        });
+    
+        await sendWhatsAppMessage(
+          from,
+          `💰 Final Price\n\n` +
+          `Base Fare: ₹${price.baseFare}\n` +
+          `Extras: ₹${price.extrasTotal}\n` +
+          `Discount: -₹${price.discount}\n` +
+          `Taxes: ₹${price.taxes}\n\n` +
+          `*Total Payable: ₹${price.grandTotal}*\n\n` +
+          `Reply 1️⃣ to continue to payment\n2️⃣ to cancel`
+        );
+    
+        return true;
+      } catch (err) {
+        log("PRICE_COMPUTE_ERROR", { err: err.message });
+    
+        await sendWhatsAppMessage(
+          from,
+          "⚠️ Something went wrong while calculating the price. Please try again."
+        );
+    
+        return true;
       }
-    });
-  
-    await sendWhatsAppMessage(
-      from,
-      `💰 Final Price\n\n` +
-      `Base Fare: ₹${price.baseFare}\n` +
-      `Extras: ₹${price.extrasTotal}\n` +
-      `Discount: -₹${price.discount}\n` +
-      `Taxes: ₹${price.taxes}\n\n` +
-      `*Total Payable: ₹${price.grandTotal}*\n\n` +
-      `Reply 1️⃣ to continue to payment\n2️⃣ to cancel`
-    );
-  
-    return true;
-  } catch (err) {
-      log("PRICE_COMPUTE_ERROR", { err: err.message });
-      await sendWhatsAppMessage(
-        from,
-        "⚠️ Something went wrong while calculating the price. Please try again."
-      );
-      return true;
-  }
+    }
+
   /* ===============================
      GLOBAL CANCEL
   =============================== */
