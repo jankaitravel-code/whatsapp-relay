@@ -243,8 +243,8 @@ async function handle(context) {
     await sendWhatsAppMessage(
       from,
       input === "NONE"
-        ? "🏷️ No discount code applied.\n\nLet’s add traveller details."
-        : `🏷️ Discount code *${input}* noted.\n\nLet’s add traveller details.`
+        ? "🏷️ No discount code applied.\n\nReady add traveller details?"
+        : `🏷️ Discount code *${input}* noted.\n\nReady add traveller details?`
     );
   
     return true;
@@ -287,7 +287,7 @@ async function handle(context) {
     if (parts.length < 2) {
       await sendWhatsAppMessage(
         from,
-        "❌ Please enter both first and last name.\nExample: Rahul Sharma"
+        "❌ Please enter FULL name of the traveller as it appears on the identity proof.\nExample: Rahul Sharma"
       );
       return true;
     }
@@ -313,7 +313,7 @@ async function handle(context) {
   
     await sendWhatsAppMessage(
       from,
-      "🎂 Please enter traveller age."
+      "🎂 Please enter traveller's age."
     );
   
     return true;
