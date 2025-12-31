@@ -528,35 +528,24 @@ async function handle(context) {
       await sendWhatsAppMessage(from, "❌ Reply 1 to confirm or 2 to edit.");
       return true;
     }
-  
-    setConversation(from, {
-      ...conversation,
-      state: "BOOKING_TRAVELLER_NEXT"
-    });
-  
-    return true;
-  }
 
-  //NEXT TRAVELLER LOOP
-
-  if (conversation.state === "BOOKING_TRAVELLER_NEXT") {
     const next = conversation.booking.currentTravellerIndex + 1;
     const total = conversation.booking.passengersCount;
-  
+    
     if (next >= total) {
       setConversation(from, {
         ...conversation,
         state: "BOOKING_PRICE_COMPUTE"
       });
-  
+    
       await sendWhatsAppMessage(
         from,
         "✅ Traveller details completed.\n\nCalculating final price…"
       );
-  
       return true;
     }
-  
+    
+    // move to next traveller
     setConversation(from, {
       ...conversation,
       state: "BOOKING_TRAVELLER_NAME",
@@ -565,13 +554,12 @@ async function handle(context) {
         currentTravellerIndex: next
       }
     });
-  
+    
     await sendWhatsAppMessage(
       from,
-      `🧑 Traveller ${next + 1} of ${total}\n\n` +
-      "Please enter first name and last name."
+      `🧑 Traveller ${next + 1} of ${total}\n\nPlease enter first and last name.`
     );
-  
+    
     return true;
   }
 
