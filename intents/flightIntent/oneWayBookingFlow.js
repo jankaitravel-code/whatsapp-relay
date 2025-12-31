@@ -571,16 +571,8 @@ async function handle(context) {
   =============================== */
   if (conversation.state === "BOOKING_PRICE_COMPUTE") {
     try {
-      // 🔍 Diagnostic log (keep for now)
-      log("PRICE_COMPUTE_INPUT", {
-        selectedFlight: conversation.booking.selectedFlight,
-        travellers: conversation.booking.travellers,
-        preferences: conversation.booking.preferences,
-        discountCode: conversation.booking.discountCode
-      });
-  
-      // ✅ Normalize travellers → passengers
       const passengers = conversation.booking.travellers.map(t => ({
+        index: t.index,
         age: t.age,
         ageCategory: t.ageCategory,
         specialFare: t.specialFare || "NONE",
@@ -588,12 +580,24 @@ async function handle(context) {
         meal: t.meal || "NO_MEAL"
       }));
   
-      // ✅ Single, clean price computation
-      const price = computeOneWayFinalPrice({
-        flight: conversation.booking.selectedFlight,
+      const discountCode =
+        conversation.booking.discountCode &&
+        conversation.booking.discountCode.toUpperCase() !== "NONE"
+          ? conversation.booking.discountCode
+          : null;
+  
+      log("PRICE_COMPUTE_INPUT", {
+        selectedFlight: conversation.booking.selectedFlight.id,
         passengers,
+        preferences: conversation.booking.preferences,
+        discountCode
+      });
+  
+      const price = computeOneWayFinalPrice({
+        selectedFlight: conversation.booking.selectedFlight, // ✅ correct key
+        travellers: passengers,                              // ✅ correct key
         preferences: conversation.booking.preferences || {},
-        discountCode: conversation.booking.discountCode || null
+        discountCode
       });
   
       log("FINAL_PRICE_COMPUTED", price);
@@ -610,11 +614,10 @@ async function handle(context) {
       await sendWhatsAppMessage(
         from,
         `💰 Final Price\n\n` +
-        `Base Fare: ₹${price.baseFare}\n` +
-        `Extras: ₹${price.extrasTotal}\n` +
-        `Discount: -₹${price.discount}\n` +
-        `Taxes: ₹${price.taxes}\n\n` +
-        `*Total Payable: ₹${price.grandTotal}*\n\n` +
+        `Base Fare: ${price.currency} ${price.base.total}\n` +
+        `Extras: ${price.currency} ${price.totals.bookingAdjustments}\n` +
+        `Discount: ${price.currency} ${price.bookingAdjustments.discount.delta}\n\n` +
+        `*Total Payable: ${price.currency} ${price.totals.grandTotal}*\n\n` +
         `Reply 1️⃣ to continue to payment\n2️⃣ to cancel`
       );
   
@@ -626,7 +629,6 @@ async function handle(context) {
         from,
         "⚠️ Something went wrong while calculating the price. Please try again."
       );
-  
       return true;
     }
   }
