@@ -525,17 +525,6 @@ async function handle(context) {
       );
       return true;
     }
-  
-    /* if (lower !== "1") {
-      await sendWhatsAppMessage(from, "❌ Reply 1 to confirm or 2 to edit.");
-      return true;
-    }
-
-    if (lower === "1") {
-      if (conversation.booking.travellerLocked) {
-        // 🧯 Safety: ignore duplicate confirms
-        return true;
-      }*/
     
       const nextIndex = conversation.booking.currentTravellerIndex + 1;
       const total = conversation.booking.passengersCount;
@@ -575,6 +564,29 @@ async function handle(context) {
       return true;
     }
 
+    /* ===============================
+     Booking_price_computation
+    =============================== */
+  if (conversation.state === "BOOKING_PRICE_COMPUTE") {
+    const price = computeOneWayFinalPrice({
+      flight: conversation.booking.selectedFlight,
+      passengers: conversation.booking.travellers,
+      preferences: conversation.booking.preferences,
+      discountCode: conversation.booking.discountCode
+    });
+    
+    log("FINAL_PRICE_COMPUTED", price);
+
+    await sendWhatsAppMessage(
+      from,
+      `💰 Price breakdown (test):\n\nTotal: ₹${price.grandTotal}`
+    );
+
+
+
+    
+
+
 
   
   /* ===============================
@@ -587,82 +599,6 @@ async function handle(context) {
     return true;
   }
   
-  /* ===============================
-     BOOKING_ANALYTICS
-  =============================== */
-  if (conversation.state === "BOOKING_ANALYTICS") {
-    await sendWhatsAppMessage(
-      from,
-      "📊 Here are your available options (cheapest / fastest)."
-    );
-
-    setConversation(from, {
-      ...conversation,
-      state: "BOOKING_PRICE_LOCK"
-    });
-
-    return true;
-  }
-
-  /* ===============================
-     BOOKING_PRICE_LOCK
-  =============================== */
-  if (conversation.state === "BOOKING_PRICE_LOCK") {
-    log("BOOKING_PRICE_LOCKED", { user: from });
-
-    setConversation(from, {
-      ...conversation,
-      state: "BOOKING_PASSENGERS"
-    });
-
-    return true;
-  }
-
-  /* ===============================
-     BOOKING_PASSENGERS
-  =============================== */
-  if (conversation.state === "BOOKING_PASSENGERS") {
-    await sendWhatsAppMessage(
-      from,
-      "🧑 Let’s capture traveller details."
-    );
-
-    setConversation(from, {
-      ...conversation,
-      state: "BOOKING_PAYMENT"
-    });
-
-    return true;
-  }
-
-  /* ===============================
-     BOOKING_PAYMENT
-  =============================== */
-  if (conversation.state === "BOOKING_PAYMENT") {
-    await sendWhatsAppMessage(
-      from,
-      "💳 Redirecting to payment."
-    );
-
-    setConversation(from, {
-      ...conversation,
-      state: "BOOKING_CONFIRMATION"
-    });
-
-    return true;
-  }
-
-  /* ===============================
-     BOOKING_CONFIRMATION
-  =============================== */
-  if (conversation.state === "BOOKING_CONFIRMATION") {
-    await sendWhatsAppMessage(
-      from,
-      "✅ Booking confirmed. PNR will be shared shortly."
-    );
-    return true;
-  }
-
   /* ===============================
      FALLBACK
   =============================== */
