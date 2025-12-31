@@ -570,6 +570,14 @@ async function handle(context) {
    BOOKING_PRICE_COMPUTE
   =============================== */
   if (conversation.state === "BOOKING_PRICE_COMPUTE") {
+    if (!conversation.booking?.travellers?.length) {
+      await sendWhatsAppMessage(
+        from,
+        "⚠️ Traveller information missing. Please restart booking."
+      );
+      return true;
+    }
+
     try {
       const passengers = conversation.booking.travellers.map(t => ({
         index: t.index,
