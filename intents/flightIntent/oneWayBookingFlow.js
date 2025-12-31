@@ -498,13 +498,12 @@ async function handle(context) {
   //Edit/Confirm --> next traveller loop
 
   if (conversation.state === "BOOKING_TRAVELLER_CONFIRM") {
-
-    if (conversation.state === "BOOKING_TRAVELLER_CONFIRM") {
-      if (lower !== "1" && lower !== "2") {
-        await sendWhatsAppMessage(from, "❌ Reply 1 to confirm or 2 to edit.");
-        return true;
+       
+    if (lower !== "1" && lower !== "2") {
+      await sendWhatsAppMessage(from, "❌ Reply 1 to confirm or 2 to edit.");
+      return true;
       }
-
+    
     if (lower === "2") {
       const travellers = [...conversation.booking.travellers];
       travellers.pop(); // 🔥 remove current traveller safely
