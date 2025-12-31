@@ -566,52 +566,70 @@ async function handle(context) {
       return true;
     }
 
-    /* ===============================
-     Booking_price_computation
-    =============================== */
-    if (conversation.state === "BOOKING_PRICE_COMPUTE") {
-      try {
-        const price = computeOneWayFinalPrice({
-          flight: conversation.booking.selectedFlight,
-          passengers: conversation.booking.travellers,
-          preferences: conversation.booking.preferences,
-          discountCode: conversation.booking.discountCode
-        });
-    
-        log("FINAL_PRICE_COMPUTED", price);
-    
-        setConversation(from, {
-          ...conversation,
-          state: "BOOKING_PRICE_REVIEW",
-          booking: {
-            ...conversation.booking,
-            priceSnapshot: price
-          }
-        });
-    
-        await sendWhatsAppMessage(
-          from,
-          `💰 Final Price\n\n` +
-          `Base Fare: ₹${price.baseFare}\n` +
-          `Extras: ₹${price.extrasTotal}\n` +
-          `Discount: -₹${price.discount}\n` +
-          `Taxes: ₹${price.taxes}\n\n` +
-          `*Total Payable: ₹${price.grandTotal}*\n\n` +
-          `Reply 1️⃣ to continue to payment\n2️⃣ to cancel`
-        );
-    
-        return true;
-      } catch (err) {
-        log("PRICE_COMPUTE_ERROR", { err: err.message });
-    
-        await sendWhatsAppMessage(
-          from,
-          "⚠️ Something went wrong while calculating the price. Please try again."
-        );
-    
-        return true;
-      }
+  /* ===============================
+   BOOKING_PRICE_COMPUTE
+  =============================== */
+  if (conversation.state === "BOOKING_PRICE_COMPUTE") {
+    try {
+      // 🔍 Diagnostic log (keep for now)
+      log("PRICE_COMPUTE_INPUT", {
+        selectedFlight: conversation.booking.selectedFlight,
+        travellers: conversation.booking.travellers,
+        preferences: conversation.booking.preferences,
+        discountCode: conversation.booking.discountCode
+      });
+  
+      // ✅ Normalize travellers → passengers
+      const passengers = conversation.booking.travellers.map(t => ({
+        age: t.age,
+        ageCategory: t.ageCategory,
+        specialFare: t.specialFare || "NONE",
+        seat: t.seat || "FREE_AUTO",
+        meal: t.meal || "NO_MEAL"
+      }));
+  
+      // ✅ Single, clean price computation
+      const price = computeOneWayFinalPrice({
+        flight: conversation.booking.selectedFlight,
+        passengers,
+        preferences: conversation.booking.preferences || {},
+        discountCode: conversation.booking.discountCode || null
+      });
+  
+      log("FINAL_PRICE_COMPUTED", price);
+  
+      setConversation(from, {
+        ...conversation,
+        state: "BOOKING_PRICE_REVIEW",
+        booking: {
+          ...conversation.booking,
+          priceSnapshot: price
+        }
+      });
+  
+      await sendWhatsAppMessage(
+        from,
+        `💰 Final Price\n\n` +
+        `Base Fare: ₹${price.baseFare}\n` +
+        `Extras: ₹${price.extrasTotal}\n` +
+        `Discount: -₹${price.discount}\n` +
+        `Taxes: ₹${price.taxes}\n\n` +
+        `*Total Payable: ₹${price.grandTotal}*\n\n` +
+        `Reply 1️⃣ to continue to payment\n2️⃣ to cancel`
+      );
+  
+      return true;
+    } catch (err) {
+      log("PRICE_COMPUTE_ERROR", { err: err.message });
+  
+      await sendWhatsAppMessage(
+        from,
+        "⚠️ Something went wrong while calculating the price. Please try again."
+      );
+  
+      return true;
     }
+  }
 
   /* ===============================
      GLOBAL CANCEL
