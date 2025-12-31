@@ -46,6 +46,15 @@ function getFlexibilityOptions(selectedFlight) {
   ];
 }
 
+function getEligibleSpecialFares(age) {
+  const fares = [];
+
+  if (age >= 60) fares.push("SENIOR");
+  if (age >= 12 && age <= 25) fares.push("STUDENT");
+
+  return fares;
+}
+
 async function handle(context) {
   const {
     from,
@@ -324,69 +333,74 @@ async function handle(context) {
   
     t.age = age;
   
+    // ✅ Age category (do NOT mix with fare)
     if (age < 2) t.ageCategory = "INFANT";
     else if (age < 12) t.ageCategory = "CHILD";
-    else if (age >= 60) t.ageCategory = "SENIOR";
     else t.ageCategory = "ADULT";
+  
+    // ✅ Compute eligible special fares ONCE
+    t.eligibleSpecialFares = getEligibleSpecialFares(age);
+  
+    // 🔽 Build dynamic fare options
+    let message =
+      `🎫 Special fares for ${t.firstName} ${t.lastName}\n\n` +
+      "1️⃣ None\n";
+  
+    const optionMap = { "1": "NONE" };
+    let optionNumber = 2;
+  
+    if (t.eligibleSpecialFares.includes("SENIOR")) {
+      message += `${optionNumber}️⃣ Senior Citizen\n`;
+      optionMap[String(optionNumber)] = "SENIOR";
+      optionNumber++;
+    }
+  
+    if (t.eligibleSpecialFares.includes("STUDENT")) {
+      message += `${optionNumber}️⃣ Student\n`;
+      optionMap[String(optionNumber)] = "STUDENT";
+    }
   
     setConversation(from, {
       ...conversation,
       state: "BOOKING_TRAVELLER_SPECIAL_FARE",
       booking: {
         ...conversation.booking,
-        travellers
+        travellers,
+        _specialFareOptionMap: optionMap
       }
     });
   
-    await sendWhatsAppMessage(
-      from,
-      `🎫 Special fares for ${t.firstName} ${t.lastName}\n\n` +
-      "1️⃣ None\n2️⃣ Senior Citizen\n3️⃣ Student"
-    );
+    await sendWhatsAppMessage(from, message);
   
     return true;
   }
 
-
   //SPECIAL FARE --> Seat Selection
 
   if (conversation.state === "BOOKING_TRAVELLER_SPECIAL_FARE") {
-    const map = {
-      "1": "NONE",
-      "2": "SENIOR",
-      "3": "STUDENT"
-    };
-
-    const t = travellers[travellers.length - 1].specialFare = map[lower];
-    
-    if (!map[lower]) {
-      await sendWhatsAppMessage(from, "❌ Invalid choice.");
-      return true;
-    }
-    
-    if (lower === "2" && t.ageCategory !== "SENIOR") {
+    const optionMap = conversation.booking._specialFareOptionMap;
+  
+    const selectedFare = optionMap[lower];
+  
+    if (!selectedFare) {
       await sendWhatsAppMessage(
         from,
-        "❌ Senior citizen fare applies only if age is 60+."
-      );
-      return true;
-    }
-    
-    if (lower === "3" && t.ageCategory === "INFANT") {
-      await sendWhatsAppMessage(
-        from,
-        "❌ Student fare not applicable."
+        "❌ Please choose one of the listed options."
       );
       return true;
     }
   
-    travellers[travellers.length - 1].specialFare = map[lower];
+    const travellers = [...conversation.booking.travellers];
+    travellers[travellers.length - 1].specialFare = selectedFare;
+  
+    // 🔥 Clean up temporary map
+    const { _specialFareOptionMap, ...bookingRest } = conversation.booking;
   
     setConversation(from, {
       ...conversation,
       state: "BOOKING_TRAVELLER_SEAT",
       booking: {
-        ...conversation.booking,
+        ...bookingRest,
         travellers
       }
     });
