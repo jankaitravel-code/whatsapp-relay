@@ -267,7 +267,7 @@ async function handle(context) {
     return true;
   }
   
-  //NAME INPUT
+  //NAME INPUT --> Age
 
   if (conversation.state === "BOOKING_TRAVELLER_NAME") {
     const parts = rawText.trim().split(" ");
@@ -289,28 +289,64 @@ async function handle(context) {
       seat: null,
       meal: null
     };
+
+    setConversation(from, {
+    ...conversation,
+    state: "BOOKING_TRAVELLER_AGE",
+    booking: {
+      ...conversation.booking,
+      travellers: [...conversation.booking.travellers, traveller]
+    }
+  });
+  
+    await sendWhatsAppMessage(
+      from,
+      "🎂 Please enter traveller age."
+    );
+  
+    return true;
+  }
+
+  //Traveller's age --> Special Fare
+
+  if (conversation.state === "BOOKING_TRAVELLER_AGE") {
+    const age = Number(rawText);
+  
+    if (Number.isNaN(age) || age <= 0 || age > 120) {
+      await sendWhatsAppMessage(from, "❌ Please enter a valid age.");
+      return true;
+    }
+  
+    const travellers = [...conversation.booking.travellers];
+    const t = travellers[travellers.length - 1];
+  
+    t.age = age;
+  
+    if (age < 2) t.ageCategory = "INFANT";
+    else if (age < 12) t.ageCategory = "CHILD";
+    else if (age >= 60) t.ageCategory = "SENIOR";
+    else t.ageCategory = "ADULT";
   
     setConversation(from, {
       ...conversation,
       state: "BOOKING_TRAVELLER_SPECIAL_FARE",
       booking: {
         ...conversation.booking,
-        travellers: [...conversation.booking.travellers, traveller]
+        travellers
       }
     });
   
     await sendWhatsAppMessage(
       from,
-      `🎫 Special fares for ${traveller.firstName} ${traveller.lastName}\n\n` +
-      "1️⃣ None\n" +
-      "2️⃣ Senior Citizen\n" +
-      "3️⃣ Student"
+      `🎫 Special fares for ${t.firstName} ${t.lastName}\n\n` +
+      "1️⃣ None\n2️⃣ Senior Citizen\n3️⃣ Student"
     );
   
     return true;
   }
 
-  //SPECIAL FARE
+
+  //SPECIAL FARE --> Seat Selection
 
   if (conversation.state === "BOOKING_TRAVELLER_SPECIAL_FARE") {
     const map = {
@@ -318,11 +354,27 @@ async function handle(context) {
       "2": "SENIOR",
       "3": "STUDENT"
     };
-  
+
+    const travellers = [...conversation.booking.travellers];
+    const t = travellers[travellers.length - 1];
+    
     if (!map[lower]) {
+      await sendWhatsAppMessage(from, "❌ Invalid choice.");
+      return true;
+    }
+    
+    if (lower === "2" && t.ageCategory !== "SENIOR") {
       await sendWhatsAppMessage(
         from,
-        "❌ Please choose:\n1 None\n2 Senior Citizen\n3 Student"
+        "❌ Senior citizen fare applies only if age is 60+."
+      );
+      return true;
+    }
+    
+    if (lower === "3" && t.ageCategory === "INFANT") {
+      await sendWhatsAppMessage(
+        from,
+        "❌ Student fare not applicable."
       );
       return true;
     }
@@ -349,7 +401,7 @@ async function handle(context) {
     return true;
   }
 
-  //SEAT SELECTION
+  //SEAT SELECTION --> Meal selection
 
   if (conversation.state === "BOOKING_TRAVELLER_SEAT") {
     if (lower !== "1" && lower !== "2") {
@@ -385,7 +437,7 @@ async function handle(context) {
     return true;
   }
 
-  //MEAL SELECTION
+  //MEAL SELECTION --> Traveller review
 
   if (conversation.state === "BOOKING_TRAVELLER_MEAL") {
     const map = {
@@ -408,7 +460,7 @@ async function handle(context) {
   
     setConversation(from, {
       ...conversation,
-      state: "BOOKING_TRAVELLER_NEXT",
+      state: "BOOKING_TRAVELLER_REVIEW",
       booking: {
         ...conversation.booking,
         travellers
@@ -418,6 +470,58 @@ async function handle(context) {
     return true;
   }
 
+  //Traveller review --> eidt/confirm
+
+  if (conversation.state === "BOOKING_TRAVELLER_REVIEW") {
+    const t = conversation.booking.travellers.slice(-1)[0];
+  
+    await sendWhatsAppMessage(
+      from,
+      `👤 Traveller Review\n\n` +
+      `Name: ${t.firstName} ${t.lastName}\n` +
+      `Age: ${t.age} (${t.ageCategory})\n` +
+      `Special Fare: ${t.specialFare}\n` +
+      `Seat: ${t.seat}\n` +
+      `Meal: ${t.meal}\n\n` +
+      `Reply:\n1️⃣ Confirm\n2️⃣ Edit`
+    );
+  
+    setConversation(from, {
+      ...conversation,
+      state: "BOOKING_TRAVELLER_CONFIRM"
+    });
+  
+    return true;
+  }
+
+  //Edit/Confirm --> next traveller loop
+
+  if (conversation.state === "BOOKING_TRAVELLER_CONFIRM") {
+    if (lower === "2") {
+      setConversation(from, {
+        ...conversation,
+        state: "BOOKING_TRAVELLER_NAME"
+      });
+  
+      await sendWhatsAppMessage(
+        from,
+        "✏️ Let’s edit traveller details.\nEnter first and last name."
+      );
+      return true;
+    }
+  
+    if (lower !== "1") {
+      await sendWhatsAppMessage(from, "❌ Reply 1 to confirm or 2 to edit.");
+      return true;
+    }
+  
+    setConversation(from, {
+      ...conversation,
+      state: "BOOKING_TRAVELLER_NEXT"
+    });
+  
+    return true;
+  }
 
   //NEXT TRAVELLER LOOP
 
