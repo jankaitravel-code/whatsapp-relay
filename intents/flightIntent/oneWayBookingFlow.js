@@ -469,24 +469,18 @@ async function handle(context) {
     }
 
     travellers[travellers.length - 1].meal = map[lower];
-  
+
+    const t = travellers[travellers.length - 1];
+    
     setConversation(from, {
       ...conversation,
-      state: "BOOKING_TRAVELLER_REVIEW",
+      state: "BOOKING_TRAVELLER_CONFIRM",
       booking: {
         ...conversation.booking,
         travellers
       }
     });
-  
-    return true;
-  }
-
-  //Traveller review --> eidt/confirm
-
-  if (conversation.state === "BOOKING_TRAVELLER_REVIEW") {
-    const t = conversation.booking.travellers.slice(-1)[0];
-  
+    
     await sendWhatsAppMessage(
       from,
       `👤 Traveller Review\n\n` +
@@ -497,24 +491,33 @@ async function handle(context) {
       `Meal: ${t.meal}\n\n` +
       `Reply:\n1️⃣ Confirm\n2️⃣ Edit`
     );
-  
-    setConversation(from, {
-      ...conversation,
-      state: "BOOKING_TRAVELLER_CONFIRM"
-    });
-  
+    
     return true;
   }
 
   //Edit/Confirm --> next traveller loop
 
   if (conversation.state === "BOOKING_TRAVELLER_CONFIRM") {
+
+    if (conversation.state === "BOOKING_TRAVELLER_CONFIRM") {
+      if (lower !== "1" && lower !== "2") {
+        await sendWhatsAppMessage(from, "❌ Reply 1 to confirm or 2 to edit.");
+        return true;
+      }
+
     if (lower === "2") {
+      const travellers = [...conversation.booking.travellers];
+      travellers.pop(); // 🔥 remove current traveller safely
+    
       setConversation(from, {
         ...conversation,
-        state: "BOOKING_TRAVELLER_NAME"
+        state: "BOOKING_TRAVELLER_NAME",
+        booking: {
+          ...conversation.booking,
+          travellers
+        }
       });
-  
+    
       await sendWhatsAppMessage(
         from,
         "✏️ Let’s edit traveller details.\nEnter first and last name."
