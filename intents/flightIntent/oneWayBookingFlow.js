@@ -6,6 +6,8 @@
 
 const { log } = require("../../utils/logger");
 const { recordSignal } = require("../../utils/abuseSignals");
+const { computeOneWayFinalPrice } = require("../../services/price/computeOneWayFinalPrice");
+
 
 function getEmptyPreferences() {
   return {
@@ -599,7 +601,15 @@ async function handle(context) {
     );
   
     return true;
-  }   
+  } catch (err) {
+    log("PRICE_COMPUTE_ERROR", { err: err.message });
+    await sendWhatsAppMessage(
+      from,
+      "⚠️ Something went wrong while calculating the price. Please try again."
+    );
+    return true;
+  }
+}  
   /* ===============================
      GLOBAL CANCEL
   =============================== */
