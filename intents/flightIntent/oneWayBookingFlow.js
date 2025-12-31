@@ -608,7 +608,7 @@ async function handle(context) {
         "⚠️ Something went wrong while calculating the price. Please try again."
       );
       return true;
-    }
+  }
   /* ===============================
      GLOBAL CANCEL
   =============================== */
