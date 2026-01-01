@@ -72,35 +72,10 @@ async function handle(context) {
      BOOKING_PREFERENCES_INIT
   =============================== */
   
-  if (conversation?.intent === "FLIGHT_BOOKING" &&
-      conversation.state === "BOOKING_PREFERENCES_INIT") {
-  
-    setConversation(from, {
-      ...conversation,
-      state: "BOOKING_PREFERENCES"
-    });
-  
-    // 🔁 Immediately continue booking flow
-    return handle({
-      ...context,
-      conversation: {
-        ...conversation,
-        state: "BOOKING_PREFERENCES"
-      }
-    });
-  }
-
-  // Guard: booking only
-  if (!conversation || conversation.intent !== "FLIGHT_BOOKING") {
-    return false;
-  }
-
-  const lower = (rawText || text || "").toLowerCase();
-  const travellers = conversation.booking?.travellers
-    ? [...conversation.booking.travellers]
-    : [];
-
-  if (conversation.state === "BOOKING_PREFERENCES") {
+  if (
+    conversation?.intent === "FLIGHT_BOOKING" &&
+    conversation.state === "BOOKING_PREFERENCES_INIT"
+  ) {
     const included = getIncludedBaggage(
       conversation.booking.selectedFlight
     );
@@ -121,7 +96,7 @@ async function handle(context) {
       `Your flight includes:\n` +
       `• Cabin baggage: ${included.cabinKg} kg\n` +
       `• Check-in baggage: ${included.checkinKg} kg\n\n` +
-      "If you need extra baggage allawance, reply with the total additional weight.\n" +
+      "If you need extra baggage allowance, reply with the total additional weight.\n" +
       "Reply 0 if you don’t need extra baggage.\n\n" +
       "Example: 0, 5, 10 or 15"
     );
@@ -129,6 +104,15 @@ async function handle(context) {
     return true;
   }
 
+  // Guard: booking only
+  if (!conversation || conversation.intent !== "FLIGHT_BOOKING") {
+    return false;
+  }
+
+  const lower = (rawText || text || "").toLowerCase();
+  const travellers = conversation.booking?.travellers
+    ? [...conversation.booking.travellers]
+    : [];
   
   if (conversation.state === "BOOKING_BAGGAGE") {
     const kg = Number(rawText);
