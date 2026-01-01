@@ -4,7 +4,10 @@ const multiCityFlow = require("./multiCityFlow");
 const oneWayBookingFlow = require("./oneWayBookingFlow");
 
 function canHandle(text, context) {
-  const input = text || context?.rawText;
+  const input =
+    (typeof text === "string" && text.trim().length > 0
+      ? text
+      : context?.rawText) || "";
   if (!input) return false;
 
   const lower = input.toLowerCase();
