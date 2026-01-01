@@ -809,11 +809,84 @@ async function handle(context) {
       await sendWhatsAppMessage(
         from,
         "❌ Please reply with:\n" +
-        "1️⃣ Continue to payment\n" +
-        "2️⃣ Cancel booking"
+        "1️⃣ See alternative flights\n" +
+        "2️⃣ Continue to payment"
       );
       return true;
     }
+
+    /* ===============================
+       OPTION 1: SHOW ALTERNATIVES
+    =============================== */
+    if (lower === "1") {
+      setConversation(from, {
+        ...conversation,
+        state: "BOOKING_ALTERNATIVES_SNAPSHOT"
+      });
+    
+      // message will be sent by BOOKING_ALTERNATIVES_SNAPSHOT
+      return true;
+    }
+    
+    /* ===============================
+       OPTION 2: CONTINUE TO PAYMENT
+    =============================== */
+    if (lower === "2") {
+      setConversation(from, {
+        ...conversation,
+        state: "BOOKING_PAYMENT_INIT",
+        booking: {
+          ...conversation.booking,
+          paymentStatus: "INITIATED"
+        }
+      });
+    
+      await sendWhatsAppMessage(
+        from,
+        "💳 Proceeding to payment…\n\nPlease wait while we secure your fare."
+      );
+    
+      return true;
+    }
+
+    /* ===============================
+       BOOKING_ALTERNATIVES_SNAPSHOT
+    ================================ */
+    
+    if (conversation.state === "BOOKING_ALTERNATIVES_SNAPSHOT") {
+      const price = conversation.booking?.priceSnapshot;
+      const selected = conversation.booking?.selectedFlight;
+      const results = conversation.search?.results;
+    
+      // 🔒 Safety guards
+      if (!price || !selected || !Array.isArray(results)) {
+        await sendWhatsAppMessage(
+          from,
+          "⚠️ Unable to show flight alternatives. Please restart booking."
+        );
+        return true;
+      }
+    
+      const snapshot = buildAlternativesSnapshot({
+        selectedFlight: selected,
+        priceSnapshot: price,
+        searchResults: results
+      });
+    
+      // Store swap candidates explicitly (no hidden mutation)
+      setConversation(from, {
+        ...conversation,
+        temp: {
+          cheapestFlight: snapshot.cheapestFlight,
+          fastestFlight: snapshot.fastestFlight
+        }
+      });
+    
+      await sendWhatsAppMessage(from, snapshot.message);
+      return true;
+    }
+
+
   
     /* ===============================
        CANCEL BOOKING
