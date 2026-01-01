@@ -528,7 +528,7 @@ async function handle(context) {
      setConversation(from, {
        intent: "FLIGHT_BOOKING",
        flow: "ONE_WAY",
-       state: "BOOKING_PREFERENCES",
+       state: "BOOKING_PREFERENCES_INIT",
        booking: {
          selectedFlight,                // ✅ full Amadeus flight object
          flightQuery: conversation.lockedFlightQuery,
@@ -544,7 +544,7 @@ async function handle(context) {
    
      await sendWhatsAppMessage(
        from,
-       "🧾 Great choice!\n\n Reply ok to move ahead or cancel to restart the search"
+       "🧾 Great choice! Let’s customise your booking."
      );
    
      return true;
