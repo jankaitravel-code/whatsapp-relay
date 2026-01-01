@@ -68,64 +68,60 @@ async function handle(context) {
     clearConversation
   } = context;
 
-  /* ===============================
-     BOOKING_PREFERENCES_INIT
-  =============================== */
-  
-  if (
-    conversation?.intent === "FLIGHT_BOOKING" &&
-    conversation.state === "BOOKING_PREFERENCES_INIT"
-  ) {
-    const included = getIncludedBaggage(
-      conversation.booking.selectedFlight
-    );
-  
-    setConversation(from, {
-      ...conversation,
-      state: "BOOKING_BAGGAGE",
-      booking: {
-        ...conversation.booking,
-        includedBaggage: included,
-        preferences: getEmptyPreferences()
-      }
-    });
-  
-    await sendWhatsAppMessage(
-      from,
-      "🧳 Let’s customise your booking\n\n" +
-      `Your flight includes:\n` +
-      `• Cabin baggage: ${included.cabinKg} kg\n` +
-      `• Check-in baggage: ${included.checkinKg} kg\n\n` +
-      "If you need extra baggage allowance, reply with the total additional weight.\n" +
-      "Reply 0 if you don’t need extra baggage.\n\n" +
-      "Example: 0, 5, 10 or 15"
-    );
-  
-    return true;
-  }
-
   // Guard: booking only
   if (!conversation || conversation.intent !== "FLIGHT_BOOKING") {
     return false;
   }
-
-  const lower = (rawText || text || "").toLowerCase();
+  
+  const input = rawText ?? text;
+  const lower = (input || "").toLowerCase();
   const travellers = conversation.booking?.travellers
     ? [...conversation.booking.travellers]
     : [];
   
   if (conversation.state === "BOOKING_BAGGAGE") {
-    const kg = Number(rawText);
+  
+    // 👇 ENTRY LOGIC (runs ONCE, safely)
+    if (!conversation.booking._baggageInitDone) {
+      const included = getIncludedBaggage(
+        conversation.booking.selectedFlight
+      );
+  
+      setConversation(from, {
+        ...conversation,
+        booking: {
+          ...conversation.booking,
+          includedBaggage: included,
+          preferences: getEmptyPreferences(),
+          _baggageInitDone: true
+        }
+      });
+  
+      await sendWhatsAppMessage(
+        from,
+        "🧳 Let’s customise your booking\n\n" +
+        `Your flight includes:\n` +
+        `• Cabin baggage: ${included.cabinKg} kg\n` +
+        `• Check-in baggage: ${included.checkinKg} kg\n\n` +
+        "If you need extra baggage allowance, reply with the total additional weight.\n" +
+        "Reply 0 if you don’t need extra baggage.\n\n" +
+        "Example: 0, 5, 10 or 15"
+      );
+  
+      return true;
+    }
+  
+    // 👇 USER INPUT
+    const kg = Number(input);
   
     if (Number.isNaN(kg) || kg < 0 || kg > 50) {
       await sendWhatsAppMessage(
         from,
-        "❌ Please enter a valid number.\n" +
-        "Example: 0, 5, 10 or 15"
+        "❌ Please enter a valid number.\nExample: 0, 5, 10 or 15"
       );
       return true;
     }
-
+  
     setConversation(from, {
       ...conversation,
       state: "BOOKING_INSURANCE",
@@ -137,17 +133,18 @@ async function handle(context) {
         }
       }
     });
-    
+  
     await sendWhatsAppMessage(
       from,
       `✅ Extra baggage set to ${kg} kg.\n\n` +
       "🛡️ Would you like to add travel insurance?\n\n" +
       "1️⃣ Yes, add insurance\n" +
       "2️⃣ No, continue without insurance"
-      );
-      return true;
-    }
-    
+    );
+  
+    return true;
+  }
+   
   if (conversation.state === "BOOKING_INSURANCE") {
     if (lower !== "1" && lower !== "2") {
       await sendWhatsAppMessage(
