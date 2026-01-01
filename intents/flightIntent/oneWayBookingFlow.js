@@ -678,7 +678,7 @@ async function handle(context) {
   
       await sendWhatsAppMessage(
         from,
-        "⏭️ GST details skipped.\n\nCalculating final price…"
+        "⏭️ GST details skipped.\n\nCalculating final price… reply ok to see it."
       );
       return true;
     }
@@ -707,7 +707,7 @@ async function handle(context) {
   
     await sendWhatsAppMessage(
       from,
-      "✅ GST details saved.\n\nCalculating final price…"
+      "✅ GST details saved.\n\nCalculating final price… reply ok to see it"
     );
     return true;
   }
