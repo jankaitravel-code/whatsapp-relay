@@ -72,13 +72,15 @@ async function handle(context) {
      BOOKING_PREFERENCES_INIT
   =============================== */
   
-  if (conversation.state === "BOOKING_PREFERENCES_INIT") {
+  if (conversation?.intent === "FLIGHT_BOOKING" &&
+      conversation.state === "BOOKING_PREFERENCES_INIT") {
+  
     setConversation(from, {
       ...conversation,
       state: "BOOKING_PREFERENCES"
     });
   
-    // 🔁 Re-enter booking flow immediately (no user input)
+    // 🔁 Immediately continue booking flow
     return handle({
       ...context,
       conversation: {
