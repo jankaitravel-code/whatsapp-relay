@@ -68,11 +68,31 @@ async function handle(context) {
     clearConversation
   } = context;
 
-  
   // Guard: booking only
   if (!conversation || conversation.intent !== "FLIGHT_BOOKING") {
     return false;
   }
+
+  /* ===============================
+     BOOKING_PREFERENCES_INIT
+  =============================== */
+  
+  if (conversation.state === "BOOKING_PREFERENCES_INIT") {
+    setConversation(from, {
+      ...conversation,
+      state: "BOOKING_PREFERENCES"
+    });
+  
+    // 🔁 Re-enter booking flow immediately (no user input)
+    return handle({
+      ...context,
+      conversation: {
+        ...conversation,
+        state: "BOOKING_PREFERENCES"
+      }
+    });
+  }
+
 
   const lower = (rawText || text || "").toLowerCase();
   const travellers = conversation.booking?.travellers
