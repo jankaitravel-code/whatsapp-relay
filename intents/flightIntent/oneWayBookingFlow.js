@@ -68,11 +68,6 @@ async function handle(context) {
     clearConversation
   } = context;
 
-  // Guard: booking only
-  if (!conversation || conversation.intent !== "FLIGHT_BOOKING") {
-    return false;
-  }
-
   /* ===============================
      BOOKING_PREFERENCES_INIT
   =============================== */
@@ -93,6 +88,10 @@ async function handle(context) {
     });
   }
 
+  // Guard: booking only
+  if (!conversation || conversation.intent !== "FLIGHT_BOOKING") {
+    return false;
+  }
 
   const lower = (rawText || text || "").toLowerCase();
   const travellers = conversation.booking?.travellers
