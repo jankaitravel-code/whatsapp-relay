@@ -13,7 +13,12 @@ function canHandle(text, context) {
   const lower = input.toLowerCase();
 
   if (lower === "flights" || lower === "flight") return true;
-  if (["1", "2", "3"].includes(lower)) return true;
+  if (
+    ["1", "2", "3"].includes(lower)) &&
+    context?.conversation?.intent === "FLIGHT_MENU"
+  ) {
+    return true;
+  }
 
   if (
     context?.conversation?.intent === "FLIGHT_SEARCH" ||
