@@ -10,22 +10,22 @@ const fallbackIntent = require("./fallbackIntent");
 const { log } = require("../utils/logger");
 
 async function routeIntent(context) {
-  const { text, conversation } = context;
+  const { text } = context;
 
-  // 🔒 BOOKING LOCK: once booking starts, state machine owns the conversation
-  if (conversation?.intent === "FLIGHT_BOOKING") {
+  // 1️⃣ Reset has highest priority
+  if (resetIntent.canHandle(text)) {
     log("intent_routed", {
-      intent: "FLIGHT_BOOKING",
+      intent: "RESET",
       user: context.from,
       requestId: context.requestContext?.requestId
     });
 
-    await flightIntent.handle(context);
+    await resetIntent.handle(context);
     return;
   }
 
-  // 1️⃣ Reset has highest priority
-  if (resetIntent.canHandle(text)) {
+  // 2️⃣ Flight intent (full or partial) ✅ RESTORED
+  if (flightIntent.canHandle(text, context)) {
     log("intent_routed", {
       intent: "FLIGHT_SEARCH",
       user: context.from,
@@ -55,7 +55,7 @@ async function routeIntent(context) {
   });
 
   await fallbackIntent.handle(context);
-  }
+}
 
 module.exports = {
   routeIntent
