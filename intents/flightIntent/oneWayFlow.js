@@ -533,6 +533,8 @@ async function handle(context) {
          selectedFlight,                // ✅ full Amadeus flight object
          flightQuery: conversation.lockedFlightQuery,
          passengersCount: conversation.lockedFlightQuery.passengers || 2,            // placeholder (future pax capture)
+         // ✅ REQUIRED for alternatives snapshot
+         searchResults: results.rawFlights,          
          searchContext: {
            carriers: results.carriers,
            date: conversation.lockedFlightQuery.date
