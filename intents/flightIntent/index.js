@@ -27,8 +27,16 @@ function canHandle(text, context) {
 }
 
 async function handle(context) {
-  const { text, conversation } = context;
-  const lower = text.toLowerCase();
+ const { text, rawText, conversation } = context;
+  const input =
+    typeof text === "string" && text.trim().length > 0
+      ? text
+      : rawText;
+  
+  if (!input) return;
+  
+  const lower = input.toLowerCase();
+
 
   /* ===============================
    BOOKING FLOW (HIGHEST PRIORITY)
