@@ -774,7 +774,7 @@ async function handle(context) {
         `Extras: ${price.currency} ${price.totals.bookingAdjustments}\n` +
         `Discount: ${price.currency} ${price.bookingAdjustments.discount.delta}\n\n` +
         `*Total Payable: ${price.currency} ${price.totals.grandTotal}*\n\n` +
-        `Reply 1️⃣ to continue to payment\n2️⃣ to cancel`
+        `Reply 1️⃣ See alternative flights\n2️⃣ Continue to payment`
       );
   
       return true;
@@ -815,68 +815,59 @@ async function handle(context) {
       return true;
     }
 
-    /* ===============================
-       OPTION 1: SHOW ALTERNATIVES
-    =============================== */
     if (lower === "1") {
       setConversation(from, {
         ...conversation,
         state: "BOOKING_ALTERNATIVES_SNAPSHOT"
       });
-    
-      // message will be sent by BOOKING_ALTERNATIVES_SNAPSHOT
       return true;
     }
     
-    /* ===============================
-       OPTION 2: CONTINUE TO PAYMENT
-    =============================== */
     if (lower === "2") {
       setConversation(from, {
         ...conversation,
-        state: "BOOKING_PAYMENT_INIT",
-        booking: {
-          ...conversation.booking,
-          paymentStatus: "INITIATED"
-        }
+        state: "BOOKING_PAYMENT_INIT"
       });
     
       await sendWhatsAppMessage(
         from,
-        "💳 Proceeding to payment…\n\nPlease wait while we secure your fare."
+        "💳 Proceeding to payment…"
       );
-    
       return true;
     }
+  }
 
-    /* ===============================
-       BOOKING_ALTERNATIVES_SNAPSHOT
-    ================================ */
-    
-    if (conversation.state === "BOOKING_ALTERNATIVES_SNAPSHOT") {
-      const price = conversation.booking?.priceSnapshot;
-      const selected = conversation.booking?.selectedFlight;
-      const results = conversation.search?.results;
-    
-      // 🔒 Safety guards
-      if (!price || !selected || !Array.isArray(results)) {
-        await sendWhatsAppMessage(
-          from,
-          "⚠️ Unable to show flight alternatives. Please restart booking."
-        );
-        return true;
-      }
-    
-      const snapshot = buildAlternativesSnapshot({
-        selectedFlight: selected,
-        priceSnapshot: price,
-        searchResults: results
-      });
-    
-      // Store swap candidates explicitly (no hidden mutation)
+  /* ===============================
+     BOOKING_ALTERNATIVES_SNAPSHOT
+  ================================ */
+  
+  if (conversation.state === "BOOKING_ALTERNATIVES_SNAPSHOT") {
+    const price = conversation.booking?.priceSnapshot;
+    const selected = conversation.booking?.selectedFlight;
+    const results = conversation.search?.results;
+  
+    if (!price || !selected || !Array.isArray(results)) {
+      await sendWhatsAppMessage(
+        from,
+        "⚠️ Unable to show alternatives. Please restart booking."
+      );
+      return true;
+    }
+  
+    const snapshot = buildAlternativesSnapshot({
+      selectedFlight: selected,
+      priceSnapshot: price,
+      searchResults: results
+    });
+  
+    log("ALTERNATIVES_SNAPSHOT_BUILT", snapshot);
+
+    // First entry only → build & show snapshot
+    if (!conversation.temp?.alternativesShown) {
       setConversation(from, {
         ...conversation,
         temp: {
+          alternativesShown: true,
           cheapestFlight: snapshot.cheapestFlight,
           fastestFlight: snapshot.fastestFlight
         }
@@ -886,47 +877,78 @@ async function handle(context) {
       return true;
     }
 
-
-  
-    /* ===============================
-       CANCEL BOOKING
-    =============================== */
-    if (lower === "2") {
-      recordSignal("booking_cancelled_at_price_review", { user: from });
-  
-      clearConversation(from);
-  
+    if (!["1", "2", "3", "4"].includes(lower)) {
       await sendWhatsAppMessage(
         from,
-        "❌ Booking cancelled.\n\nYou can start a new search anytime."
+        "❌ Please reply with 1, 2, 3 or 4.\n\nType *cancel* to stop."
       );
       return true;
     }
   
-    /* ===============================
-       PROCEED TO PAYMENT
-    =============================== */
+    // 1️⃣ Keep selected flight
     if (lower === "1") {
       setConversation(from, {
         ...conversation,
-        state: "BOOKING_PAYMENT_INIT",
+        temp: null,
+        state: "BOOKING_PAYMENT_INIT"
+      });
+  
+      await sendWhatsAppMessage(from, "💳 Proceeding to payment…");
+      return true;
+    }
+  
+    // 2️⃣ or 3️⃣ Swap flight
+    if (lower === "2" || lower === "3") {
+      const newFlight =
+        lower === "2"
+          ? conversation.temp?.cheapestFlight
+          : conversation.temp?.fastestFlight;
+  
+      if (!newFlight) {
+        await sendWhatsAppMessage(
+          from,
+          "⚠️ This option is unavailable. Please choose another."
+        );
+        return true;
+      }
+  
+      setConversation(from, {
+        ...conversation,
         booking: {
           ...conversation.booking,
-          paymentStatus: "INITIATED"
-        }
+          selectedFlight: newFlight,
+          priceSnapshot: null
+        },
+        temp: null,
+        state: "BOOKING_PRICE_COMPUTE"
       });
   
       await sendWhatsAppMessage(
         from,
-        "💳 Redirecting to payment…\n\n" +
-        "Please wait while we secure your fare."
+        "🔄 Updating flight and recalculating price…"
       );
+      return true;
+    }
   
+    // 4️⃣ Change date
+    if (lower === "4") {
+      setConversation(from, {
+        ...conversation,
+        temp: null,
+        state: "BOOKING_CHANGE_DATE"
+      });
+  
+      await sendWhatsAppMessage(
+        from,
+        "📅 Please enter the new travel date (YYYY-MM-DD)."
+      );
       return true;
     }
   }
 
 
+
+    
   /* ===============================
      GLOBAL CANCEL
   =============================== */
@@ -950,3 +972,61 @@ async function handle(context) {
 module.exports = {
   handle
 };
+
+function buildAlternativesSnapshot({ selectedFlight, priceSnapshot, searchResults }) {
+  const sameDay = searchResults.filter(f =>
+    f.departureDate === selectedFlight.departureDate &&
+    f.id !== selectedFlight.id
+  );
+
+  const cheapest = [...sameDay].sort((a, b) => a.totalPrice - b.totalPrice)[0];
+  const fastest = [...sameDay].sort((a, b) => a.totalDuration - b.totalDuration)[0];
+
+  const currency = priceSnapshot.currency;
+  const selectedTotal = priceSnapshot.totals.grandTotal;
+
+  let message =
+    `✈️ Flight alternatives\n` +
+    `(Same travellers, seats, meals & add-ons)\n\n` +
+
+    `────────────────────\n` +
+    `1️⃣ Selected flight\n` +
+    `💰 ${currency} ${selectedTotal}\n` +
+    `🕛 ${selectedFlight.departureDate} · ${selectedFlight.departureTime}\n\n`;
+
+  if (cheapest) {
+    message +=
+      `────────────────────\n` +
+      `2️⃣ Cheapest option\n` +
+      `💸 Save ${currency} ${selectedTotal - cheapest.totalPrice}\n` +
+      `🕟 ${cheapest.departureDate} · ${cheapest.departureTime}\n\n`;
+  }
+
+  if (fastest) {
+    message +=
+      `────────────────────\n` +
+      `3️⃣ Fastest option\n` +
+      `⏱️ Save ${formatDuration(selectedFlight.totalDuration - fastest.totalDuration)}\n` +
+      `💸 +${currency} ${fastest.totalPrice - selectedTotal}\n\n`;
+  }
+
+  message +=
+    `────────────────────\n` +
+    `4️⃣ Change travel date\n\n` +
+    `Reply 1–4 or type *cancel*`;
+
+  return {
+    message,
+    cheapestFlight: cheapest || null,
+    fastestFlight: fastest || null
+  };
+}
+
+function formatDuration(minutes) {
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  if (h && m) return `${h}h ${m}m`;
+  if (h) return `${h}h`;
+  return `${m}m`;
+}
+
