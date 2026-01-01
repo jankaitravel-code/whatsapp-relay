@@ -127,7 +127,7 @@ async function handle(context) {
   
   // 🔒 If a search flow is active, do NOT show menu fallback
   if (conversation?.intent === "FLIGHT_SEARCH") {
-    return;
+    return true;
   }
   
   await context.sendWhatsAppMessage(
