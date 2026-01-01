@@ -102,7 +102,7 @@ async function handle(context) {
 
   // 🔒 STOP: booking owns the conversation now
   if (conversation?.intent === "FLIGHT_BOOKING") {
-    return false;
+    return true;
   }
 
   const lower = (rawText || text || "").toLowerCase();
@@ -513,19 +513,24 @@ async function handle(context) {
      /^\d+$/.test(lower)
    ) {
      const index = Number(lower) - 1;
-     const results = conversation.results || {};
-   
-     if (
-       !results ||
-       !Array.isArray(results.rawFlights) ||
-       !results.rawFlights[index]
-     ) {
-       await sendWhatsAppMessage(
-         from,
-         "❌ Please select a valid flight number from the list."
-       );
-       return true;
-     }
+     const results = conversation.results;
+
+     if (!results || !Array.isArray(results.rawFlights)) {
+        await sendWhatsAppMessage(
+          from,
+          "⚠️ Your flight list expired. Please search again."
+        );
+        clearConversation(from);
+        return true;
+      }
+      
+      if (!results.rawFlights[index]) {
+        await sendWhatsAppMessage(
+          from,
+          "❌ Please select a valid flight number from the list."
+        );
+        return true;
+      }
    
      const selectedFlight = results.rawFlights[index];
    
