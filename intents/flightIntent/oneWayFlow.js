@@ -100,6 +100,11 @@ async function handle(context) {
     clearConversation
   } = context;
 
+  // 🔒 STOP: booking owns the conversation now
+  if (conversation?.intent === "FLIGHT_BOOKING") {
+    return false;
+  }
+
   const lower = (rawText || text || "").toLowerCase();
 
    /* ===============================
