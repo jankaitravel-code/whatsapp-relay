@@ -12,14 +12,18 @@ function canHandle(text, context) {
 
   const lower = input.toLowerCase();
 
+  // Explicit entry
   if (lower === "flights" || lower === "flight") return true;
+
+  // ✅ Numeric input ONLY for flight menu
   if (
-    ["1", "2", "3"].includes(lower)) &&
+    ["1", "2", "3"].includes(lower) &&
     context?.conversation?.intent === "FLIGHT_MENU"
   ) {
     return true;
   }
 
+  // Continue active flight flows
   if (
     context?.conversation?.intent === "FLIGHT_SEARCH" ||
     context?.conversation?.intent === "FLIGHT_MENU" ||
