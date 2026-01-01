@@ -538,7 +538,7 @@ async function handle(context) {
      setConversation(from, {
        intent: "FLIGHT_BOOKING",
        flow: "ONE_WAY",
-       state: "BOOKING_PREFERENCES_INIT",
+       state: "BOOKING_BAGGAGE",
        booking: {
          selectedFlight,                // ✅ full Amadeus flight object
          flightQuery: conversation.lockedFlightQuery,
