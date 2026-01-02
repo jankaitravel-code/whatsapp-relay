@@ -4,6 +4,10 @@
  */
 
 function canHandle(text) {
+  if (context?.conversation?.intent === "FLIGHT_BOOKING") {
+    return false; // 🔒 booking owns cancel
+  }
+  
   const normalized = text.trim().toLowerCase();
 
   return (
