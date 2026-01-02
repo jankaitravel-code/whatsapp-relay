@@ -28,14 +28,17 @@ async function routeIntent(context) {
     return;
   }
 
-  // 1️⃣ Reset
-  if (resetIntent.canHandle(text)) {
+  // 1️⃣ Reset (DISABLED during booking)
+  if (
+    conversation?.intent !== "FLIGHT_BOOKING" &&
+    resetIntent.canHandle(text)
+  ) {
     log("intent_routed", {
       intent: "RESET",
       user: context.from,
       requestId: context.requestContext?.requestId
     });
-
+  
     await resetIntent.handle(context);
     return;
   }
