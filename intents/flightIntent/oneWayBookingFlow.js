@@ -61,6 +61,18 @@ function getEligibleSpecialFares(age) {
   return fares;
 }
 
+function resetBookingState(conversation) {
+  return {
+    ...conversation,
+    booking: {
+      selectedFlight: conversation.booking.selectedFlight,
+      passengersCount: conversation.booking.passengersCount
+    },
+    temp: null
+  };
+}
+
+
 async function handle(context) {
   const {
     from,
@@ -76,6 +88,16 @@ async function handle(context) {
   if (!conversation || conversation.intent !== "FLIGHT_BOOKING") {
     return false;
   }
+
+  if (!conversation.booking?.selectedFlight) {
+    await sendWhatsAppMessage(
+      from,
+      "⚠️ Booking session expired. Please start again."
+    );
+    clearConversation(from);
+    return true;
+  }
+
   
   const input = rawText ?? text;
   const lower = (input || "").toLowerCase();
@@ -953,7 +975,8 @@ async function handle(context) {
           ...conversation.booking,
           selectedFlight: newFlight,
           priceSnapshot: null,
-          _priceComputed: false
+          _priceComputed: false,
+          preferences: getEmptyPreferences()
         },
         temp: null,
         state: "BOOKING_PRICE_COMPUTE"
@@ -988,13 +1011,19 @@ async function handle(context) {
   /* ===============================
      GLOBAL CANCEL
   =============================== */
+
   if (lower === "cancel") {
     recordSignal("booking_cancelled", { user: from });
+  
     clearConversation(from);
-    await sendWhatsAppMessage(from, "❌ Booking cancelled.");
+  
+    await sendWhatsAppMessage(
+      from,
+      "❌ Booking cancelled.\n\nType *flights* to start again."
+    );
+  
     return true;
   }
-  
   /* ===============================
      FALLBACK
   =============================== */
