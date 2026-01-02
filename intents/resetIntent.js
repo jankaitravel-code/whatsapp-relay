@@ -11,7 +11,6 @@ function canHandle(text) {
   const normalized = text.trim().toLowerCase();
 
   return (
-    normalized === "cancel" ||
     normalized === "reset" ||
     normalized === "New Search" ||
     normalized === "Restart" ||
