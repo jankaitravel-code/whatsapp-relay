@@ -103,12 +103,10 @@ async function handle(context) {
   
       await sendWhatsAppMessage(
         from,
-        "🧳 Let’s customise your booking\n\n" +
         `Your flight includes:\n` +
         `• Cabin baggage: ${included.cabinKg} kg\n` +
         `• Check-in baggage: ${included.checkinKg} kg\n\n` +
-        "If you need extra baggage allowance, reply with the total additional weight.\n" +
-        "Reply 0 if you don’t need extra baggage.\n\n" +
+        "Do you need EXTRA baggage allowance, reply with the total additional weight.\n" +
         "Example: 0, 5, 10 or 15"
       );
   
