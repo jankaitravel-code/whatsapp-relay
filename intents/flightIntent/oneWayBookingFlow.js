@@ -79,9 +79,6 @@ async function handle(context) {
   
   const input = rawText ?? text;
   const lower = (input || "").toLowerCase();
-  const travellers = conversation.booking?.travellers
-    ? [...conversation.booking.travellers]
-    : [];
   
   if (conversation.state === "BOOKING_BAGGAGE") {
   
@@ -285,11 +282,11 @@ async function handle(context) {
     return true;
   }
   
-  //NAME INPUT --> Age
+  // NAME INPUT → AGE
 
   if (conversation.state === "BOOKING_TRAVELLER_NAME") {
     const parts = rawText.trim().split(" ");
-
+  
     if (parts.length < 2) {
       await sendWhatsAppMessage(
         from,
@@ -298,8 +295,11 @@ async function handle(context) {
       return true;
     }
   
-    const traveller = {
-      index: conversation.booking.currentTravellerIndex + 1,
+    const idx = conversation.booking.currentTravellerIndex;
+    const travellers = [...conversation.booking.travellers];
+  
+    travellers[idx] = {
+      index: idx + 1,
       firstName: parts[0],
       lastName: parts.slice(1).join(" "),
       ageCategory: "ADULT",
@@ -307,16 +307,16 @@ async function handle(context) {
       seat: null,
       meal: null
     };
-
+  
     setConversation(from, {
-    ...conversation,
-    state: "BOOKING_TRAVELLER_AGE",
-    booking: {
-      ...conversation.booking,
-      travellers: [...conversation.booking.travellers, traveller],
-      travellerLocked: false
-    }
-  });
+      ...conversation,
+      state: "BOOKING_TRAVELLER_AGE",
+      booking: {
+        ...conversation.booking,
+        travellers,
+        travellerLocked: false
+      }
+    });
   
     await sendWhatsAppMessage(
       from,
@@ -335,18 +335,23 @@ async function handle(context) {
       await sendWhatsAppMessage(from, "❌ Please enter a valid age.");
       return true;
     }
-  
-    const t = travellers[travellers.length - 1];
-  
-    t.age = age;
-  
-    // ✅ Age category (do NOT mix with fare)
-    if (age < 2) t.ageCategory = "INFANT";
-    else if (age < 12) t.ageCategory = "CHILD";
-    else t.ageCategory = "ADULT";
-  
-    // ✅ Compute eligible special fares ONCE
-    t.eligibleSpecialFares = getEligibleSpecialFares(age);
+
+    const idx = conversation.booking.currentTravellerIndex;
+    const travellers = [...conversation.booking.travellers];
+    
+    const ageCategory =
+      age < 2 ? "INFANT" :
+      age < 12 ? "CHILD" :
+      "ADULT";
+    
+    travellers[idx] = {
+      ...travellers[idx],
+      age,
+      ageCategory,
+      eligibleSpecialFares: getEligibleSpecialFares(age)
+    };
+
+    const t = travellers[idx];
   
     // 🔽 Build dynamic fare options
     let message =
@@ -397,8 +402,13 @@ async function handle(context) {
       return true;
     }
   
+    const idx = conversation.booking.currentTravellerIndex;
     const travellers = [...conversation.booking.travellers];
-    travellers[travellers.length - 1].specialFare = selectedFare;
+    
+    travellers[idx] = {
+      ...travellers[idx],
+      specialFare: selectedFare
+    };
   
     // 🔥 Clean up temporary map
     const { _specialFareOptionMap, ...bookingRest } = conversation.booking;
@@ -432,9 +442,14 @@ async function handle(context) {
       );
       return true;
     }
-  
-    travellers[travellers.length - 1].seat =
-      lower === "1" ? "FREE_AUTO" : "PAID_MANUAL";
+
+    const idx = conversation.booking.currentTravellerIndex;
+    const travellers = [...conversation.booking.travellers];
+
+    travellers[idx] = {
+      ...travellers[idx],
+      seat: lower === "1" ? "FREE_AUTO" : "PAID_MANUAL"
+    };
   
     setConversation(from, {
       ...conversation,
@@ -475,9 +490,13 @@ async function handle(context) {
       return true;
     }
 
-    travellers[travellers.length - 1].meal = map[lower];
+    const idx = conversation.booking.currentTravellerIndex;
+    const travellers = [...conversation.booking.travellers];
 
-    const t = travellers[travellers.length - 1];
+    travellers[idx] = {
+      ...travellers[idx],
+      meal: map[lower]
+    };
     
     setConversation(from, {
       ...conversation,
@@ -487,6 +506,8 @@ async function handle(context) {
         travellers
       }
     });
+
+    const t = travellers[idx];
     
     await sendWhatsAppMessage(
       from,
@@ -512,8 +533,12 @@ async function handle(context) {
       }
     
     if (lower === "2") {
+      
+      const idx = conversation.booking.currentTravellerIndex;
       const travellers = [...conversation.booking.travellers];
-      travellers.pop(); // 🔥 remove current traveller safely
+      
+      travellers.splice(idx, 1);
+
     
       setConversation(from, {
         ...conversation,
