@@ -558,7 +558,7 @@ async function handle(context) {
    
      await sendWhatsAppMessage(
        from,
-       "🧳 Let’s customise your booking.\n\nReply with the EXTRA baggage allowance you need (0, 5, 10…)."
+       "✅ Flight selected. Customising your booking…"
      );
    
      return true;
