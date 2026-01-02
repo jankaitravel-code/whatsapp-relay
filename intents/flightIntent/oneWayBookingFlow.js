@@ -4,6 +4,10 @@
  * Entry: via conversation handoff from oneWayFlow.js
  */
 
+// ⚠️ INVARIANT: Only ONE layer may own user input at a time.
+// Router → Intent → Flow → Booking (strict handoff, no overlap)
+
+
 const { log } = require("../../utils/logger");
 const { recordSignal } = require("../../utils/abuseSignals");
 const { computeOneWayFinalPrice } = require("../../services/price/computeOneWayFinalPrice");
