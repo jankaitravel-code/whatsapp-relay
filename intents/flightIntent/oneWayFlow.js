@@ -73,6 +73,11 @@ function buildConfirmationMessage(q) {
 async function start(context) {
   const { from, sendWhatsAppMessage, setConversation } = context;
 
+  // 🔒 Booking owns input — start() must never run
+  if (conversation?.intent === "FLIGHT_BOOKING") {
+    return;
+  }
+
   setConversation(from, {
     intent: "FLIGHT_SEARCH",
     flow: "ONE_WAY",
