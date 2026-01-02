@@ -27,6 +27,11 @@ function canHandle(text, context) {
     return true;
   }
 
+  // ❌ Booking owns input — flightIntent must disappear
+  if (context?.conversation?.intent === "FLIGHT_BOOKING") {
+    return false;
+  }
+
   // Continue active flight flows
   if (
     context?.conversation?.intent === "FLIGHT_SEARCH" ||
