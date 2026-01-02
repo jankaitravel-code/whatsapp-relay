@@ -1,3 +1,8 @@
+// ⚠️ INVARIANT: Only ONE layer may own user input at a time.
+// Router → Intent → Flow → Booking (strict handoff, no overlap)
+
+
+
 const oneWayFlow = require("./oneWayFlow");
 const roundTripFlow = require("./roundTripFlow");
 const multiCityFlow = require("./multiCityFlow");
