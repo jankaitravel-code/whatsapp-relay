@@ -30,8 +30,7 @@ function canHandle(text, context) {
   // Continue active flight flows
   if (
     context?.conversation?.intent === "FLIGHT_SEARCH" ||
-    context?.conversation?.intent === "FLIGHT_MENU" ||
-    context?.conversation?.intent === "FLIGHT_BOOKING"
+    context?.conversation?.intent === "FLIGHT_MENU"
   ) {
     return true;
   }
@@ -55,9 +54,9 @@ async function handle(context) {
    BOOKING FLOW (HIGHEST PRIORITY)
   =============================== */
   if (conversation?.intent === "FLIGHT_BOOKING") {
-    return oneWayBookingFlow.handle(context);
+    await oneWayBookingFlow.handle(context);
+    return; // 🔒 HARD STOP — booking owns input
   }
-
 
   /* ===============================
      CONTINUE ACTIVE FLOW
@@ -130,8 +129,12 @@ async function handle(context) {
   =============================== */
   
   // 🔒 If a search flow is active, do NOT show menu fallback
-  if (conversation?.intent === "FLIGHT_SEARCH") {
-    return true;
+
+  if (
+    conversation?.intent === "FLIGHT_SEARCH" ||
+    conversation?.intent === "FLIGHT_BOOKING"
+  ) {
+    return;
   }
   
   await context.sendWhatsAppMessage(
