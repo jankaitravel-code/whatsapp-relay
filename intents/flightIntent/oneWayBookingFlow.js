@@ -901,7 +901,7 @@ async function handle(context) {
   if (conversation.state === "BOOKING_ALTERNATIVES_SNAPSHOT") {
     const price = conversation.booking?.priceSnapshot;
     const selected = conversation.booking?.selectedFlight;
-    const results = conversation.search?.results;
+    const results = conversation.booking?.searchResults;
   
     if (!price || !selected || !Array.isArray(results)) {
       await sendWhatsAppMessage(
