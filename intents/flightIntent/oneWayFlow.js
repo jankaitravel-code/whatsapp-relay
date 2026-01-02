@@ -559,8 +559,11 @@ async function handle(context) {
             carriers: results.carriers,
             date: conversation.lockedFlightQuery.date
           }
-        }
-      });
+        }}
+        log("BOOKING_OWNERSHIP_LOCKED", {
+          user: from,
+          flightId: selectedFlight.id
+        });
    
      await sendWhatsAppMessage(
        from,
@@ -569,9 +572,6 @@ async function handle(context) {
    
      return true;
 
-     log("BOOKING_OWNERSHIP_LOCKED", {
-       user: from,
-       flightId: selectedFlight.id
      });
    }
 
