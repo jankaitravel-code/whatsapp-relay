@@ -543,40 +543,32 @@ async function handle(context) {
        user: from,
        flightId: selectedFlight.id
      });
-   
+
      // 🔐 HANDOFF TO BOOKING FLOW (STRICT)
-     setConversation(from, {
-       intent: "FLIGHT_BOOKING",
-       state: "BOOKING_BAGGAGE",
-   
-       // 🔥 HARD TERMINATION
-       flow: null,
-       search: null,
-       results: null,
-   
-       booking: {
-         selectedFlight,
-         flightQuery: conversation.lockedFlightQuery,
-         passengersCount: conversation.lockedFlightQuery.passengers || 2,
-   
-         // snapshot only
-         searchResults: results.rawFlights,
-         searchContext: {
-           carriers: results.carriers,
-           date: conversation.lockedFlightQuery.date
-         }
-       }
-     });
-   
-     await sendWhatsAppMessage(
-       from,
-       "✅ Flight selected. Customising your booking…"
-     );
-   
-     return true;
+      setConversation(from, {
+        intent: "FLIGHT_BOOKING",
+        state: "BOOKING_BAGGAGE",
+      
+        // 🔥 HARD TERMINATION (search must die here)
+        flow: null,
+        search: null,
+        results: null,
+        temp: null,
+      
+        booking: {
+          selectedFlight,
+          flightQuery: conversation.lockedFlightQuery,
+          passengersCount: conversation.lockedFlightQuery.passengers || 2
+        }
+      });
+      
+      await sendWhatsAppMessage(
+        from,
+        "✅ Flight selected. Customising your booking…"
+      );
+      
+      return true;
    }
-
-
 
    if (conversation?.state === "AWAITING_RECONFIRMATION") {
 
