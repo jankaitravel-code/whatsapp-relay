@@ -518,53 +518,55 @@ async function handle(context) {
    ) {
      const index = Number(lower) - 1;
      const results = conversation.results;
-
+   
      if (!results || !Array.isArray(results.rawFlights)) {
-        await sendWhatsAppMessage(
-          from,
-          "⚠️ Your flight list expired. Please search again."
-        );
-        clearConversation(from);
-        return true;
-      }
-      
-      if (!results.rawFlights[index]) {
-        await sendWhatsAppMessage(
-          from,
-          "❌ Please select a valid flight number from the list."
-        );
-        return true;
-      }
+       await sendWhatsAppMessage(
+         from,
+         "⚠️ Your flight list expired. Please search again."
+       );
+       clearConversation(from);
+       return true;
+     }
+   
+     if (!results.rawFlights[index]) {
+       await sendWhatsAppMessage(
+         from,
+         "❌ Please select a valid flight number from the list."
+       );
+       return true;
+     }
    
      const selectedFlight = results.rawFlights[index];
    
+     // ✅ LOG MUST BE HERE — BEFORE HANDOFF
+     log("BOOKING_OWNERSHIP_LOCKED", {
+       user: from,
+       flightId: selectedFlight.id
+     });
+   
      // 🔐 HANDOFF TO BOOKING FLOW (STRICT)
      setConversation(from, {
-        intent: "FLIGHT_BOOKING",
-        state: "BOOKING_BAGGAGE",
-      
-        // 🔥 HARD TERMINATION
-        flow: null,
-        search: null,
-        results: null,
-      
-        booking: {
-          selectedFlight,
-          flightQuery: conversation.lockedFlightQuery,
-          passengersCount: conversation.lockedFlightQuery.passengers || 2,
-      
-          // snapshot only
-          searchResults: results.rawFlights,
-          searchContext: {
-            carriers: results.carriers,
-            date: conversation.lockedFlightQuery.date
-          }
-        }
-
-        log("BOOKING_OWNERSHIP_LOCKED", {
-          user: from,
-          flightId: selectedFlight.id
-        });
+       intent: "FLIGHT_BOOKING",
+       state: "BOOKING_BAGGAGE",
+   
+       // 🔥 HARD TERMINATION
+       flow: null,
+       search: null,
+       results: null,
+   
+       booking: {
+         selectedFlight,
+         flightQuery: conversation.lockedFlightQuery,
+         passengersCount: conversation.lockedFlightQuery.passengers || 2,
+   
+         // snapshot only
+         searchResults: results.rawFlights,
+         searchContext: {
+           carriers: results.carriers,
+           date: conversation.lockedFlightQuery.date
+         }
+       }
+     });
    
      await sendWhatsAppMessage(
        from,
@@ -572,9 +574,9 @@ async function handle(context) {
      );
    
      return true;
-
-     });
    }
+
+
 
    if (conversation?.state === "AWAITING_RECONFIRMATION") {
 
