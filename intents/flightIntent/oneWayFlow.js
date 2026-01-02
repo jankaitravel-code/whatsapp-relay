@@ -4,6 +4,10 @@
  * Scope: ONE_WAY only
  */
 
+// ⚠️ INVARIANT: Only ONE layer may own user input at a time.
+// Router → Intent → Flow → Booking (strict handoff, no overlap)
+
+
 const { parseFlightQuery } = require("../../services/flightParser");
 const { searchFlights } = require("../../services/flightSearchService");
 const { log } = require("../../utils/logger");
