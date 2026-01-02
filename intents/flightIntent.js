@@ -2,7 +2,7 @@
  * Flight Intent
  * Handles all flight-related messages and conversation continuation
  * Production-safe with explicit confirmation (Step 7.2.4)
- */
+ 
 
 const { parseFlightQuery } = require("../services/flightParser");
 const { searchFlights } = require("../services/flightSearchService");
