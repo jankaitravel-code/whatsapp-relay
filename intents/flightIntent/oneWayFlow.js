@@ -560,6 +560,10 @@ async function handle(context) {
             date: conversation.lockedFlightQuery.date
           }
         }
+
+        log("BOOKING_OWNERSHIP_LOCKED", {
+          user: from,
+          flightId: selectedFlight.id
         });
    
      await sendWhatsAppMessage(
