@@ -707,7 +707,7 @@ async function handle(context) {
   
       await sendWhatsAppMessage(
         from,
-        "⏭️ GST details skipped.\n\nCalculating final price… reply ok to see it."
+        "⏭️ GST details skipped.\n\nCalculating final price… "
       );
       return true;
     }
@@ -736,17 +736,21 @@ async function handle(context) {
   
     await sendWhatsAppMessage(
       from,
-      "✅ GST details saved.\n\nCalculating final price… reply ok to see it"
+      "✅ GST details saved.\n\nCalculating final price… "
     );
     return true;
   }
 
-
-
   /* ===============================
-   BOOKING_PRICE_COMPUTE
+     BOOKING_PRICE_COMPUTE
   =============================== */
+  
   if (conversation.state === "BOOKING_PRICE_COMPUTE") {
+    // 🔒 ENTRY GUARD — run once only
+    if (conversation.booking?._priceComputed) {
+      return true;
+    }
+  
     if (!conversation.booking?.travellers?.length) {
       await sendWhatsAppMessage(
         from,
@@ -754,7 +758,7 @@ async function handle(context) {
       );
       return true;
     }
-
+  
     try {
       const passengers = conversation.booking.travellers.map(t => ({
         index: t.index,
@@ -779,20 +783,22 @@ async function handle(context) {
       });
   
       const price = computeOneWayFinalPrice({
-        selectedFlight: conversation.booking.selectedFlight, // ✅ correct key
-        travellers: passengers,                              // ✅ correct key
+        selectedFlight: conversation.booking.selectedFlight,
+        travellers: passengers,
         preferences: conversation.booking.preferences || {},
         discountCode
       });
   
       log("FINAL_PRICE_COMPUTED", price);
   
+      // ✅ AUTO-ADVANCE
       setConversation(from, {
         ...conversation,
         state: "BOOKING_PRICE_REVIEW",
         booking: {
           ...conversation.booking,
-          priceSnapshot: price
+          priceSnapshot: price,
+          _priceComputed: true
         }
       });
   
@@ -803,7 +809,7 @@ async function handle(context) {
         `Extras: ${price.currency} ${price.totals.bookingAdjustments}\n` +
         `Discount: ${price.currency} ${price.bookingAdjustments.discount.delta}\n\n` +
         `*Total Payable: ${price.currency} ${price.totals.grandTotal}*\n\n` +
-        `Reply 1️⃣ See alternative flights\n2️⃣ Continue to payment`
+        `Reply:\n1️⃣ See alternative flights\n2️⃣ Continue to payment`
       );
   
       return true;
@@ -946,7 +952,8 @@ async function handle(context) {
         booking: {
           ...conversation.booking,
           selectedFlight: newFlight,
-          priceSnapshot: null
+          priceSnapshot: null,
+          _priceComputed: false
         },
         temp: null,
         state: "BOOKING_PRICE_COMPUTE"
