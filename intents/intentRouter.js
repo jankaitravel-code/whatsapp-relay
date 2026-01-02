@@ -31,7 +31,7 @@ async function routeIntent(context) {
   // 1️⃣ Reset (DISABLED during booking)
   if (
     conversation?.intent !== "FLIGHT_BOOKING" &&
-    resetIntent.canHandle(text)
+    resetIntent.canHandle(text, context)
   ) {
     log("intent_routed", {
       intent: "RESET",
