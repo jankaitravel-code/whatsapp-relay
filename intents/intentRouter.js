@@ -56,7 +56,7 @@ async function routeIntent(context) {
   }
 
   // 3️⃣ Greeting intent
-  if (greetingIntent.canHandle(text)) {
+  if (greetingIntent.canHandle(text, context)) {
     log("intent_routed", {
       intent: "GREETING",
       user: context.from,
