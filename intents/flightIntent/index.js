@@ -21,7 +21,7 @@ function canHandle(text, context) {
   if (lower === "flights" || lower === "flight") return true;
 
   if (
-    ["oneway", "roundtrip", "mlticity"].includes(lower) &&
+    ["oneway", "roundtrip", "multicity"].includes(lower) &&
     context?.conversation?.intent === "FLIGHT_MENU"
   ) {
     return true;
