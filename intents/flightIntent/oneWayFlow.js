@@ -570,6 +570,12 @@ async function handle(context) {
      return true;
    }
 
+   log("BOOKING_OWNERSHIP_LOCKED", {
+     user: from,
+     flightId: selectedFlight.id
+   });
+
+
    if (conversation?.state === "AWAITING_RECONFIRMATION") {
 
      if (lower === "change date") {
