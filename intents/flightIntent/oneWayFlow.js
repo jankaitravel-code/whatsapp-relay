@@ -563,7 +563,8 @@ async function handle(context) {
         booking: {
           selectedFlight,
           flightQuery: conversation.lockedFlightQuery,
-          passengersCount: conversation.lockedFlightQuery.passengers || 2
+          passengersCount: conversation.lockedFlightQuery.passengers || 2,
+          searchResults: results.rawFlights   // ✅ REQUIRED
         }
       });
       
