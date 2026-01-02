@@ -3,6 +3,10 @@
  * Decides which intent handler should process the message
  */
 
+// ⚠️ INVARIANT: Only ONE layer may own user input at a time.
+// Router → Intent → Flow → Booking (strict handoff, no overlap)
+
+
 const resetIntent = require("./resetIntent");
 const greetingIntent = require("./greetingIntent");
 const flightIntent = require("./flightIntent/index");
