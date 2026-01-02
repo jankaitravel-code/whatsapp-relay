@@ -902,8 +902,8 @@ async function handle(context) {
     const price = conversation.booking?.priceSnapshot;
     const selected = conversation.booking?.selectedFlight;
     const results = conversation.booking?.searchResults;
-  
-    if (!price || !selected || !Array.isArray(results)) {
+
+    if (!price || !selected || !Array.isArray(results) || results.length === 0) {
       await sendWhatsAppMessage(
         from,
         "⚠️ Unable to show alternatives. Please restart booking."
