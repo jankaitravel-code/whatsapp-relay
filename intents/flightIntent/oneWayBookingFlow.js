@@ -1027,10 +1027,6 @@ async function handle(context) {
   /* ===============================
      FALLBACK
   =============================== */
-  await sendWhatsAppMessage(
-    from,
-    "Please reply *cancel* to stop booking."
-  );
   return true;
 }
 
