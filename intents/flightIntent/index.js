@@ -20,9 +20,8 @@ function canHandle(text, context) {
   // Explicit entry
   if (lower === "flights" || lower === "flight") return true;
 
-  // ✅ Numeric input ONLY for flight menu
   if (
-    ["1", "2", "3"].includes(lower) &&
+    ["oneway", "roundtrip", "mlticity"].includes(lower) &&
     context?.conversation?.intent === "FLIGHT_MENU"
   ) {
     return true;
@@ -84,9 +83,9 @@ async function handle(context) {
      FLOW SELECTION
   =============================== */
   if (!conversation) {
-    if (lower === "1") return oneWayFlow.start(context);
-    if (lower === "2") return roundTripFlow.start(context);
-    if (lower === "3") return multiCityFlow.start(context);
+    if (lower === "oneway") return oneWayFlow.start(context);
+    if (lower === "roundtrip") return roundTripFlow.start(context);
+    if (lower === "multicity") return multiCityFlow.start(context);
   }
 
   if (lower === "flights" || lower === "flight") {
@@ -99,9 +98,9 @@ async function handle(context) {
       context.from,
       "✈️ You have selected flights.\n\n" +
         "Reply:\n" +
-        "1️⃣ for One-way\n" +
-        "2️⃣ for Round-trip\n" +
-        "3️⃣ for Multi-city"
+        "➡️ oneway\n" +
+        "➡️ roundtrip\n" +
+        "➡️ multicity"
     );
     return;
   }
@@ -110,18 +109,18 @@ async function handle(context) {
     conversation?.intent === "FLIGHT_MENU" &&
     conversation.state === "MENU"
   ) {
-    if (lower === "1") return oneWayFlow.start(context);
-    if (lower === "2") return roundTripFlow.start(context);
-    if (lower === "3") return multiCityFlow.start(context);
+    if (lower === "oneway") return oneWayFlow.start(context);
+    if (lower === "roundtrip") return roundTripFlow.start(context);
+    if (lower === "multicity") return multiCityFlow.start(context);
   
     // 🔒 Invalid input → repeat same menu
     await context.sendWhatsAppMessage(
       context.from,
       "✈️ Flights menu\n\n" +
         "Reply:\n" +
-        "1️⃣ for One-way\n" +
-        "2️⃣ for Round-trip\n" +
-        "3️⃣ for Multi-city"
+        "➡️ oneway\n" +
+        "➡️ roundtrip\n" +
+        "➡️ multicity"
     );
     return;
   }
@@ -139,9 +138,9 @@ async function handle(context) {
     context.from,
     "✈️ Flights menu\n\n" +
       "Reply:\n" +
-      "1️⃣ for One-way\n" +
-      "2️⃣ for Round-trip\n" +
-      "3️⃣ for Multi-city"
+      "➡️ oneway\n" +
+      "➡️ roundtrip\n" +
+      "➡️ multicity"
   );
   }
 
