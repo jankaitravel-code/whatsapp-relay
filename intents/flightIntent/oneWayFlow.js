@@ -540,21 +540,27 @@ async function handle(context) {
    
      // 🔐 HANDOFF TO BOOKING FLOW (STRICT)
      setConversation(from, {
-       intent: "FLIGHT_BOOKING",
-       flow: "ONE_WAY",
-       state: "BOOKING_BAGGAGE",
-       booking: {
-         selectedFlight,                // ✅ full Amadeus flight object
-         flightQuery: conversation.lockedFlightQuery,
-         passengersCount: conversation.lockedFlightQuery.passengers || 2,            // placeholder (future pax capture)
-         // ✅ REQUIRED for alternatives snapshot
-         searchResults: results.rawFlights,          
-         searchContext: {
-           carriers: results.carriers,
-           date: conversation.lockedFlightQuery.date
-         }
-       }
-     });
+        intent: "FLIGHT_BOOKING",
+        state: "BOOKING_BAGGAGE",
+      
+        // 🔥 HARD TERMINATION
+        flow: null,
+        search: null,
+        results: null,
+      
+        booking: {
+          selectedFlight,
+          flightQuery: conversation.lockedFlightQuery,
+          passengersCount: conversation.lockedFlightQuery.passengers || 2,
+      
+          // snapshot only
+          searchResults: results.rawFlights,
+          searchContext: {
+            carriers: results.carriers,
+            date: conversation.lockedFlightQuery.date
+          }
+        }
+      });
    
      await sendWhatsAppMessage(
        from,
