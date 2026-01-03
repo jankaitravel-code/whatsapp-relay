@@ -622,6 +622,33 @@ async function handle(context) {
   =============================== */
   
   if (conversation.state === "BOOKING_FREQUENT_FLYER") {
+
+    // 🔒 ENTRY PROMPT — retry-safe & context-aware
+    if (!conversation.booking._ffPrompted) {
+      const profileFF = conversation.profile?.frequentFlyer;
+    
+      setConversation(from, {
+        ...conversation,
+        booking: {
+          ...conversation.booking,
+          _ffPrompted: true
+        }
+      });
+    
+      const message = profileFF
+        ? "✈️ Frequent Flyer\n\nReply:\n" +
+          "1️⃣ Use saved number\n" +
+          "2️⃣ Enter a new number\n" +
+          "3️⃣ Skip"
+        : "✈️ Frequent Flyer\n\n" +
+          "Please enter your frequent flyer number.\n" +
+          "Reply *NONE* to skip.";
+    
+      await sendWhatsAppMessage(from, message);
+    
+      return true;
+    }
+    
     const profileFF = conversation.profile?.frequentFlyer;
   
     // Profile FF detected → confirmation step
@@ -721,6 +748,27 @@ async function handle(context) {
   =============================== */
   
   if (conversation.state === "BOOKING_GST_DETAILS") {
+
+    // 🔒 ENTRY PROMPT — retry-safe
+    if (!conversation.booking._gstPrompted) {
+      setConversation(from, {
+        ...conversation,
+        booking: {
+          ...conversation.booking,
+          _gstPrompted: true
+        }
+      });
+    
+      await sendWhatsAppMessage(
+        from,
+        "🏢 GST Details (optional)\n\n" +
+        "Please enter your GST number.\n" +
+        "Reply *NONE* to skip."
+      );
+    
+      return true;
+    }
+
     if (lower === "none") {
       setConversation(from, {
         ...conversation,
@@ -1005,7 +1053,46 @@ async function handle(context) {
     }
   }
 
+  /* ===============================
+     BOOKING_PAYMENT_INIT
+  =============================== */
 
+  if (conversation.state === "BOOKING_PAYMENT_INIT") {
+  
+    // 🔒 ENTRY BLOCK — retry-safe
+    if (!conversation.booking._paymentBlocked) {
+      setConversation(from, {
+        ...conversation,
+        booking: {
+          ...conversation.booking,
+          _paymentBlocked: true
+        }
+      });
+  
+      await sendWhatsAppMessage(
+        from,
+        "💳 Payment is coming soon.\n\n" +
+        "This step is not enabled yet.\n\n" +
+        "Type *cancel* to exit booking."
+      );
+    }
+  
+    return true;
+  }
+
+  /* ===============================
+     BOOKING_CHANGE_DATE
+  =============================== */
+  
+  if (conversation.state === "BOOKING_CHANGE_DATE") {
+    await sendWhatsAppMessage(
+      from,
+      "📅 Changing travel date is not supported yet.\n\n" +
+      "Please type *cancel* to restart your search."
+    );
+  
+    return true;
+  }
 
     
   /* ===============================
