@@ -90,21 +90,22 @@ async function handle(context) {
   }
 
   if (!conversation.booking?.selectedFlight) {
+
     await sendWhatsAppMessage(
       from,
       "⚠️ Booking session expired. Please start again."
     );
+   
     clearConversation(from);
     return true;
   }
-
   
   const input = rawText ?? text;
   const lower = (input || "").toLowerCase();
-  
+
   if (conversation.state === "BOOKING_BAGGAGE") {
-  
-    // 👇 ENTRY LOGIC (runs ONCE, safely)
+
+    // 🔒 ENTRY LOGIC — runs ONCE only
     if (!conversation.booking._baggageInitDone) {
       const included = getIncludedBaggage(
         conversation.booking.selectedFlight
@@ -132,7 +133,11 @@ async function handle(context) {
       return true;
     }
   
-    // 👇 USER INPUT
+    // 🔒 INPUT IDEMPOTENCY GUARD
+    if (conversation.booking._baggageCaptured) {
+      return true;
+    }
+  
     const kg = Number(input);
   
     if (Number.isNaN(kg) || kg < 0 || kg > 50) {
@@ -151,7 +156,8 @@ async function handle(context) {
         preferences: {
           ...conversation.booking.preferences,
           baggageKg: kg
-        }
+        },
+        _baggageCaptured: true
       }
     });
   
@@ -165,8 +171,14 @@ async function handle(context) {
   
     return true;
   }
-   
+
   if (conversation.state === "BOOKING_INSURANCE") {
+  
+    // 🔒 IDEMPOTENCY GUARD
+    if (conversation.booking._insuranceSelected) {
+      return true;
+    }
+  
     if (lower !== "1" && lower !== "2") {
       await sendWhatsAppMessage(
         from,
@@ -187,7 +199,8 @@ async function handle(context) {
         preferences: {
           ...conversation.booking.preferences,
           insurance: insuranceSelected
-        }
+        },
+        _insuranceSelected: true
       }
     });
   
@@ -207,6 +220,12 @@ async function handle(context) {
   }
 
   if (conversation.state === "BOOKING_FLEXIBILITY") {
+
+    // 🔒 IDEMPOTENCY GUARD — retry-safe
+    if (conversation.booking._flexibilitySelected) {
+      return true;
+    }
+  
     const flexibilityMap = {
       "1": { type: "NONE", label: "No flexibility" },
       "2": { type: "DATE_CHANGE", label: "Free date change" },
@@ -235,7 +254,8 @@ async function handle(context) {
         preferences: {
           ...conversation.booking.preferences,
           flexibility: selectedFlex
-        }
+        },
+        _flexibilitySelected: true
       }
     });
   
@@ -252,8 +272,14 @@ async function handle(context) {
   /* ===============================
      BOOKING_DISCOUNT
   =============================== */
-
+  
   if (conversation.state === "BOOKING_DISCOUNT") {
+  
+    // 🔒 IDEMPOTENCY GUARD — retry-safe
+    if (conversation.booking._discountCaptured) {
+      return true;
+    }
+  
     const input = rawText.trim();
   
     setConversation(from, {
@@ -261,7 +287,8 @@ async function handle(context) {
       state: "BOOKING_TRAVELLERS_INIT",
       booking: {
         ...conversation.booking,
-        discountCode: input === "NONE" ? null : input
+        discountCode: input === "NONE" ? null : input,
+        _discountCaptured: true
       }
     });
   
@@ -275,12 +302,17 @@ async function handle(context) {
     return true;
   }
 
-    /* ===============================
-       TRAVELLER INFORMATION
-    =============================== */
-
-
+  /* ===============================
+     TRAVELLER INFORMATION
+  =============================== */
+  
   if (conversation.state === "BOOKING_TRAVELLERS_INIT") {
+  
+    // 🔒 IDEMPOTENCY GUARD — init must run once only
+    if (conversation.booking._travellersInitDone) {
+      return true;
+    }
+  
     const total = conversation.booking.passengersCount;
   
     setConversation(from, {
@@ -289,7 +321,8 @@ async function handle(context) {
       booking: {
         ...conversation.booking,
         travellers: [],
-        currentTravellerIndex: 0
+        currentTravellerIndex: 0,
+        _travellersInitDone: true
       }
     });
   
@@ -303,10 +336,17 @@ async function handle(context) {
   
     return true;
   }
-  
-  // NAME INPUT → AGE
 
+  // NAME INPUT → AGE
+  
   if (conversation.state === "BOOKING_TRAVELLER_NAME") {
+    const idx = conversation.booking.currentTravellerIndex;
+  
+    // 🔒 Idempotency guard — retry-safe
+    if (conversation.booking._nameCapturedForIndex === idx) {
+      return true;
+    }
+  
     const parts = rawText.trim().split(" ");
   
     if (parts.length < 2) {
@@ -317,7 +357,6 @@ async function handle(context) {
       return true;
     }
   
-    const idx = conversation.booking.currentTravellerIndex;
     const travellers = [...conversation.booking.travellers];
   
     travellers[idx] = {
@@ -336,7 +375,9 @@ async function handle(context) {
       booking: {
         ...conversation.booking,
         travellers,
-        travellerLocked: false
+        travellerLocked: false,
+        _nameCapturedForIndex: idx,
+        _travellerEditInProgress: null
       }
     });
   
@@ -348,31 +389,37 @@ async function handle(context) {
     return true;
   }
 
-  //Traveller's age --> Special Fare
-
+  // Traveller's age → Special Fare
+  
   if (conversation.state === "BOOKING_TRAVELLER_AGE") {
+    const idx = conversation.booking.currentTravellerIndex;
+  
+    // 🔒 Idempotency guard — retry-safe
+    if (conversation.booking._ageCapturedForIndex === idx) {
+      return true;
+    }
+  
     const age = Number(rawText);
   
     if (Number.isNaN(age) || age <= 0 || age > 120) {
       await sendWhatsAppMessage(from, "❌ Please enter a valid age.");
       return true;
     }
-
-    const idx = conversation.booking.currentTravellerIndex;
+  
     const travellers = [...conversation.booking.travellers];
-    
+  
     const ageCategory =
       age < 2 ? "INFANT" :
       age < 12 ? "CHILD" :
       "ADULT";
-    
+  
     travellers[idx] = {
       ...travellers[idx],
       age,
       ageCategory,
       eligibleSpecialFares: getEligibleSpecialFares(age)
     };
-
+  
     const t = travellers[idx];
   
     // 🔽 Build dynamic fare options
@@ -400,7 +447,8 @@ async function handle(context) {
       booking: {
         ...conversation.booking,
         travellers,
-        _specialFareOptionMap: optionMap
+        _specialFareOptionMap: optionMap,
+        _ageCapturedForIndex: idx
       }
     });
   
@@ -409,10 +457,22 @@ async function handle(context) {
     return true;
   }
 
-  //SPECIAL FARE --> Seat Selection
-
+  // SPECIAL FARE → Seat Selection
+  
   if (conversation.state === "BOOKING_TRAVELLER_SPECIAL_FARE") {
+    const idx = conversation.booking.currentTravellerIndex;
+  
+    // 🔒 Idempotency guard — retry-safe
+    if (conversation.booking._specialFareLockedForIndex === idx) {
+      return true;
+    }
+  
     const optionMap = conversation.booking._specialFareOptionMap;
+  
+    if (!optionMap) {
+      // Safety fallback — should never happen, but retry-safe
+      return true;
+    }
   
     const selectedFare = optionMap[lower];
   
@@ -424,15 +484,14 @@ async function handle(context) {
       return true;
     }
   
-    const idx = conversation.booking.currentTravellerIndex;
     const travellers = [...conversation.booking.travellers];
-    
+  
     travellers[idx] = {
       ...travellers[idx],
       specialFare: selectedFare
     };
   
-    // 🔥 Clean up temporary map
+    // 🔥 Clean up temporary map safely
     const { _specialFareOptionMap, ...bookingRest } = conversation.booking;
   
     setConversation(from, {
@@ -440,7 +499,9 @@ async function handle(context) {
       state: "BOOKING_TRAVELLER_SEAT",
       booking: {
         ...bookingRest,
-        travellers
+        travellers,
+        _specialFareLockedForIndex: idx,
+        _specialFareOptionMap: null
       }
     });
   
@@ -454,20 +515,26 @@ async function handle(context) {
     return true;
   }
 
-  //SEAT SELECTION --> Meal selection
+  // SEAT SELECTION → Meal selection
 
   if (conversation.state === "BOOKING_TRAVELLER_SEAT") {
+    const idx = conversation.booking.currentTravellerIndex;
+  
+    // 🔒 Idempotency guard — retry-safe
+    if (conversation.booking._seatCapturedForIndex === idx) {
+      return true;
+    }
+  
     if (lower !== "1" && lower !== "2") {
       await sendWhatsAppMessage(
         from,
-        "❌ Please choose:\n1 Any free seat\n2 Paid seat"
+        "❌ Please choose:\n1️⃣ Any free seat\n2️⃣ Paid seat"
       );
       return true;
     }
-
-    const idx = conversation.booking.currentTravellerIndex;
+  
     const travellers = [...conversation.booking.travellers];
-
+  
     travellers[idx] = {
       ...travellers[idx],
       seat: lower === "1" ? "FREE_AUTO" : "PAID_MANUAL"
@@ -478,7 +545,8 @@ async function handle(context) {
       state: "BOOKING_TRAVELLER_MEAL",
       booking: {
         ...conversation.booking,
-        travellers
+        travellers,
+        _seatCapturedForIndex: idx
       }
     });
   
@@ -494,9 +562,16 @@ async function handle(context) {
     return true;
   }
 
-  //MEAL SELECTION --> Traveller review
-
+  // MEAL SELECTION → Traveller review
+  
   if (conversation.state === "BOOKING_TRAVELLER_MEAL") {
+    const idx = conversation.booking.currentTravellerIndex;
+  
+    // 🔒 Idempotency guard — retry-safe
+    if (conversation.booking._mealCapturedForIndex === idx) {
+      return true;
+    }
+  
     const map = {
       "1": "NO_MEAL",
       "2": "VEG",
@@ -511,26 +586,26 @@ async function handle(context) {
       );
       return true;
     }
-
-    const idx = conversation.booking.currentTravellerIndex;
+  
     const travellers = [...conversation.booking.travellers];
-
+  
     travellers[idx] = {
       ...travellers[idx],
       meal: map[lower]
     };
-    
+  
     setConversation(from, {
       ...conversation,
       state: "BOOKING_TRAVELLER_CONFIRM",
       booking: {
         ...conversation.booking,
-        travellers
+        travellers,
+        _mealCapturedForIndex: idx
       }
     });
-
+  
     const t = travellers[idx];
-    
+  
     await sendWhatsAppMessage(
       from,
       `👤 Traveller Review\n\n` +
@@ -541,92 +616,113 @@ async function handle(context) {
       `Meal: ${t.meal}\n\n` +
       `Reply:\n1️⃣ Confirm\n2️⃣ Edit`
     );
-    
+  
     return true;
   }
 
-  //Edit/Confirm --> next traveller loop
+  // Edit / Confirm → next traveller loop
 
   if (conversation.state === "BOOKING_TRAVELLER_CONFIRM") {
-       
+    const idx = conversation.booking.currentTravellerIndex;
+  
+    // 🔒 Confirm idempotency guard — retry-safe
+    if (conversation.booking._travellerConfirmedForIndex === idx) {
+      return true;
+    }
+  
     if (lower !== "1" && lower !== "2") {
       await sendWhatsAppMessage(from, "❌ Reply 1 to confirm or 2 to edit.");
       return true;
-      }
-    
+    }
+  
+    // ✏️ EDIT PATH
     if (lower === "2") {
-      
-      const idx = conversation.booking.currentTravellerIndex;
+      // 🔒 Edit idempotency guard — splice safety
+      if (conversation.booking._travellerEditInProgress === idx) {
+        return true;
+      }
+  
       const travellers = [...conversation.booking.travellers];
-      
       travellers.splice(idx, 1);
-
-    
+  
       setConversation(from, {
         ...conversation,
         state: "BOOKING_TRAVELLER_NAME",
         booking: {
           ...conversation.booking,
           travellers,
-          travellerLocked: false
+          travellerLocked: false,
+          _travellerEditInProgress: idx
         }
       });
-    
+  
       await sendWhatsAppMessage(
         from,
         "✏️ Let’s edit traveller details.\nEnter first and last name."
       );
+  
       return true;
     }
-    
-      const nextIndex = conversation.booking.currentTravellerIndex + 1;
-      const total = conversation.booking.passengersCount;
-    
-      if (nextIndex >= total) {
-        setConversation(from, {
-          ...conversation,
-          state: "BOOKING_FREQUENT_FLYER",
-          booking: {
-            ...conversation.booking,
-            travellerLocked: true
-          }
-        });
-    
-        await sendWhatsAppMessage(
-          from,
-          "✅ Traveller details completed.\n\nPlease enter your frequent flyer number or type None to skip."
-        );
-        return true;
-      }
-    
+  
+    // ✅ CONFIRM PATH
+    const nextIndex = idx + 1;
+    const total = conversation.booking.passengersCount;
+  
+    // 🔒 Lock confirmation before advancing
+    const bookingBase = {
+      ...conversation.booking,
+      travellerLocked: true,
+      _travellerConfirmedForIndex: idx
+    };
+  
+    if (nextIndex >= total) {
       setConversation(from, {
         ...conversation,
-        state: "BOOKING_TRAVELLER_NAME",
-        booking: {
-          ...conversation.booking,
-          currentTravellerIndex: nextIndex,
-          travellerLocked: false
-        }
+        state: "BOOKING_FREQUENT_FLYER",
+        booking: bookingBase
       });
-    
+  
       await sendWhatsAppMessage(
         from,
-        `🧑 Traveller ${nextIndex + 1} of ${total}\n\nPlease enter first and last name.`
+        "✅ Traveller details completed.\n\nPlease enter your frequent flyer number or type None to skip."
       );
-    
+  
       return true;
     }
+  
+    setConversation(from, {
+      ...conversation,
+      state: "BOOKING_TRAVELLER_NAME",
+      booking: {
+        ...bookingBase,
+        currentTravellerIndex: nextIndex,
+        travellerLocked: false
+      }
+    });
+  
+    await sendWhatsAppMessage(
+      from,
+      `🧑 Traveller ${nextIndex + 1} of ${total}\n\nPlease enter first and last name.`
+    );
+  
+    return true;
+  }
 
   /* ===============================
      BOOKING_FREQUENT_FLYER
   =============================== */
   
   if (conversation.state === "BOOKING_FREQUENT_FLYER") {
-
+  
+    // 🔒 HARD IDEMPOTENCY GUARD — retry-safe
+    if (conversation.booking._ffCaptured) {
+      return true;
+    }
+  
     // 🔒 ENTRY PROMPT — retry-safe & context-aware
     if (!conversation.booking._ffPrompted) {
       const profileFF = conversation.profile?.frequentFlyer;
-    
+  
       setConversation(from, {
         ...conversation,
         booking: {
@@ -634,7 +730,7 @@ async function handle(context) {
           _ffPrompted: true
         }
       });
-    
+  
       const message = profileFF
         ? "✈️ Frequent Flyer\n\nReply:\n" +
           "1️⃣ Use saved number\n" +
@@ -643,16 +739,17 @@ async function handle(context) {
         : "✈️ Frequent Flyer\n\n" +
           "Please enter your frequent flyer number.\n" +
           "Reply *NONE* to skip.";
-    
+  
       await sendWhatsAppMessage(from, message);
-    
       return true;
     }
-    
+  
     const profileFF = conversation.profile?.frequentFlyer;
   
-    // Profile FF detected → confirmation step
+    // 🔁 Profile FF present → choice flow
     if (profileFF && !conversation.booking.frequentFlyer?.confirmed) {
+  
+      // 1️⃣ Use saved
       if (lower === "1") {
         setConversation(from, {
           ...conversation,
@@ -662,7 +759,8 @@ async function handle(context) {
             frequentFlyer: {
               ...profileFF,
               confirmed: true
-            }
+            },
+            _ffCaptured: true
           }
         });
   
@@ -673,6 +771,7 @@ async function handle(context) {
         return true;
       }
   
+      // 2️⃣ Enter new
       if (lower === "2") {
         await sendWhatsAppMessage(
           from,
@@ -681,10 +780,15 @@ async function handle(context) {
         return true;
       }
   
+      // 3️⃣ Skip
       if (lower === "3") {
         setConversation(from, {
           ...conversation,
-          state: "BOOKING_GST_DETAILS"
+          state: "BOOKING_GST_DETAILS",
+          booking: {
+            ...conversation.booking,
+            _ffCaptured: true
+          }
         });
   
         await sendWhatsAppMessage(
@@ -696,16 +800,20 @@ async function handle(context) {
   
       await sendWhatsAppMessage(
         from,
-        "❌ Reply:\n1 Use\n2 Change\n3 Skip"
+        "❌ Reply:\n1️⃣ Use\n2️⃣ Change\n3️⃣ Skip"
       );
       return true;
     }
   
-    // Manual entry
+    // ⏭️ Manual skip
     if (lower === "none") {
       setConversation(from, {
         ...conversation,
-        state: "BOOKING_GST_DETAILS"
+        state: "BOOKING_GST_DETAILS",
+        booking: {
+          ...conversation.booking,
+          _ffCaptured: true
+        }
       });
   
       await sendWhatsAppMessage(
@@ -715,6 +823,7 @@ async function handle(context) {
       return true;
     }
   
+    // ❌ Validation
     if (!rawText || rawText.length < 5) {
       await sendWhatsAppMessage(
         from,
@@ -723,6 +832,7 @@ async function handle(context) {
       return true;
     }
   
+    // ✅ Manual entry success
     setConversation(from, {
       ...conversation,
       state: "BOOKING_GST_DETAILS",
@@ -732,13 +842,14 @@ async function handle(context) {
           airline: conversation.booking.selectedFlight.validatingAirlineCodes?.[0],
           number: rawText.trim(),
           confirmed: true
-        }
+        },
+        _ffCaptured: true
       }
     });
   
     await sendWhatsAppMessage(
       from,
-      "✅ Frequent flyer number saved.\n\n Enter your GST number or type None if you dont have one."
+      "✅ Frequent flyer number saved.\n\nEnter your GST number or type NONE if you don’t have one."
     );
     return true;
   }
@@ -748,7 +859,12 @@ async function handle(context) {
   =============================== */
   
   if (conversation.state === "BOOKING_GST_DETAILS") {
-
+  
+    // 🔒 HARD IDEMPOTENCY GUARD — retry-safe
+    if (conversation.booking._gstCaptured) {
+      return true;
+    }
+  
     // 🔒 ENTRY PROMPT — retry-safe
     if (!conversation.booking._gstPrompted) {
       setConversation(from, {
@@ -758,26 +874,31 @@ async function handle(context) {
           _gstPrompted: true
         }
       });
-    
+  
       await sendWhatsAppMessage(
         from,
         "🏢 GST Details (optional)\n\n" +
         "Please enter your GST number.\n" +
         "Reply *NONE* to skip."
       );
-    
+  
       return true;
     }
-
+  
+    // ⏭️ Skip GST
     if (lower === "none") {
       setConversation(from, {
         ...conversation,
-        state: "BOOKING_PRICE_COMPUTE"
+        state: "BOOKING_PRICE_COMPUTE",
+        booking: {
+          ...conversation.booking,
+          _gstCaptured: true
+        }
       });
   
       await sendWhatsAppMessage(
         from,
-        "⏭️ GST details skipped.\n\nCalculating final price… "
+        "⏭️ GST details skipped.\n\nCalculating final price…"
       );
       return true;
     }
@@ -785,6 +906,7 @@ async function handle(context) {
     const gstRegex =
       /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/;
   
+    // ❌ Validation
     if (!gstRegex.test(rawText)) {
       await sendWhatsAppMessage(
         from,
@@ -793,6 +915,7 @@ async function handle(context) {
       return true;
     }
   
+    // ✅ GST captured
     setConversation(from, {
       ...conversation,
       state: "BOOKING_PRICE_COMPUTE",
@@ -800,13 +923,14 @@ async function handle(context) {
         ...conversation.booking,
         gst: {
           gstin: rawText.trim().toUpperCase()
-        }
+        },
+        _gstCaptured: true
       }
     });
   
     await sendWhatsAppMessage(
       from,
-      "✅ GST details saved.\n\nCalculating final price… "
+      "✅ GST details saved.\n\nCalculating final price…"
     );
     return true;
   }
@@ -899,6 +1023,12 @@ async function handle(context) {
   =============================== */
   
   if (conversation.state === "BOOKING_PRICE_REVIEW") {
+  
+    // 🔒 HARD IDEMPOTENCY GUARD — retry-safe
+    if (conversation.booking._priceReviewHandled) {
+      return true;
+    }
+  
     const price = conversation.booking?.priceSnapshot;
   
     // 🔒 Safety guard
@@ -919,21 +1049,31 @@ async function handle(context) {
       );
       return true;
     }
-
+  
+    // 1️⃣ Alternatives
     if (lower === "1") {
       setConversation(from, {
         ...conversation,
-        state: "BOOKING_ALTERNATIVES_SNAPSHOT"
+        state: "BOOKING_ALTERNATIVES_SNAPSHOT",
+        booking: {
+          ...conversation.booking,
+          _priceReviewHandled: true
+        }
       });
       return true;
     }
-    
+  
+    // 2️⃣ Payment
     if (lower === "2") {
       setConversation(from, {
         ...conversation,
-        state: "BOOKING_PAYMENT_INIT"
+        state: "BOOKING_PAYMENT_INIT",
+        booking: {
+          ...conversation.booking,
+          _priceReviewHandled: true
+        }
       });
-    
+  
       await sendWhatsAppMessage(
         from,
         "💳 Proceeding to payment…"
@@ -1001,14 +1141,20 @@ async function handle(context) {
       await sendWhatsAppMessage(from, "💳 Proceeding to payment…");
       return true;
     }
-  
-    // 2️⃣ or 3️⃣ Swap flight
+
+    // 2️⃣ or 3️⃣ Swap flight — retry-safe
     if (lower === "2" || lower === "3") {
+
+      // 🔒 Idempotency guard — one swap per alternatives snapshot
+      if (conversation.booking._flightSwapAppliedForState === "BOOKING_ALTERNATIVES_SNAPSHOT") {
+        return true;
+      }
+    
       const newFlight =
         lower === "2"
           ? conversation.temp?.cheapestFlight
           : conversation.temp?.fastestFlight;
-  
+    
       if (!newFlight) {
         await sendWhatsAppMessage(
           from,
@@ -1016,27 +1162,29 @@ async function handle(context) {
         );
         return true;
       }
-  
+    
       setConversation(from, {
         ...conversation,
+        state: "BOOKING_PRICE_COMPUTE",
         booking: {
           ...conversation.booking,
           selectedFlight: newFlight,
           priceSnapshot: null,
           _priceComputed: false,
-          preferences: getEmptyPreferences()
+          preferences: getEmptyPreferences(),
+          _flightSwapAppliedForState: "BOOKING_ALTERNATIVES_SNAPSHOT"
         },
-        temp: null,
-        state: "BOOKING_PRICE_COMPUTE"
+        temp: null
       });
-  
+    
       await sendWhatsAppMessage(
         from,
         "🔄 Updating flight and recalculating price…"
       );
+    
       return true;
     }
-  
+    
     // 4️⃣ Change date
     if (lower === "4") {
       setConversation(from, {
@@ -1085,15 +1233,26 @@ async function handle(context) {
   =============================== */
   
   if (conversation.state === "BOOKING_CHANGE_DATE") {
-    await sendWhatsAppMessage(
-      from,
-      "📅 Changing travel date is not supported yet.\n\n" +
-      "Please type *cancel* to restart your search."
-    );
+  
+    // 🔒 ENTRY GUARD — retry-safe
+    if (!conversation.booking._changeDatePrompted) {
+      setConversation(from, {
+        ...conversation,
+        booking: {
+          ...conversation.booking,
+          _changeDatePrompted: true
+        }
+      });
+  
+      await sendWhatsAppMessage(
+        from,
+        "📅 Changing travel date is not supported yet.\n\n" +
+        "Please type *cancel* to restart your search."
+      );
+    }
   
     return true;
   }
-
     
   /* ===============================
      GLOBAL CANCEL
