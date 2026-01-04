@@ -598,10 +598,30 @@ async function handle(context) {
         from,
         "✅ Flight selected. Customising your booking…"
       );
+            
+      // ✅ REHYDRATED CONTEXT — REQUIRED
+      const bookingContext = {
+        ...context,
+        conversation: {
+          intent: "FLIGHT_BOOKING",
+          state: "BOOKING_BAGGAGE",
       
-      await oneWayBookingFlow.handle(context);
+          flow: null,
+          search: null,
+          results: null,
+          temp: null,
+      
+          booking: {
+            selectedFlight,
+            flightQuery: conversation.lockedFlightQuery,
+            passengersCount: conversation.lockedFlightQuery.passengers || 2,
+            searchResults: results.rawFlights
+          }
+        }
+      };
+      
+      await oneWayBookingFlow.handle(bookingContext);
       return true;
-   }
 
    if (conversation?.state === "AWAITING_RECONFIRMATION") {
 
