@@ -14,6 +14,14 @@ const fallbackIntent = require("./fallbackIntent");
 const { log } = require("../utils/logger");
 
 async function routeIntent(context) {
+   // 🔒 HARD GUARD — router must never crash
+  if (!context || !context.text) {
+    log("router_invalid_context", {
+      receivedContext: Boolean(context),
+      requestId: context?.requestContext?.requestId
+    });
+    return;
+  }
   const { text, conversation } = context;
 
   /* 🔒 ABSOLUTE BOOKING LOCK — MUST BE FIRST */
