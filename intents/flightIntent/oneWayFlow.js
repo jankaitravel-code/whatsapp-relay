@@ -597,6 +597,7 @@ async function handle(context) {
         "✅ Flight selected. Customising your booking…"
       );
       
+      await oneWayBookingFlow.handle(context);
       return true;
    }
 
