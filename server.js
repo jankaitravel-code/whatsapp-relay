@@ -200,7 +200,7 @@ app.post("/webhook", async (req, res) => {
     return res.sendStatus(200);
 
   } catch (err) {
-    console.error("❌ Error handling message", err.message);
+    console.error("❌ Error handling message", err);
     return res.sendStatus(200);
   }
 });
