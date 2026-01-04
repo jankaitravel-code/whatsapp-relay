@@ -73,10 +73,17 @@ function buildConfirmationMessage(q) {
 async function start(context) {
   const { from, sendWhatsAppMessage, setConversation } = context;
 
+   log("ONE_WAY_FLOW_STARTED", {
+     user: from
+   });
+
   // 🔒 Booking owns input — start() must never run
-  if (conversation?.intent === "FLIGHT_BOOKING") {
-    return;
-  }
+   if (conversation?.intent === "FLIGHT_BOOKING") {
+     log("ONE_WAY_FLOW_REJECTED_BOOKING_ACTIVE", {
+       user: from
+     });
+     return true;
+   }
 
   setConversation(from, {
     intent: "FLIGHT_SEARCH",
@@ -110,9 +117,12 @@ async function handle(context) {
   } = context;
 
   // 🔒 STOP: booking owns the conversation now
-  if (conversation?.intent === "FLIGHT_BOOKING") {
-    return true;
-  }
+   if (conversation?.intent === "FLIGHT_BOOKING") {
+     log("ONE_WAY_FLOW_REJECTED_BOOKING_ACTIVE", {
+       user: from
+     });
+     return true;
+   }
 
   const lower = (rawText || text || "").toLowerCase();
 
@@ -122,6 +132,12 @@ async function handle(context) {
    
    if (lower === "cancel") {
      recordSignal("flight_cancelled", { user: from });
+
+      log("FLIGHT_SEARCH_CANCELLED", {
+        user: from,
+        state: conversation?.state
+      });
+
      clearConversation(from);
      await sendWhatsAppMessage(from, "❌ Flight search cancelled.");
      return true;
@@ -490,6 +506,12 @@ async function handle(context) {
       const nextPage = displayItems
         .slice(cursor, cursor + pageSize)
         .join("\n\n");
+
+      log("FLIGHT_RESULTS_PAGINATED", {
+        user: from,
+        cursor: results.cursor,
+        pageSize: results.pageSize
+      });
    
       setConversation(from, {
         intent: "FLIGHT_SEARCH",
@@ -504,7 +526,7 @@ async function handle(context) {
           cursor: results.cursor + results.pageSize
         }
       });
-   
+      
       await sendWhatsAppMessage(
         from,
         `${nextPage}\n\nReply:\n• show more\n• change date / origin / destination`
@@ -546,7 +568,10 @@ async function handle(context) {
      // ✅ LOG MUST BE HERE — BEFORE HANDOFF
      log("BOOKING_OWNERSHIP_LOCKED", {
        user: from,
-       flightId: selectedFlight.id
+       flightId: selectedFlight.id,
+       origin: conversation.lockedFlightQuery?.origin?.cityCode,
+       destination: conversation.lockedFlightQuery?.destination?.cityCode,
+       date: conversation.lockedFlightQuery?.date
      });
 
      // 🔐 HANDOFF TO BOOKING FLOW (STRICT)
@@ -641,6 +666,14 @@ async function handle(context) {
 
      if (lower === "yes") {
        const q = conversation.flightQuery;
+
+        log("FLIGHT_SEARCH_STARTED", {
+           user: from,
+           origin: q.origin.cityCode,
+           destination: q.destination.cityCode,
+           date: q.date,
+           cabinClass: q.cabinClass
+         });
    
        recordSignal("flight_search_executed", {
          origin: q.origin.cityCode,
@@ -713,7 +746,13 @@ async function handle(context) {
            pageSize: PAGE_SIZE
          }
        });
-   
+
+       log("FLIGHT_RESULTS_SHOWN", {
+         user: from,
+         count: flights.length,
+         pageSize: PAGE_SIZE
+       });
+
        await sendWhatsAppMessage(
          from,
          `✈️ Flight options with base fare (final price may change)\n\n${formatted.slice(0, PAGE_SIZE).join("\n\n")}\n\n` +
@@ -803,6 +842,15 @@ async function handle(context) {
       if (lower === "yes") {
          const q = conversation.flightQuery;
 
+         log("FLIGHT_SEARCH_STARTED", {
+           user: from,
+           origin: q.origin.cityCode,
+           destination: q.destination.cityCode,
+           date: q.date,
+           cabinClass: q.cabinClass
+         });
+
+
         if (!q.origin || !q.destination || !q.date) {
           clearConversation(from);
           await sendWhatsAppMessage(
@@ -883,7 +931,13 @@ async function handle(context) {
             pageSize: PAGE_SIZE
           }
         });
-
+         
+         log("FLIGHT_RESULTS_SHOWN", {
+           user: from,
+           count: flights.length,
+           pageSize: PAGE_SIZE
+         });
+         
         await sendWhatsAppMessage(
           from,
           `✈️ Flight options with base fare (final price may change)\n\n${formatted.slice(0, PAGE_SIZE).join("\n\n")}\n\n` +
