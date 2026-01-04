@@ -622,6 +622,7 @@ async function handle(context) {
       
       await oneWayBookingFlow.handle(bookingContext);
       return true;
+   }
 
    if (conversation?.state === "AWAITING_RECONFIRMATION") {
 
