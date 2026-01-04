@@ -3,19 +3,15 @@
  * Handles cancel / reset / start over commands
  */
 
-function canHandle(text) {
-  if (context?.conversation?.intent === "FLIGHT_BOOKING") {
-    return false; // 🔒 booking owns cancel
-  }
-  
+function canHandle(text, context) {
   const normalized = text.trim().toLowerCase();
 
-  return (
-    normalized === "reset" ||
-    normalized === "New Search" ||
-    normalized === "Restart" ||
-    normalized === "start over"
-  );
+  // 🔒 Do not interrupt booking
+  if (context?.conversation?.intent === "FLIGHT_BOOKING") {
+    return false;
+  }
+
+  return normalized === "reset" || normalized === "restart";
 }
 
 async function handle({ from, sendWhatsAppMessage, clearConversation }) {
