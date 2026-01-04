@@ -615,7 +615,9 @@ async function handle(context) {
             selectedFlight,
             flightQuery: conversation.lockedFlightQuery,
             passengersCount: conversation.lockedFlightQuery.passengers || 2,
-            searchResults: results.rawFlights
+            searchResults: results.rawFlights,
+             // 🔒 CRITICAL — prevents re-entry logs
+            _bookingFlowStarted: true
           }
         }
       };
