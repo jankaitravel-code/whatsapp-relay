@@ -69,9 +69,8 @@ function buildConfirmationMessage(q) {
 /* ===============================
    Flow Entry
 =============================== */
-
 async function start(context) {
-  const { from, sendWhatsAppMessage, setConversation } = context;
+  const { from, sendWhatsAppMessage, setConversation, conversation } = context;
 
    log("ONE_WAY_FLOW_STARTED", {
      user: from
