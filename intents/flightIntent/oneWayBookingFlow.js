@@ -89,6 +89,21 @@ async function handle(context) {
     return false;
   }
 
+  if (!conversation.booking._bookingFlowStarted) {
+    log("BOOKING_FLOW_STARTED", {
+      user: from,
+      flightId: conversation.booking?.selectedFlight?.id
+    });
+  
+    setConversation(from, {
+      ...conversation,
+      booking: {
+        ...conversation.booking,
+        _bookingFlowStarted: true
+      }
+    });
+  }
+
   if (!conversation.booking?.selectedFlight) {
 
     await sendWhatsAppMessage(
@@ -676,6 +691,11 @@ async function handle(context) {
     };
   
     if (nextIndex >= total) {
+      log("TRAVELLERS_COMPLETED", {
+        user: from,
+        count: total
+      });
+      
       setConversation(from, {
         ...conversation,
         state: "BOOKING_FREQUENT_FLYER",
@@ -1216,6 +1236,13 @@ async function handle(context) {
           _paymentBlocked: true
         }
       });
+
+      log("BOOKING_READY_FOR_PAYMENT", {
+        user: from,
+        flightId: conversation.booking.selectedFlight.id,
+        total: conversation.booking.priceSnapshot?.totals?.grandTotal
+      });
+
   
       await sendWhatsAppMessage(
         from,
