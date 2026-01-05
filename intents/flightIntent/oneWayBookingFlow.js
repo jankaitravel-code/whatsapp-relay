@@ -763,6 +763,33 @@ async function handle(context) {
       await sendWhatsAppMessage(from, message);
       return true;
     }
+
+     // ⏭️ Manual skip
+    if (lower === "none") {
+      setConversation(from, {
+        ...conversation,
+        state: "BOOKING_GST_DETAILS",
+        booking: {
+          ...conversation.booking,
+          _ffCaptured: true
+        }
+      });
+  
+      await sendWhatsAppMessage(
+        from,
+        "⏭️ Skipped frequent flyer.\n\nNow let’s add GST details (optional)."
+      );
+      return true;
+    }
+  
+    // ❌ Validation
+    if (!rawText || rawText.length < 5) {
+      await sendWhatsAppMessage(
+        from,
+        "❌ Please enter a valid frequent flyer number or reply NONE."
+      );
+      return true;
+    }
   
     const profileFF = conversation.profile?.frequentFlyer;
   
@@ -824,34 +851,7 @@ async function handle(context) {
       );
       return true;
     }
-  
-    // ⏭️ Manual skip
-    if (lower === "none") {
-      setConversation(from, {
-        ...conversation,
-        state: "BOOKING_GST_DETAILS",
-        booking: {
-          ...conversation.booking,
-          _ffCaptured: true
-        }
-      });
-  
-      await sendWhatsAppMessage(
-        from,
-        "⏭️ Skipped frequent flyer.\n\nNow let’s add GST details (optional)."
-      );
-      return true;
-    }
-  
-    // ❌ Validation
-    if (!rawText || rawText.length < 5) {
-      await sendWhatsAppMessage(
-        from,
-        "❌ Please enter a valid frequent flyer number or reply NONE."
-      );
-      return true;
-    }
-  
+    
     // ✅ Manual entry success
     setConversation(from, {
       ...conversation,
