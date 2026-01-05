@@ -63,8 +63,7 @@ function buildConfirmationMessage(q) {
    `Class: ${q.cabinClass.replace("_", " ")}\n\n` +
     `Reply:\n` +
     `• Yes — to search\n` +
-    `• Change date / origin / destination / class — to modify\n` +
-    `• Cancel — to stop`
+    `• Change date / origin / destination / class — to modify\n` 
   );
 }
 
@@ -490,7 +489,7 @@ async function handle(context) {
       if (cursor >= displayItems.length) {
         await sendWhatsAppMessage(
           from,
-          "⚠️ That's all the results I have. You can reply cancel or reset to search again."
+          "⚠️ That's all the results I have. Please select a flight or can reply cancel to search again."
         );
         return true;
       }
@@ -771,8 +770,8 @@ async function handle(context) {
 
        await sendWhatsAppMessage(
          from,
-         `✈️ Flight options with base fare (final price may change)\n\n${formatted.slice(0, PAGE_SIZE).join("\n\n")}\n\n` +
-         `Reply:\n• show more\n• change date / origin / destination\n• cancel`
+         `✈️ Flight options with base fare (final price will change)\n\n${formatted.slice(0, PAGE_SIZE).join("\n\n")}\n\n` +
+         `Reply:\n• show more\n• change date / origin / destination`
        );
    
        return true;
@@ -780,7 +779,7 @@ async function handle(context) {
    
      await sendWhatsAppMessage(
        from,
-       "Please reply with *Yes*, *Change date / origin / destination / CLASS*, or *Cancel*."
+       "Please reply with *Yes*, *Change date / origin / destination / CLASS*"
      );
      return true;
    }
@@ -958,7 +957,7 @@ async function handle(context) {
    
       await sendWhatsAppMessage(
         from,
-        "Please reply with *Yes*, *Change date / origin / destination / class*, or *Cancel*."
+        "Please reply with *Yes*, *Change date / origin / destination / class*"
       );
       return true;
     }
@@ -968,7 +967,7 @@ async function handle(context) {
    =============================== */
    await sendWhatsAppMessage(
       from,
-      "I didn’t understand that. You can reply:\n• show more\n• change date / origin / destination\n• cancel"
+      "I didn’t understand that. You can reply:\n• show more\n• change date / origin / destination"
     );
     return true;
   }
