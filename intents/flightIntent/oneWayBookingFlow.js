@@ -828,7 +828,12 @@ async function handle(context) {
   
   if (conversation.state === "BOOKING_GST_DETAILS") {
   
-    // 🔒 Idempotency guard
+    // 🔒 HARD GUARD — ignore system / empty messages
+    if (!rawText || !rawText.trim()) {
+      return true;
+    }
+  
+    // 🔒 Idempotency
     if (conversation.booking._gstCaptured) {
       return true;
     }
@@ -850,14 +855,16 @@ async function handle(context) {
         from,
         "⏭️ GST details skipped.\n\nCalculating final price…"
       );
-      return true;
+  
+      // 🔥 AUTO-ADVANCE (same tick)
+      return handle(context);
     }
   
     const gstRegex =
       /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/;
   
     /* ✅ VALID GST */
-    if (gstRegex.test(rawText)) {
+    if (gstRegex.test(rawText.trim().toUpperCase())) {
       setConversation(from, {
         ...conversation,
         state: "BOOKING_PRICE_COMPUTE",
@@ -874,9 +881,12 @@ async function handle(context) {
         from,
         "✅ GST details saved.\n\nCalculating final price…"
       );
-      return true;
+  
+      // 🔥 AUTO-ADVANCE (same tick)
+      return handle(context);
     }
-
+  
+    /* ❌ INVALID USER INPUT → PROMPT ONCE */
     if (!conversation.booking._gstPrompted) {
       setConversation(from, {
         ...conversation,
@@ -885,7 +895,7 @@ async function handle(context) {
           _gstPrompted: true
         }
       });
-    
+  
       await sendWhatsAppMessage(
         from,
         "🏢 GST Details (optional)\n\n" +
@@ -893,7 +903,7 @@ async function handle(context) {
         "Reply *NONE* to skip."
       );
     }
-    
+  
     return true;
   }
 
