@@ -159,6 +159,27 @@ app.post("/webhook", async (req, res) => {
 
     // 🔒 7.2.6.1 — Freeze search execution after RESULTS
     const normalizedText = rawText.trim().toLowerCase();
+
+        /* ===============================
+       GLOBAL CANCEL — TRANSPORT LEVEL
+       =============================== */
+
+    if (normalizedText === "cancel") {
+      recordSignal("booking_cancelled", {
+        user: from,
+        requestId: requestContext.requestId
+      });
+
+      clearConversation(from);
+
+      await sendWhatsAppMessage(
+        from,
+        "❌ Session cancelled.\n\nType *flights* to start again."
+      );
+
+      return res.sendStatus(200); // 🔒 HARD STOP — nothing else runs
+    }
+
     
     if (
       conversation?.state === "RESULTS" &&
