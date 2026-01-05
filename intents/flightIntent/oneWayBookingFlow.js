@@ -746,6 +746,7 @@ async function handle(context) {
     if (!conversation.booking._ffPrompted) {
       setConversation(from, {
         ...conversation,
+        state: "BOOKING_FREQUENT_FLYER_INPUT", // 🔥 CRITICAL
         booking: {
           ...conversation.booking,
           _ffPrompted: true
@@ -767,12 +768,7 @@ async function handle(context) {
       return true;
     }
   
-    // 🔒 HANDOFF — only after prompt is shown
-    setConversation(from, {
-      ...conversation,
-      state: "BOOKING_FREQUENT_FLYER_INPUT"
-    });
-  
+    // 🔒 Safety no-op (should never be hit)
     return true;
   }
   
