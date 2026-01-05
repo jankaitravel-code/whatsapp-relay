@@ -895,6 +895,7 @@ async function handle(context) {
     }
     
     return true;
+  }
 
   /* ===============================
      BOOKING_PRICE_COMPUTE
