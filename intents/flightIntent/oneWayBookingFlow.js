@@ -639,7 +639,10 @@ async function handle(context) {
 
   if (conversation.state === "BOOKING_TRAVELLER_CONFIRM") {
     // 🔒 HARD TERMINAL EXIT — travellers are done, never re-enter confirm
-    if (conversation.booking._travellersCompleted === true) {
+    if (
+      conversation.booking._travellersCompleted === true &&
+      conversation.state === "BOOKING_TRAVELLER_CONFIRM"
+    ) {
       return true;
     }
 
