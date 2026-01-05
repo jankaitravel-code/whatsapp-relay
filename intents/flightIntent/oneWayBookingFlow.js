@@ -743,29 +743,43 @@ async function handle(context) {
   /* ===============================
      BOOKING_FREQUENT_FLYER_INIT
   =============================== */
-  
+
   if (conversation.state === "BOOKING_FREQUENT_FLYER_INIT") {
+
+    // 🔒 ENTRY PROMPT — run once
+    if (!conversation.booking._ffPrompted) {
+      setConversation(from, {
+        ...conversation,
+        booking: {
+          ...conversation.booking,
+          _ffPrompted: true
+        }
+      });
   
+      const profileFF = conversation.profile?.frequentFlyer;
+  
+      const message = profileFF
+        ? "✈️ Frequent Flyer\n\nReply:\n" +
+          "1️⃣ Use saved number\n" +
+          "2️⃣ Enter a new number\n" +
+          "3️⃣ Skip"
+        : "✈️ Frequent Flyer\n\n" +
+          "Please enter your frequent flyer number.\n" +
+          "Reply *NONE* to skip.";
+  
+      await sendWhatsAppMessage(from, message);
+      return true;
+    }
+  
+    // 🔒 HANDOFF — only after prompt is shown
     setConversation(from, {
       ...conversation,
       state: "BOOKING_FREQUENT_FLYER_INPUT"
     });
   
-    const profileFF = conversation.profile?.frequentFlyer;
-  
-    const message = profileFF
-      ? "✈️ Frequent Flyer\n\nReply:\n" +
-        "1️⃣ Use saved number\n" +
-        "2️⃣ Enter a new number\n" +
-        "3️⃣ Skip"
-      : "✈️ Frequent Flyer\n\n" +
-        "Please enter your frequent flyer number.\n" +
-        "Reply *NONE* to skip.";
-  
-    await sendWhatsAppMessage(from, message);
     return true;
   }
-
+  
   /* ===============================
      BOOKING_FREQUENT_FLYER_INPUT
   =============================== */
