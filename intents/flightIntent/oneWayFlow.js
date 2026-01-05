@@ -127,21 +127,12 @@ async function handle(context) {
 
   const lower = (rawText || text || "").toLowerCase();
 
-   /* ===============================
-     GLOBAL CANCEL
-   =============================== */
-   
    if (lower === "cancel") {
-     recordSignal("flight_cancelled", { user: from });
-
-      log("FLIGHT_SEARCH_CANCELLED", {
-        user: from,
-        state: conversation?.state
-      });
-
-     clearConversation(from);
-     await sendWhatsAppMessage(from, "❌ Flight search cancelled.");
-     return true;
+     log("CANCEL_RECEIVED_IN_ONE_WAY_FLOW", {
+       user: from,
+       state: conversation?.state
+     });
+     return true; // transport already handled cancel
    }
 
    /* ===============================
@@ -784,12 +775,6 @@ async function handle(context) {
          `Reply:\n• show more\n• change date / origin / destination\n• cancel`
        );
    
-       return true;
-     }
-   
-     if (lower === "cancel") {
-       clearConversation(from);
-       await sendWhatsAppMessage(from, "❌ Flight search cancelled.");
        return true;
      }
    
