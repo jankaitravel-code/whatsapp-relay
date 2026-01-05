@@ -689,12 +689,14 @@ async function handle(context) {
   
     // 🔒 Last traveller → FF (STATE + PROMPT SAME TURN)
     if (nextIndex >= total) {
-  
-      log("TRAVELLERS_COMPLETED", {
-        user: from,
-        count: total
-      });
-  
+
+        if (conversation.booking._travellersCompleted !== true) {
+          log("TRAVELLERS_COMPLETED", {
+            user: from,
+            count: total
+          });
+        }
+
       const profileFF = conversation.profile?.frequentFlyer;
   
       setConversation(from, {
@@ -763,7 +765,7 @@ async function handle(context) {
   
       await sendWhatsAppMessage(
         from,
-        "⏭️ Skipped frequent flyer.\n\nNow let’s add GST details (optional)."
+        "⏭️ Skipped frequent flyer.\n\nEnter your GST number or type NONE if you don’t have one."
       );
       return true;
     }
@@ -785,7 +787,7 @@ async function handle(context) {
   
       await sendWhatsAppMessage(
         from,
-        "✅ Frequent flyer number saved.\n\nNow let’s add GST details (optional)."
+        "✅ Frequent flyer number saved.\n\nEnter your GST number or type NONE if you don’t have one."
       );
       return true;
     }
@@ -874,17 +876,25 @@ async function handle(context) {
       );
       return true;
     }
-  
-    /* ❌ FIRST OR INVALID INPUT → PROMPT */
-    await sendWhatsAppMessage(
-      from,
-      "🏢 GST Details (optional)\n\n" +
-      "Please enter your GST number.\n" +
-      "Reply *NONE* to skip."
-    );
-  
+
+    if (!conversation.booking._gstPrompted) {
+      setConversation(from, {
+        ...conversation,
+        booking: {
+          ...conversation.booking,
+          _gstPrompted: true
+        }
+      });
+    
+      await sendWhatsAppMessage(
+        from,
+        "🏢 GST Details (optional)\n\n" +
+        "Please enter your GST number.\n" +
+        "Reply *NONE* to skip."
+      );
+    }
+    
     return true;
-  }
 
   /* ===============================
      BOOKING_PRICE_COMPUTE
