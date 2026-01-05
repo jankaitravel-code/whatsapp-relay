@@ -152,6 +152,10 @@ async function handle(context) {
     return false;
   }
 
+  if (!rawText || !rawText.trim()) {
+    return true;
+  }
+
   if (!conversation.booking._bookingFlowStarted) {
     log("BOOKING_FLOW_STARTED", {
       user: from,
