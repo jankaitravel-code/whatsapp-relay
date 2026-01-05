@@ -645,13 +645,6 @@ async function handle(context) {
 
     const idx = conversation.booking.currentTravellerIndex;
   
-    // 🔒 Confirm idempotency guard — retry-safe
-    if (
-      conversation.booking._travellerConfirmedForIndex === idx &&
-      conversation.state === "BOOKING_TRAVELLER_CONFIRM"
-    ) {
-      return true;
-    }
   
     if (lower !== "1" && lower !== "2") {
       await sendWhatsAppMessage(from, "❌ Reply 1 to confirm or 2 to edit.");
