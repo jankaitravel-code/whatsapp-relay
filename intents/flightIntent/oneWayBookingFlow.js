@@ -902,16 +902,9 @@ async function handle(context) {
   =============================== */
   
   if (conversation.state === "BOOKING_PRICE_COMPUTE") {
-    // 🔒 ENTRY GUARD — run once only
-    if (conversation.booking?._priceComputed) {
-      return true;
-    }
   
-    if (!conversation.booking?.travellers?.length) {
-      await sendWhatsAppMessage(
-        from,
-        "⚠️ Traveller information missing. Please restart booking."
-      );
+    // 🔒 ENTRY GUARD — run once
+    if (conversation.booking._priceComputed) {
       return true;
     }
   
@@ -947,7 +940,7 @@ async function handle(context) {
   
       log("FINAL_PRICE_COMPUTED", price);
   
-      // ✅ AUTO-ADVANCE
+      // ✅ AUTO-ADVANCE TO REVIEW (no alternatives)
       setConversation(from, {
         ...conversation,
         state: "BOOKING_PRICE_REVIEW",
@@ -965,7 +958,7 @@ async function handle(context) {
         `Extras: ${price.currency} ${price.totals.bookingAdjustments}\n` +
         `Discount: ${price.currency} ${price.bookingAdjustments.discount.delta}\n\n` +
         `*Total Payable: ${price.currency} ${price.totals.grandTotal}*\n\n` +
-        `Reply:\n1️⃣ See alternative flights\n2️⃣ Continue to payment`
+        `Reply *PAY* to continue`
       );
   
       return true;
@@ -986,237 +979,63 @@ async function handle(context) {
   
   if (conversation.state === "BOOKING_PRICE_REVIEW") {
   
-    // 🔒 HARD IDEMPOTENCY GUARD — retry-safe
+    // 🔒 Idempotency
     if (conversation.booking._priceReviewHandled) {
       return true;
     }
   
-    const price = conversation.booking?.priceSnapshot;
-  
-    // 🔒 Safety guard
-    if (!price) {
+    if (lower !== "pay") {
       await sendWhatsAppMessage(
         from,
-        "⚠️ Price details missing. Please restart booking."
+        "❌ Reply *PAY* to continue to payment."
       );
       return true;
     }
   
-    if (lower !== "1" && lower !== "2") {
-      await sendWhatsAppMessage(
-        from,
-        "❌ Please reply with:\n" +
-        "1️⃣ See alternative flights\n" +
-        "2️⃣ Continue to payment"
-      );
-      return true;
-    }
-  
-    // 1️⃣ Alternatives
-    if (lower === "1") {
-      setConversation(from, {
-        ...conversation,
-        state: "BOOKING_ALTERNATIVES_SNAPSHOT",
-        booking: {
-          ...conversation.booking,
-          _priceReviewHandled: true
-        }
-      });
-      return true;
-    }
-  
-    // 2️⃣ Payment
-    if (lower === "2") {
-      setConversation(from, {
-        ...conversation,
-        state: "BOOKING_PAYMENT_INIT",
-        booking: {
-          ...conversation.booking,
-          _priceReviewHandled: true
-        }
-      });
-  
-      await sendWhatsAppMessage(
-        from,
-        "💳 Proceeding to payment…"
-      );
-      return true;
-    }
-  }
-
-  /* ===============================
-     BOOKING_ALTERNATIVES_SNAPSHOT
-  ================================ */
-  
-  if (conversation.state === "BOOKING_ALTERNATIVES_SNAPSHOT") {
-    const price = conversation.booking?.priceSnapshot;
-    const selected = conversation.booking?.selectedFlight;
-    const results = conversation.booking?.searchResults;
-
-    if (!price || !selected || !Array.isArray(results) || results.length === 0) {
-      await sendWhatsAppMessage(
-        from,
-        "⚠️ Unable to show alternatives. Please restart booking."
-      );
-      return true;
-    }
-  
-    const snapshot = buildAlternativesSnapshot({
-      selectedFlight: selected,
-      priceSnapshot: price,
-      searchResults: results
+    setConversation(from, {
+      ...conversation,
+      state: "BOOKING_PAYMENT_INIT",
+      booking: {
+        ...conversation.booking,
+        _priceReviewHandled: true
+      }
     });
   
-    log("ALTERNATIVES_SNAPSHOT_BUILT", snapshot);
-
-    // First entry only → build & show snapshot
-    if (!conversation.temp?.alternativesShown) {
-      setConversation(from, {
-        ...conversation,
-        temp: {
-          alternativesShown: true,
-          cheapestFlight: snapshot.cheapestFlight,
-          fastestFlight: snapshot.fastestFlight
-        }
-      });
-    
-      await sendWhatsAppMessage(from, snapshot.message);
-      return true;
-    }
-
-    if (!["1", "2", "3", "4"].includes(lower)) {
-      await sendWhatsAppMessage(
-        from,
-        "❌ Please reply with 1, 2, 3 or 4.\n\nType *cancel* to stop."
-      );
-      return true;
-    }
-  
-    // 1️⃣ Keep selected flight
-    if (lower === "1") {
-      setConversation(from, {
-        ...conversation,
-        temp: null,
-        state: "BOOKING_PAYMENT_INIT"
-      });
-  
-      await sendWhatsAppMessage(from, "💳 Proceeding to payment…");
-      return true;
-    }
-
-    // 2️⃣ or 3️⃣ Swap flight — retry-safe
-    if (lower === "2" || lower === "3") {
-
-      // 🔒 Idempotency guard — one swap per alternatives snapshot
-      if (conversation.booking._flightSwapAppliedForState === "BOOKING_ALTERNATIVES_SNAPSHOT") {
-        return true;
-      }
-    
-      const newFlight =
-        lower === "2"
-          ? conversation.temp?.cheapestFlight
-          : conversation.temp?.fastestFlight;
-    
-      if (!newFlight) {
-        await sendWhatsAppMessage(
-          from,
-          "⚠️ This option is unavailable. Please choose another."
-        );
-        return true;
-      }
-    
-      setConversation(from, {
-        ...conversation,
-        state: "BOOKING_PRICE_COMPUTE",
-        booking: {
-          ...conversation.booking,
-          selectedFlight: newFlight,
-          priceSnapshot: null,
-          _priceComputed: false,
-          preferences: getEmptyPreferences(),
-          _flightSwapAppliedForState: "BOOKING_ALTERNATIVES_SNAPSHOT"
-        },
-        temp: null
-      });
-    
-      await sendWhatsAppMessage(
-        from,
-        "🔄 Updating flight and recalculating price…"
-      );
-    
-      return true;
-    }
-    
-    // 4️⃣ Change date
-    if (lower === "4") {
-      setConversation(from, {
-        ...conversation,
-        temp: null,
-        state: "BOOKING_CHANGE_DATE"
-      });
-  
-      await sendWhatsAppMessage(
-        from,
-        "📅 Please enter the new travel date (YYYY-MM-DD)."
-      );
-      return true;
-    }
-  }
-
-  /* ===============================
-     BOOKING_PAYMENT_INIT
-  =============================== */
-
-  if (conversation.state === "BOOKING_PAYMENT_INIT") {
-  
-    // 🔒 ENTRY BLOCK — retry-safe
-    if (!conversation.booking._paymentBlocked) {
-      setConversation(from, {
-        ...conversation,
-        booking: {
-          ...conversation.booking,
-          _paymentBlocked: true
-        }
-      });
-
-      log("BOOKING_READY_FOR_PAYMENT", {
-        user: from,
-        flightId: conversation.booking.selectedFlight.id,
-        total: conversation.booking.priceSnapshot?.totals?.grandTotal
-      });
-
-  
-      await sendWhatsAppMessage(
-        from,
-        "💳 Payment is coming soon.\n\n" +
-        "This step is not enabled yet.\n\n" +
-        "Type *cancel* to exit booking."
-      );
-    }
+    await sendWhatsAppMessage(
+      from,
+      "💳 Proceeding to payment…"
+    );
   
     return true;
   }
 
   /* ===============================
-     BOOKING_CHANGE_DATE
+     BOOKING_PAYMENT_INIT
   =============================== */
   
-  if (conversation.state === "BOOKING_CHANGE_DATE") {
+  if (conversation.state === "BOOKING_PAYMENT_INIT") {
   
-    // 🔒 ENTRY GUARD — retry-safe
-    if (!conversation.booking._changeDatePrompted) {
+    // 🔒 ENTRY ONCE
+    if (!conversation.booking._paymentStubShown) {
       setConversation(from, {
         ...conversation,
         booking: {
           ...conversation.booking,
-          _changeDatePrompted: true
+          _paymentStubShown: true
         }
+      });
+  
+      log("BOOKING_READY_FOR_PAYMENT", {
+        user: from,
+        flightId: conversation.booking.selectedFlight.id,
+        total: conversation.booking.priceSnapshot?.totals?.grandTotal
       });
   
       await sendWhatsAppMessage(
         from,
-        "📅 Changing travel date is not supported yet.\n\n" +
-        "Please type *cancel* to restart your search."
+        "💳 Payment is not enabled yet.\n\n" +
+        "This booking flow test is complete.\n\n" +
+        "Type *cancel* to exit."
       );
     }
   
@@ -1248,61 +1067,4 @@ async function handle(context) {
 module.exports = {
   handle
 };
-
-function buildAlternativesSnapshot({ selectedFlight, priceSnapshot, searchResults }) {
-  const sameDay = searchResults.filter(f =>
-    f.departureDate === selectedFlight.departureDate &&
-    f.id !== selectedFlight.id
-  );
-
-  const cheapest = [...sameDay].sort((a, b) => a.totalPrice - b.totalPrice)[0];
-  const fastest = [...sameDay].sort((a, b) => a.totalDuration - b.totalDuration)[0];
-
-  const currency = priceSnapshot.currency;
-  const selectedTotal = priceSnapshot.totals.grandTotal;
-
-  let message =
-    `✈️ Flight alternatives\n` +
-    `(Same travellers, seats, meals & add-ons)\n\n` +
-
-    `────────────────────\n` +
-    `1️⃣ Selected flight\n` +
-    `💰 ${currency} ${selectedTotal}\n` +
-    `🕛 ${selectedFlight.departureDate} · ${selectedFlight.departureTime}\n\n`;
-
-  if (cheapest) {
-    message +=
-      `────────────────────\n` +
-      `2️⃣ Cheapest option\n` +
-      `💸 Save ${currency} ${selectedTotal - cheapest.totalPrice}\n` +
-      `🕟 ${cheapest.departureDate} · ${cheapest.departureTime}\n\n`;
-  }
-
-  if (fastest) {
-    message +=
-      `────────────────────\n` +
-      `3️⃣ Fastest option\n` +
-      `⏱️ Save ${formatDuration(selectedFlight.totalDuration - fastest.totalDuration)}\n` +
-      `💸 +${currency} ${fastest.totalPrice - selectedTotal}\n\n`;
-  }
-
-  message +=
-    `────────────────────\n` +
-    `4️⃣ Change travel date\n\n` +
-    `Reply 1–4 or type *cancel*`;
-
-  return {
-    message,
-    cheapestFlight: cheapest || null,
-    fastestFlight: fastest || null
-  };
-}
-
-function formatDuration(minutes) {
-  const h = Math.floor(minutes / 60);
-  const m = minutes % 60;
-  if (h && m) return `${h}h ${m}m`;
-  if (h) return `${h}h`;
-  return `${m}m`;
-}
 
