@@ -72,6 +72,69 @@ function resetBookingState(conversation) {
   };
 }
 
+async function runPriceCompute({
+  from,
+  conversation,
+  sendWhatsAppMessage,
+  setConversation
+}) {
+  // 🔒 HARD GUARD — must only run once
+  if (conversation.booking._priceComputed) {
+    return;
+  }
+
+  const passengers = conversation.booking.travellers.map(t => ({
+    index: t.index,
+    age: t.age,
+    ageCategory: t.ageCategory,
+    specialFare: t.specialFare || "NONE",
+    seat: t.seat || "FREE_AUTO",
+    meal: t.meal || "NO_MEAL"
+  }));
+
+  const discountCode =
+    conversation.booking.discountCode &&
+    conversation.booking.discountCode.toUpperCase() !== "NONE"
+      ? conversation.booking.discountCode
+      : null;
+
+  log("PRICE_COMPUTE_INPUT", {
+    selectedFlight: conversation.booking.selectedFlight.id,
+    passengers,
+    preferences: conversation.booking.preferences,
+    discountCode
+  });
+
+  const price = computeOneWayFinalPrice({
+    selectedFlight: conversation.booking.selectedFlight,
+    travellers: passengers,
+    preferences: conversation.booking.preferences || {},
+    discountCode
+  });
+
+  log("FINAL_PRICE_COMPUTED", price);
+
+  // 🔥 STATE + MESSAGE IN SAME TURN
+  setConversation(from, {
+    ...conversation,
+    state: "BOOKING_PRICE_REVIEW",
+    booking: {
+      ...conversation.booking,
+      priceSnapshot: price,
+      _priceComputed: true
+    }
+  });
+
+  await sendWhatsAppMessage(
+    from,
+    `💰 Final Price\n\n` +
+    `Base Fare: ${price.currency} ${price.base.total}\n` +
+    `Extras: ${price.currency} ${price.totals.bookingAdjustments}\n` +
+    `Discount: ${price.currency} ${price.bookingAdjustments.discount.delta}\n\n` +
+    `*Total Payable: ${price.currency} ${price.totals.grandTotal}*\n\n` +
+    `Reply *PAY* to continue`
+  );
+}
 
 async function handle(context) {
   const {
@@ -828,46 +891,48 @@ async function handle(context) {
   
   if (conversation.state === "BOOKING_GST_DETAILS") {
   
-    // 🔒 HARD GUARD — ignore system / empty messages
     if (!rawText || !rawText.trim()) {
       return true;
     }
   
-    // 🔒 Idempotency
     if (conversation.booking._gstCaptured) {
       return true;
     }
   
     const input = lower.trim();
   
-    /* ⏭️ SKIP GST */
     if (input === "none") {
-      setConversation(from, {
+      const updatedConversation = {
         ...conversation,
-        state: "BOOKING_PRICE_COMPUTE",
         booking: {
           ...conversation.booking,
           _gstCaptured: true
         }
-      });
+      };
+  
+      setConversation(from, updatedConversation);
   
       await sendWhatsAppMessage(
         from,
         "⏭️ GST details skipped.\n\nCalculating final price…"
       );
   
-      // 🔥 AUTO-ADVANCE (same tick)
-      return handle(context);
+      await runPriceCompute({
+        from,
+        conversation: updatedConversation,
+        sendWhatsAppMessage,
+        setConversation
+      });
+  
+      return true;
     }
   
     const gstRegex =
       /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/;
   
-    /* ✅ VALID GST */
     if (gstRegex.test(rawText.trim().toUpperCase())) {
-      setConversation(from, {
+      const updatedConversation = {
         ...conversation,
-        state: "BOOKING_PRICE_COMPUTE",
         booking: {
           ...conversation.booking,
           gst: {
@@ -875,18 +940,25 @@ async function handle(context) {
           },
           _gstCaptured: true
         }
-      });
+      };
+  
+      setConversation(from, updatedConversation);
   
       await sendWhatsAppMessage(
         from,
         "✅ GST details saved.\n\nCalculating final price…"
       );
   
-      // 🔥 AUTO-ADVANCE (same tick)
-      return handle(context);
+      await runPriceCompute({
+        from,
+        conversation: updatedConversation,
+        sendWhatsAppMessage,
+        setConversation
+      });
+  
+      return true;
     }
   
-    /* ❌ INVALID USER INPUT → PROMPT ONCE */
     if (!conversation.booking._gstPrompted) {
       setConversation(from, {
         ...conversation,
@@ -905,82 +977,6 @@ async function handle(context) {
     }
   
     return true;
-  }
-
-  /* ===============================
-     BOOKING_PRICE_COMPUTE
-  =============================== */
-  
-  if (conversation.state === "BOOKING_PRICE_COMPUTE") {
-  
-    // 🔒 ENTRY GUARD — run once
-    if (conversation.booking._priceComputed) {
-      return true;
-    }
-  
-    try {
-      const passengers = conversation.booking.travellers.map(t => ({
-        index: t.index,
-        age: t.age,
-        ageCategory: t.ageCategory,
-        specialFare: t.specialFare || "NONE",
-        seat: t.seat || "FREE_AUTO",
-        meal: t.meal || "NO_MEAL"
-      }));
-  
-      const discountCode =
-        conversation.booking.discountCode &&
-        conversation.booking.discountCode.toUpperCase() !== "NONE"
-          ? conversation.booking.discountCode
-          : null;
-  
-      log("PRICE_COMPUTE_INPUT", {
-        selectedFlight: conversation.booking.selectedFlight.id,
-        passengers,
-        preferences: conversation.booking.preferences,
-        discountCode
-      });
-  
-      const price = computeOneWayFinalPrice({
-        selectedFlight: conversation.booking.selectedFlight,
-        travellers: passengers,
-        preferences: conversation.booking.preferences || {},
-        discountCode
-      });
-  
-      log("FINAL_PRICE_COMPUTED", price);
-  
-      // ✅ AUTO-ADVANCE TO REVIEW (no alternatives)
-      setConversation(from, {
-        ...conversation,
-        state: "BOOKING_PRICE_REVIEW",
-        booking: {
-          ...conversation.booking,
-          priceSnapshot: price,
-          _priceComputed: true
-        }
-      });
-  
-      await sendWhatsAppMessage(
-        from,
-        `💰 Final Price\n\n` +
-        `Base Fare: ${price.currency} ${price.base.total}\n` +
-        `Extras: ${price.currency} ${price.totals.bookingAdjustments}\n` +
-        `Discount: ${price.currency} ${price.bookingAdjustments.discount.delta}\n\n` +
-        `*Total Payable: ${price.currency} ${price.totals.grandTotal}*\n\n` +
-        `Reply *PAY* to continue`
-      );
-  
-      return true;
-    } catch (err) {
-      log("PRICE_COMPUTE_ERROR", { err: err.message });
-  
-      await sendWhatsAppMessage(
-        from,
-        "⚠️ Something went wrong while calculating the price. Please try again."
-      );
-      return true;
-    }
   }
 
   /* ===============================
