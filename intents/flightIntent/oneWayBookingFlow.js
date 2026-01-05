@@ -704,17 +704,12 @@ async function handle(context) {
     
       setConversation(from, {
         ...conversation,
-        state: "BOOKING_FREQUENT_FLYER",
+        state: "BOOKING_FREQUENT_FLYER_INIT",
         booking: {
           ...bookingBase,
           _travellersCompleted: true
         }
       });
-    
-      await sendWhatsAppMessage(
-        from,
-        "✅ Traveller details completed.\n\nPlease enter your frequent flyer number or type NONE to skip."
-      );
     
       return true;
     }
@@ -766,6 +761,10 @@ async function handle(context) {
   /* ===============================
      BOOKING_FREQUENT_FLYER_INPUT
   =============================== */
+
+  if (conversation.state !== "BOOKING_FREQUENT_FLYER_INPUT") {
+    return true;
+  }
   
   if (conversation.state === "BOOKING_FREQUENT_FLYER_INPUT") {
   
