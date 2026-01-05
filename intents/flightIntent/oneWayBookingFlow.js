@@ -761,10 +761,6 @@ async function handle(context) {
   /* ===============================
      BOOKING_FREQUENT_FLYER_INPUT
   =============================== */
-
-  if (conversation.state !== "BOOKING_FREQUENT_FLYER_INPUT") {
-    return true;
-  }
   
   if (conversation.state === "BOOKING_FREQUENT_FLYER_INPUT") {
   
