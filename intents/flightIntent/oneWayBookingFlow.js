@@ -638,6 +638,11 @@ async function handle(context) {
   // Edit / Confirm → next traveller loop
 
   if (conversation.state === "BOOKING_TRAVELLER_CONFIRM") {
+    // 🔒 HARD TERMINAL EXIT — travellers are done, never re-enter confirm
+    if (conversation.booking._travellersCompleted === true) {
+      return true;
+    }
+
     const idx = conversation.booking.currentTravellerIndex;
   
     // 🔒 Confirm idempotency guard — retry-safe
