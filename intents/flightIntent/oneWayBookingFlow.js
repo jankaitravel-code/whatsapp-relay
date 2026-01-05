@@ -143,8 +143,7 @@ async function handle(context) {
     rawText,
     conversation,
     sendWhatsAppMessage,
-    setConversation,
-    clearConversation
+    setConversation
   } = context;
 
   // Guard: booking only
@@ -175,10 +174,9 @@ async function handle(context) {
 
     await sendWhatsAppMessage(
       from,
-      "⚠️ Booking session expired. Please start again."
+      "⚠️ Booking session expired.  Please type *flights* to start again."
     );
    
-    clearConversation(from);
     return true;
   }
   
@@ -1051,23 +1049,7 @@ async function handle(context) {
   
     return true;
   }
-    
-  /* ===============================
-     GLOBAL CANCEL
-  =============================== */
-
-  if (lower === "cancel") {
-    recordSignal("booking_cancelled", { user: from });
   
-    clearConversation(from);
-  
-    await sendWhatsAppMessage(
-      from,
-      "❌ Booking cancelled.\n\nType *flights* to start again."
-    );
-  
-    return true;
-  }
   /* ===============================
      FALLBACK
   =============================== */
