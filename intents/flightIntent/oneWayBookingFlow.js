@@ -826,33 +826,15 @@ async function handle(context) {
   
   if (conversation.state === "BOOKING_GST_DETAILS") {
   
-    // 🔒 HARD IDEMPOTENCY GUARD — retry-safe
+    // 🔒 Idempotency guard
     if (conversation.booking._gstCaptured) {
       return true;
     }
   
-    // 🔒 ENTRY PROMPT — retry-safe
-    if (!conversation.booking._gstPrompted) {
-      setConversation(from, {
-        ...conversation,
-        booking: {
-          ...conversation.booking,
-          _gstPrompted: true
-        }
-      });
+    const input = lower.trim();
   
-      await sendWhatsAppMessage(
-        from,
-        "🏢 GST Details (optional)\n\n" +
-        "Please enter your GST number.\n" +
-        "Reply *NONE* to skip."
-      );
-  
-      return true;
-    }
-  
-    // ⏭️ Skip GST
-    if (lower === "none") {
+    /* ⏭️ SKIP GST */
+    if (input === "none") {
       setConversation(from, {
         ...conversation,
         state: "BOOKING_PRICE_COMPUTE",
@@ -872,32 +854,35 @@ async function handle(context) {
     const gstRegex =
       /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/;
   
-    // ❌ Validation
-    if (!gstRegex.test(rawText)) {
+    /* ✅ VALID GST */
+    if (gstRegex.test(rawText)) {
+      setConversation(from, {
+        ...conversation,
+        state: "BOOKING_PRICE_COMPUTE",
+        booking: {
+          ...conversation.booking,
+          gst: {
+            gstin: rawText.trim().toUpperCase()
+          },
+          _gstCaptured: true
+        }
+      });
+  
       await sendWhatsAppMessage(
         from,
-        "❌ Invalid GST number.\nPlease re-enter or reply NONE to skip."
+        "✅ GST details saved.\n\nCalculating final price…"
       );
       return true;
     }
   
-    // ✅ GST captured
-    setConversation(from, {
-      ...conversation,
-      state: "BOOKING_PRICE_COMPUTE",
-      booking: {
-        ...conversation.booking,
-        gst: {
-          gstin: rawText.trim().toUpperCase()
-        },
-        _gstCaptured: true
-      }
-    });
-  
+    /* ❌ FIRST OR INVALID INPUT → PROMPT */
     await sendWhatsAppMessage(
       from,
-      "✅ GST details saved.\n\nCalculating final price…"
+      "🏢 GST Details (optional)\n\n" +
+      "Please enter your GST number.\n" +
+      "Reply *NONE* to skip."
     );
+  
     return true;
   }
 
