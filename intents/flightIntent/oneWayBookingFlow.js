@@ -690,25 +690,32 @@ async function handle(context) {
       _travellerConfirmedForIndex: idx
     };
   
-    if (nextIndex >= total) {
+   if (nextIndex >= total) {
+
+    // 🔒 SINGLE-FIRE GUARD
+    if (!conversation.booking._travellersCompleted) {
       log("TRAVELLERS_COMPLETED", {
         user: from,
         count: total
       });
-      
-      setConversation(from, {
-        ...conversation,
-        state: "BOOKING_FREQUENT_FLYER_INIT",
-        booking: bookingBase
-      });
-  
-      await sendWhatsAppMessage(
-        from,
-        "✅ Traveller details completed.\n\nPlease enter your frequent flyer number or type None to skip."
-      );
-  
-      return true;
     }
+  
+    setConversation(from, {
+      ...conversation,
+      state: "BOOKING_FREQUENT_FLYER_INIT",
+      booking: {
+        ...bookingBase,
+        _travellersCompleted: true
+      }
+    });
+  
+    await sendWhatsAppMessage(
+      from,
+      "✅ Traveller details completed.\n\nPlease enter your frequent flyer number or type NONE to skip."
+    );
+  
+    return true;
+  }
   
     setConversation(from, {
       ...conversation,
