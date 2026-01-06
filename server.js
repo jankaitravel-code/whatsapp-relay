@@ -137,9 +137,12 @@ app.post("/webhook", async (req, res) => {
      * 🧪 TEST ONLY — force WhatsApp retry
      * Toggle with: FORCE_WA_RETRY=true
      * DO NOT COMMIT ENABLED
-     */
+     
     if (process.env.FORCE_WA_RETRY === "true") {
-      await new Promise(r => setTimeout(r, 90000));
+      await new Promise(r => setTimeout(r, 90000));*/
+
+    if (process.env.DELAY_ACK === "true") {
+      await new Promise(r => setTimeout(r, 30000));
     }
 
     const waMessageId = message.id;
