@@ -139,7 +139,7 @@ app.post("/webhook", async (req, res) => {
      * DO NOT COMMIT ENABLED
      */
     if (process.env.FORCE_WA_RETRY === "true") {
-      await new Promise(r => setTimeout(r, 30000));
+      await new Promise(r => setTimeout(r, 90000));
     }
 
     const waMessageId = message.id;
