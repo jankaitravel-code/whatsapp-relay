@@ -99,6 +99,14 @@ app.post("/webhook", async (req, res) => {
       return res.sendStatus(200);
     }
 
+    const waMessageId = message.id;
+
+    console.log("📩 INCOMING_WHATSAPP_MESSAGE", {
+      waMessageId,
+      from: message.from,
+      text: message.text?.body || null
+    });
+
     const from = message.from;
     const rawText = message.text?.body || "";
     const text = rawText.toLowerCase();
