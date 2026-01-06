@@ -30,6 +30,63 @@ function markMessageProcessed(conversation, waMessageId) {
   };
 }
 
+function hasResponded(conversation, waMessageId) {
+  return conversation?.respondedMessageIds?.includes(waMessageId);
+}
+
+function markResponded(conversation, waMessageId) {
+  const existing = conversation?.respondedMessageIds || [];
+  return {
+    ...conversation,
+    respondedMessageIds: [...existing, waMessageId]
+  };
+}
+
+/**
+ * Low-level WhatsApp send (NO dedup, transport only)
+ */
+async function sendWhatsAppMessage(to, body) {
+  await axios.post(
+    `https://graph.facebook.com/v19.0/${phoneNumberId}/messages`,
+    {
+      messaging_product: "whatsapp",
+      to,
+      text: { body }
+    },
+    {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json"
+      }
+    }
+  );
+}
+
+/**
+ * High-level send with response deduplication
+ * Guarantees: at most ONE outbound message per waMessageId
+ */
+async function sendOnce(from, waMessageId, body) {
+  const conversation = getConversation(from); // re-fetch after claim
+
+  if (hasResponded(conversation, waMessageId)) {
+    log("duplicate_response_suppressed", {
+      waMessageId,
+      user: from
+    });
+    return; // 🔒 HARD STOP — response already sent
+  }
+
+  await sendWhatsAppMessage(from, body);
+
+  const updatedConversation = markResponded(
+    getConversation(from),
+    waMessageId
+  );
+
+  setConversation(from, updatedConversation);
+}
+
 const { routeIntent } = require("./intents/intentRouter");
 const {
   getConversation,
@@ -79,22 +136,8 @@ app.get("/webhook", (req, res) => {
  * SEND WHATSAPP MESSAGE (transport helper)
  * ================================
  */
-async function sendWhatsAppMessage(to, body) {
-  await axios.post(
-    `https://graph.facebook.com/v19.0/${phoneNumberId}/messages`,
-    {
-      messaging_product: "whatsapp",
-      to,
-      text: { body }
-    },
-    {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "Content-Type": "application/json"
-      }
-    }
-  );
-}
+
+
 
 /**
  * ================================
@@ -134,6 +177,15 @@ app.post("/webhook", async (req, res) => {
       return res.sendStatus(200);
     }
 
+    // 🔒 Claim this waMessageId immediately to block concurrent retries
+    const claimedConversation = markMessageProcessed(
+      existingConversation || {},
+      waMessageId
+    );
+    
+    setConversation(from, claimedConversation);
+
+
     // 🐢 TEMPORARY DELAY (TEST ONLY — SAFE NOW)
     await new Promise(res => setTimeout(res, 30000));
 
@@ -161,24 +213,32 @@ app.post("/webhook", async (req, res) => {
       requestId: requestContext.requestId
     });
 
-    const conversation = getConversation(from);
     const normalizedText = rawText.trim().toLowerCase();
+
+    // 🔁 Re-fetch conversation AFTER waMessageId claim
+    const conversation = getConversation(from);
 
     /* GLOBAL CANCEL — TRANSPORT LEVEL */
     if (normalizedText === "cancel") {
-      const updatedConversation = markMessageProcessed(
-        conversation,
+
+      // 🔒 Mark BOTH processed + responded BEFORE clearing
+      const updatedConversation = markResponded(
+        markMessageProcessed(conversation, waMessageId),
         waMessageId
       );
-
+      
       setConversation(from, updatedConversation);
-      clearConversation(from);
-
-      await sendWhatsAppMessage(
+      
+      // Send response exactly once
+      await sendOnce(
         from,
+        waMessageId,
         "❌ Session cancelled.\n\nType *flights* to start again."
       );
-
+      
+      // Now it is safe to clear
+      clearConversation(from);
+      
       return res.sendStatus(200);
     }
 
@@ -187,7 +247,8 @@ app.post("/webhook", async (req, res) => {
       text,
       rawText,
       conversation,
-      sendWhatsAppMessage,
+      sendMessage: (message) =>
+        sendOnce(from, waMessageId, message),
       setConversation,
       clearConversation,
       requestContext
@@ -196,14 +257,6 @@ app.post("/webhook", async (req, res) => {
     console.log("🧪 Router received text:", text);
 
     await routeIntent(intentContext);
-
-    // ✅ Mark processed AFTER successful handling
-    const updatedConversation = markMessageProcessed(
-      getConversation(from),
-      waMessageId
-    );
-
-    setConversation(from, updatedConversation);
 
     return res.sendStatus(200);
 
