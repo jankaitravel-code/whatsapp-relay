@@ -131,7 +131,13 @@ app.post("/webhook", async (req, res) => {
     const message =
       req.body.entry?.[0]?.changes?.[0]?.value?.messages?.[0];
 
-    if (!message) return res.sendStatus(500);
+    if (!message) return res.sendStatus(200);
+
+    // 🧪 FORCE RETRY — VALID MESSAGE, FAILED ACK
+    if (process.env.FORCE_WA_RETRY === "true") {
+      console.log("🧪 FORCING WHATSAPP RETRY (valid message, 500 ACK)");
+      return res.sendStatus(500);
+    }
 
     const waMessageId = message.id;
     const from = message.from;
