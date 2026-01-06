@@ -137,7 +137,7 @@ app.post("/webhook", async (req, res) => {
     const from = message.from;
     const rawText = message.text?.body || "";
     const text = rawText.toLowerCase();
-    const normalizedText = rawText.trim().toLowerCase();
+    const normalizedText = rawText.split("\n")[0].trim().toLowerCase();
 
     console.log("📩 INCOMING_WHATSAPP_MESSAGE", {
       waMessageId,
