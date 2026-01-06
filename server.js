@@ -90,6 +90,7 @@ async function sendWhatsAppMessage(to, body) {
  */
 app.post("/webhook", async (req, res) => {
   try {
+    await new Promise(res => setTimeout(res, 12000));
     const entry = req.body.entry?.[0];
     const change = entry?.changes?.[0];
     const value = change?.value;
