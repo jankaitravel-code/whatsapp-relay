@@ -129,6 +129,17 @@ app.post("/webhook", async (req, res) => {
 
     if (!message) return res.sendStatus(200);
 
+    /**
+     * 🧪 TEST-ONLY: Force WhatsApp retries
+     * DO NOT COMMIT ENABLED
+     */
+    if (process.env.FORCE_WA_RETRY === "true") {
+      console.log("🧪 FORCE_WA_RETRY enabled — delaying ACK");
+    
+      // Delay the HTTP 200 so WhatsApp retries delivery
+      await new Promise(resolve => setTimeout(resolve, 20000));
+    }
+
     const waMessageId = message.id;
     const from = message.from;
     const rawText = message.text?.body || "";
