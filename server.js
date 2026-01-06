@@ -242,13 +242,20 @@ app.post("/webhook", async (req, res) => {
       return res.sendStatus(200);
     }
 
+    const send = (message) => sendOnce(from, waMessageId, message);
+
     const intentContext = {
       from,
       text,
       rawText,
       conversation,
-      sendMessage: (message) =>
-        sendOnce(from, waMessageId, message),
+    
+      // 🔒 Canonical send (new)
+      sendMessage: send,
+    
+      // 🔒 Backward-compatible alias (old intents)
+      sendWhatsAppMessage: send,
+    
       setConversation,
       clearConversation,
       requestContext
