@@ -131,7 +131,7 @@ app.post("/webhook", async (req, res) => {
     const message =
       req.body.entry?.[0]?.changes?.[0]?.value?.messages?.[0];
 
-    if (!message) return res.sendStatus(200);
+    if (!message) return res.sendStatus(500).send("fail");
 
     /**
      * 🧪 TEST ONLY — force WhatsApp retry
