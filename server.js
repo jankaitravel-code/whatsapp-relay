@@ -3,30 +3,48 @@
  * Transport-only (7.2+ architecture)
  */
 
-
-
 const express = require("express");
 const axios = require("axios");
 const config = require("./config");
 
 const { buildRequestContext } = require("./utils/requestContext");
-
 const { checkRateLimit } = require("./security/rateLimiter");
-const RATE_LIMIT_WARNING_THRESHOLD = 10;
 const { log } = require("./utils/logger");
 const { recordSignal } = require("./utils/abuseSignals");
 
+const {
+  getConversation,
+  setConversation,
+  clearConversation
+} = require("./state/conversationStore");
+
+const { routeIntent } = require("./intents/intentRouter");
+
+const RATE_LIMIT_WARNING_THRESHOLD = 10;
 const BLOCKED_RESULTS_INPUTS = ["yes", "ok", "search"];
 
+const app = express();
+app.use(express.json());
+
+/* ================================
+   WhatsApp config
+================================ */
+const { verifyToken, accessToken, phoneNumberId } = config.whatsapp;
+
+/* ================================
+   Dedup helpers
+================================ */
 function hasProcessedMessage(conversation, waMessageId) {
   return conversation?.processedMessageIds?.includes(waMessageId);
 }
 
 function markMessageProcessed(conversation, waMessageId) {
-  const existing = conversation?.processedMessageIds || [];
   return {
     ...conversation,
-    processedMessageIds: [...existing, waMessageId]
+    processedMessageIds: [
+      ...(conversation?.processedMessageIds || []),
+      waMessageId
+    ]
   };
 }
 
@@ -35,16 +53,18 @@ function hasResponded(conversation, waMessageId) {
 }
 
 function markResponded(conversation, waMessageId) {
-  const existing = conversation?.respondedMessageIds || [];
   return {
     ...conversation,
-    respondedMessageIds: [...existing, waMessageId]
+    respondedMessageIds: [
+      ...(conversation?.respondedMessageIds || []),
+      waMessageId
+    ]
   };
 }
 
-/**
- * Low-level WhatsApp send (NO dedup, transport only)
- */
+/* ================================
+   WhatsApp send helpers
+================================ */
 async function sendWhatsAppMessage(to, body) {
   await axios.post(
     `https://graph.facebook.com/v19.0/${phoneNumberId}/messages`,
@@ -62,111 +82,65 @@ async function sendWhatsAppMessage(to, body) {
   );
 }
 
-/**
- * High-level send with response deduplication
- * Guarantees: at most ONE outbound message per waMessageId
- */
 async function sendOnce(from, waMessageId, body) {
-  const conversation = getConversation(from); // re-fetch after claim
+  const conversation = getConversation(from);
 
   if (hasResponded(conversation, waMessageId)) {
-    log("duplicate_response_suppressed", {
-      waMessageId,
-      user: from
-    });
-    return; // 🔒 HARD STOP — response already sent
+    log("duplicate_response_suppressed", { waMessageId, user: from });
+    return;
   }
 
   await sendWhatsAppMessage(from, body);
 
-  const updatedConversation = markResponded(
-    getConversation(from),
-    waMessageId
+  setConversation(
+    from,
+    markResponded(getConversation(from), waMessageId)
   );
-
-  setConversation(from, updatedConversation);
 }
 
-const { routeIntent } = require("./intents/intentRouter");
-const {
-  getConversation,
-  setConversation,
-  clearConversation
-} = require("./state/conversationStore");
-
-const app = express();
-app.use(express.json());
-
-/**
- * ================================
- * Centralized WhatsApp tokens
- * ================================
- */
-const { verifyToken, accessToken, phoneNumberId } = config.whatsapp;
-
-/**
- * ================================
- * HEALTH CHECK
- * ================================
- */
-app.get("/", (req, res) => {
+/* ================================
+   Health check
+================================ */
+app.get("/", (_, res) => {
   res.send("✅ WhatsApp relay is running");
 });
 
-/**
- * ================================
- * WEBHOOK VERIFICATION
- * ================================
- */
+/* ================================
+   Webhook verification
+================================ */
 app.get("/webhook", (req, res) => {
   const mode = req.query["hub.mode"];
   const token = req.query["hub.verify_token"];
   const challenge = req.query["hub.challenge"];
 
   if (mode === "subscribe" && token === verifyToken) {
-    console.log("✅ Webhook verified");
     return res.status(200).send(challenge);
   }
-
   return res.sendStatus(403);
 });
 
-/**
- * ================================
- * SEND WHATSAPP MESSAGE (transport helper)
- * ================================
- */
-
-
-
-/**
- * ================================
- * INCOMING WHATSAPP MESSAGES
- * ================================
- */
-
+/* ================================
+   Incoming messages
+================================ */
 app.post("/webhook", async (req, res) => {
   try {
-    const entry = req.body.entry?.[0];
-    const change = entry?.changes?.[0];
-    const value = change?.value;
-    const message = value?.messages?.[0];
+    const message =
+      req.body.entry?.[0]?.changes?.[0]?.value?.messages?.[0];
 
-    if (!message) {
-      return res.sendStatus(200);
-    }
+    if (!message) return res.sendStatus(200);
 
     const waMessageId = message.id;
     const from = message.from;
+    const rawText = message.text?.body || "";
+    const text = rawText.toLowerCase();
 
-    // 🔍 Transport-level observability
     console.log("📩 INCOMING_WHATSAPP_MESSAGE", {
       waMessageId,
       from,
-      text: message.text?.body || null
+      text: rawText
     });
 
-    // 🔒 TRANSPORT-LEVEL IDEMPOTENCY GUARD (MUST BE FIRST)
+    /* 🔒 Transport-level idempotency (early claim) */
     const existingConversation = getConversation(from);
 
     if (hasProcessedMessage(existingConversation, waMessageId)) {
@@ -177,27 +151,15 @@ app.post("/webhook", async (req, res) => {
       return res.sendStatus(200);
     }
 
-    // 🔒 Claim this waMessageId immediately to block concurrent retries
-    const claimedConversation = markMessageProcessed(
-      existingConversation || {},
-      waMessageId
+    setConversation(
+      from,
+      markMessageProcessed(existingConversation || {}, waMessageId)
     );
-    
-    setConversation(from, claimedConversation);
 
-
-    // 🐢 TEMPORARY DELAY (TEST ONLY — SAFE NOW)
-    await new Promise(res => setTimeout(res, 30000));
-
-    const rawText = message.text?.body || "";
-    const text = rawText.toLowerCase();
-
-    console.log("📩 Message received:", rawText);
-
+    /* 🔧 Request context */
     const requestContext = buildRequestContext({ from });
 
     const rate = checkRateLimit({ user: from });
-
     log("rate_limit_check", {
       user: from,
       allowed: rate.allowed,
@@ -214,70 +176,63 @@ app.post("/webhook", async (req, res) => {
     });
 
     const normalizedText = rawText.trim().toLowerCase();
-
-    // 🔁 Re-fetch conversation AFTER waMessageId claim
     const conversation = getConversation(from);
 
-    /* GLOBAL CANCEL — TRANSPORT LEVEL */
+    /* 🔒 Global cancel — transport only */
     if (normalizedText === "cancel") {
-
-      // 🔒 Mark BOTH processed + responded BEFORE clearing
-      const updatedConversation = markResponded(
-        markMessageProcessed(conversation, waMessageId),
-        waMessageId
+      setConversation(
+        from,
+        markResponded(
+          markMessageProcessed(conversation, waMessageId),
+          waMessageId
+        )
       );
-      
-      setConversation(from, updatedConversation);
-      
-      // Send response exactly once
+
       await sendOnce(
         from,
         waMessageId,
         "❌ Session cancelled.\n\nType *flights* to start again."
       );
-      
-      // Now it is safe to clear
+
       clearConversation(from);
-      
       return res.sendStatus(200);
     }
 
-    const send = (message) => sendOnce(from, waMessageId, message);
+    /* 🔒 Single, safe send function (backward-compatible) */
+    const send = (arg1, arg2) => {
+      // New style: send("text")
+      if (typeof arg2 === "undefined") {
+        return sendOnce(from, waMessageId, arg1);
+      }
+      // Old style: sendWhatsAppMessage(to, "text")
+      return sendOnce(from, waMessageId, arg2);
+    };
 
     const intentContext = {
       from,
       text,
       rawText,
       conversation,
-    
-      // 🔒 Canonical send (new)
       sendMessage: send,
-    
-      // 🔒 Backward-compatible alias (old intents)
       sendWhatsAppMessage: send,
-    
       setConversation,
       clearConversation,
       requestContext
     };
 
     console.log("🧪 Router received text:", text);
-
     await routeIntent(intentContext);
 
     return res.sendStatus(200);
-
   } catch (err) {
     console.error("❌ Error handling message", err);
     return res.sendStatus(200);
   }
 });
 
-/**
- * ================================
- * SERVER START
- * ================================
- */
+/* ================================
+   Server start
+================================ */
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log("🚀 Relay server running on port", PORT);
