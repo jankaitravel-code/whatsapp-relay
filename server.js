@@ -20,9 +20,6 @@ const {
 
 const { routeIntent } = require("./intents/intentRouter");
 
-const RATE_LIMIT_WARNING_THRESHOLD = 10;
-const BLOCKED_RESULTS_INPUTS = ["yes", "ok", "search"];
-
 const app = express();
 app.use(express.json());
 
@@ -82,11 +79,17 @@ async function sendWhatsAppMessage(to, body) {
   );
 }
 
+/**
+ * Send at most once per waMessageId
+ */
 async function sendOnce(from, waMessageId, body) {
   const conversation = getConversation(from);
 
   if (hasResponded(conversation, waMessageId)) {
-    log("duplicate_response_suppressed", { waMessageId, user: from });
+    log("duplicate_response_suppressed", {
+      waMessageId,
+      user: from
+    });
     return;
   }
 
@@ -116,6 +119,7 @@ app.get("/webhook", (req, res) => {
   if (mode === "subscribe" && token === verifyToken) {
     return res.status(200).send(challenge);
   }
+
   return res.sendStatus(403);
 });
 
@@ -130,20 +134,19 @@ app.post("/webhook", async (req, res) => {
     if (!message) return res.sendStatus(200);
 
     /**
-     * 🧪 TEST-ONLY: Force WhatsApp retries
+     * 🧪 TEST ONLY — force WhatsApp retry
+     * Toggle with: FORCE_WA_RETRY=true
      * DO NOT COMMIT ENABLED
      */
     if (process.env.FORCE_WA_RETRY === "true") {
-      console.log("🧪 FORCE_WA_RETRY enabled — delaying ACK");
-    
-      // Delay the HTTP 200 so WhatsApp retries delivery
-      await new Promise(resolve => setTimeout(resolve, 20000));
+      await new Promise(r => setTimeout(r, 20000));
     }
 
     const waMessageId = message.id;
     const from = message.from;
     const rawText = message.text?.body || "";
     const text = rawText.toLowerCase();
+    const normalizedText = rawText.trim().toLowerCase();
 
     console.log("📩 INCOMING_WHATSAPP_MESSAGE", {
       waMessageId,
@@ -151,7 +154,23 @@ app.post("/webhook", async (req, res) => {
       text: rawText
     });
 
-    /* 🔒 Transport-level idempotency (early claim) */
+    /* ===============================
+       GLOBAL CANCEL — TRANSPORT LEVEL
+       =============================== */
+    if (normalizedText === "cancel") {
+      clearConversation(from);
+
+      await sendWhatsAppMessage(
+        from,
+        "❌ Session cancelled.\n\nType *flights* to start again."
+      );
+
+      return res.sendStatus(200);
+    }
+
+    /* ===============================
+       Transport-level idempotency
+       =============================== */
     const existingConversation = getConversation(from);
 
     if (hasProcessedMessage(existingConversation, waMessageId)) {
@@ -162,12 +181,15 @@ app.post("/webhook", async (req, res) => {
       return res.sendStatus(200);
     }
 
+    // Claim message immediately
     setConversation(
       from,
       markMessageProcessed(existingConversation || {}, waMessageId)
     );
 
-    /* 🔧 Request context */
+    /* ===============================
+       Request context + telemetry
+       =============================== */
     const requestContext = buildRequestContext({ from });
 
     const rate = checkRateLimit({ user: from });
@@ -186,36 +208,15 @@ app.post("/webhook", async (req, res) => {
       requestId: requestContext.requestId
     });
 
-    const normalizedText = rawText.trim().toLowerCase();
     const conversation = getConversation(from);
 
-    /* 🔒 Global cancel — transport only */
-    if (normalizedText === "cancel") {
-      setConversation(
-        from,
-        markResponded(
-          markMessageProcessed(conversation, waMessageId),
-          waMessageId
-        )
-      );
-
-      await sendOnce(
-        from,
-        waMessageId,
-        "❌ Session cancelled.\n\nType *flights* to start again."
-      );
-
-      clearConversation(from);
-      return res.sendStatus(200);
-    }
-
-    /* 🔒 Single, safe send function (backward-compatible) */
+    /* ===============================
+       Safe send wrapper (backward compatible)
+       =============================== */
     const send = (arg1, arg2) => {
-      // New style: send("text")
       if (typeof arg2 === "undefined") {
         return sendOnce(from, waMessageId, arg1);
       }
-      // Old style: sendWhatsAppMessage(to, "text")
       return sendOnce(from, waMessageId, arg2);
     };
 
@@ -225,7 +226,7 @@ app.post("/webhook", async (req, res) => {
       rawText,
       conversation,
       sendMessage: send,
-      sendWhatsAppMessage: send,
+      sendWhatsAppMessage: send, // backward compatibility
       setConversation,
       clearConversation,
       requestContext
