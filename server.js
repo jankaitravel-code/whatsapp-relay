@@ -135,7 +135,7 @@ app.post("/webhook", async (req, res) => {
     }
 
     // 🐢 TEMPORARY DELAY (TEST ONLY — SAFE NOW)
-    await new Promise(res => setTimeout(res, 20000));
+    await new Promise(res => setTimeout(res, 12000));
 
     const rawText = message.text?.body || "";
     const text = rawText.toLowerCase();
