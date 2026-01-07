@@ -135,6 +135,25 @@ function isValidFrequentFlyer(input) {
   return true;
 }
 
+function isPlausibleGSTInput(input) {
+  if (!input) return false;
+
+  const trimmed = input.trim();
+
+  // Single-line only
+  if (trimmed.includes("\n")) return false;
+
+  // Reject emojis and currency symbols early
+  const invalidCharRegex =
+    /[\p{Extended_Pictographic}₹€£¥$]/u;
+
+  if (invalidCharRegex.test(trimmed)) {
+    return false;
+  }
+
+  return true;
+}
+
 async function runPriceCompute({
   from,
   conversation,
@@ -1018,10 +1037,21 @@ async function handle(context) {
     if (!rawText || !rawText.trim()) {
       return true;
     }
-  
-    if (conversation.booking._gstCaptured) {
+
+    
+    // 🔒 HARD IDEMPOTENCY — FIRST
+    if (!conversation.booking._gstPrompted && !conversation.booking._gstCaptured) {
       return true;
     }
+
+    if (!isPlausibleGSTInput(rawText)) {
+      await sendWhatsAppMessage(
+        from,
+        "❌ Please enter a valid GST number or reply *NONE* to skip."
+      );
+      return true;
+    }
+  
   
     const input = lower.trim();
   
