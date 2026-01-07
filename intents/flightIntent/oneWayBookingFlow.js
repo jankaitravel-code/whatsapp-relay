@@ -570,11 +570,20 @@ async function handle(context) {
     if (conversation.booking._ageCapturedForIndex === idx) {
       return true;
     }
-  
+
     const age = Number(rawText);
-  
-    if (Number.isNaN(age) || age <= 0 || age > 120) {
-      await sendWhatsAppMessage(from, "❌ Please enter a valid age.");
+
+    // 🔒 HARD VALIDATION — integer only
+    if (
+      Number.isNaN(age) ||
+      !Number.isInteger(age) ||
+      age <= 0 ||
+      age > 120
+    ) {
+      await sendWhatsAppMessage(
+        from,
+        "❌ Please enter a valid age (whole number only).\nExample: 25"
+      );
       return true;
     }
   
