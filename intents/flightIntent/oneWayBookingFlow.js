@@ -383,12 +383,56 @@ async function handle(context) {
   }
 
   /* ===============================
-     TRAVELLER INFORMATION
+     BOOKING_TRAVELLERS_INIT
   =============================== */
   
   if (conversation.state === "BOOKING_TRAVELLERS_INIT") {
   
-    // 🔒 IDEMPOTENCY GUARD — init must run once only
+    const input = rawText.trim().toLowerCase();
+  
+    // ✅ YES → proceed to actual init
+    if (["yes", "y", "1", "ok", "continue"].includes(input)) {
+      setConversation(from, {
+        ...conversation,
+        state: "BOOKING_TRAVELLERS_START"
+      });
+  
+      return true;
+    }
+  
+    // ❌ NO → exit booking safely
+    if (["no", "n"].includes(input)) {
+      setConversation(from, {
+        ...conversation,
+        intent: "FLIGHT_SEARCH",
+        state: "RESULTS",
+        booking: null
+      });
+  
+      await sendWhatsAppMessage(
+        from,
+        "❌ Traveller details not added.\n\nYou’re back at flight results."
+      );
+  
+      return true;
+    }
+  
+    // 🔁 INVALID INPUT → re-prompt
+    await sendWhatsAppMessage(
+      from,
+      "Ready to add traveller details?\n\nReply *Yes* to continue or *No* to cancel booking."
+    );
+  
+    return true;
+  }
+
+  /* ===============================
+     BOOKING_TRAVELLERS_START
+  =============================== */
+  
+  if (conversation.state === "BOOKING_TRAVELLERS_START") {
+  
+    // 🔒 IDEMPOTENCY GUARD — must run once only
     if (conversation.booking._travellersInitDone) {
       return true;
     }
@@ -408,14 +452,8 @@ async function handle(context) {
   
     await sendWhatsAppMessage(
       from,
-      `🧑 Traveller details\n\n` +
-      `Traveller 1 of ${total}\n` +
-      `Please enter first name and last name.\n\n` +
-      `Example: Rahul Sharma`
-    );
-  
-    return true;
-  }
+      `🧑 Traveller details\n\n`
+
 
   // NAME INPUT → AGE
   
