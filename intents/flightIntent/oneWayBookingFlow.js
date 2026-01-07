@@ -1034,18 +1034,38 @@ async function handle(context) {
   
   if (conversation.state === "BOOKING_GST_DETAILS") {
   
+    // 🔒 ENTRY — prompt exactly once
+    if (!conversation.booking._gstEntryShown) {
+      setConversation(from, {
+        ...conversation,
+        booking: {
+          ...conversation.booking,
+          _gstEntryShown: true
+        }
+      });
+  
+      await sendWhatsAppMessage(
+        from,
+        "🏢 GST Details (optional)\n\n" +
+        "Please enter your GST number.\n" +
+        "Reply *NONE* to skip."
+      );
+  
+      return true;
+    }
+  
     if (!rawText || !rawText.trim()) {
       return true;
     }
   
-    // 🔒 TRUE idempotency — only block AFTER capture
+    // 🔒 TERMINAL IDEMPOTENCY
     if (conversation.booking._gstCaptured) {
       return true;
     }
   
     const input = lower.trim();
   
-    // ⏭️ SKIP — MUST COME FIRST
+    // ⏭️ SKIP
     if (input === "none") {
       const updatedConversation = {
         ...conversation,
@@ -1072,7 +1092,7 @@ async function handle(context) {
       return true;
     }
   
-    // 🔒 PLAUSIBILITY (emoji / garbage guard)
+    // 🔒 PLAUSIBILITY (emoji / junk)
     if (!isPlausibleGSTInput(rawText)) {
       await sendWhatsAppMessage(
         from,
@@ -1114,23 +1134,11 @@ async function handle(context) {
       return true;
     }
   
-    // 🔁 FALLBACK PROMPT (once)
-    if (!conversation.booking._gstPrompted) {
-      setConversation(from, {
-        ...conversation,
-        booking: {
-          ...conversation.booking,
-          _gstPrompted: true
-        }
-      });
-  
-      await sendWhatsAppMessage(
-        from,
-        "🏢 GST Details (optional)\n\n" +
-        "Please enter your GST number.\n" +
-        "Reply *NONE* to skip."
-      );
-    }
+    // 🔁 INVALID BUT PLAUSIBLE
+    await sendWhatsAppMessage(
+      from,
+      "❌ GST number format looks incorrect.\nReply *NONE* to skip."
+    );
   
     return true;
   }
