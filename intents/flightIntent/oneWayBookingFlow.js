@@ -355,7 +355,7 @@ async function handle(context) {
   
   if (conversation.state === "BOOKING_DISCOUNT") {
   
-    // 🔒 IDEMPOTENCY GUARD — retry-safe
+    // 🔒 Idempotency guard
     if (conversation.booking._discountCaptured) {
       return true;
     }
@@ -368,15 +368,18 @@ async function handle(context) {
       booking: {
         ...conversation.booking,
         discountCode: input === "NONE" ? null : input,
-        _discountCaptured: true
+        _discountCaptured: true,
+        _travellerConsentAsked: false   // 👈 gate flag
       }
     });
   
     await sendWhatsAppMessage(
       from,
-      input === "NONE"
-        ? "🏷️ No discount code applied.\n\nReady to add traveller details?"
-        : `🏷️ Discount code *${input}* noted.\n\nReady to add traveller details?`
+      (input === "NONE"
+        ? "🏷️ No discount code applied.\n\n"
+        : `🏷️ Discount code *${input}* noted.\n\n`) +
+      "Ready to add traveller details?\n\n" +
+      "Reply *Yes* to continue or *No* to cancel booking."
     );
   
     return true;
@@ -386,53 +389,52 @@ async function handle(context) {
      BOOKING_TRAVELLERS_INIT
   =============================== */
   
-  if (conversation.state === "BOOKING_TRAVELLERS_INIT") {
+  if (
+    conversation.state === "BOOKING_TRAVELLERS_INIT" &&
+    conversation.intent === "FLIGHT_BOOKING"
+  ) {
   
     const input = rawText.trim().toLowerCase();
   
-    // ✅ YES → proceed to actual init
-    if (["yes", "y", "1", "ok", "continue"].includes(input)) {
+    /* -------------------------------
+       PHASE 1: CONSENT GATE
+    -------------------------------- */
+  
+    if (!conversation.booking._travellerConsentAsked) {
       setConversation(from, {
         ...conversation,
-        state: "BOOKING_TRAVELLERS_START"
+        booking: {
+          ...conversation.booking,
+          _travellerConsentAsked: true
+        }
       });
   
+      // message already sent from DISCOUNT step
       return true;
     }
   
-    // ❌ NO → exit booking safely
+    // ❌ NO → exit booking (global cancel still applies)
     if (["no", "n"].includes(input)) {
-      setConversation(from, {
-        ...conversation,
-        intent: "FLIGHT_SEARCH",
-        state: "RESULTS",
-        booking: null
-      });
-  
       await sendWhatsAppMessage(
         from,
-        "❌ Traveller details not added.\n\nYou’re back at flight results."
+        "❌ Booking cancelled.\n\nType *flights* to start again."
       );
-  
       return true;
     }
   
-    // 🔁 INVALID INPUT → re-prompt
-    await sendWhatsAppMessage(
-      from,
-      "Ready to add traveller details?\n\nReply *Yes* to continue or *No* to cancel booking."
-    );
+    // 🔁 Invalid input → re-prompt
+    if (!["yes", "y", "ok", "1", "continue"].includes(input)) {
+      await sendWhatsAppMessage(
+        from,
+        "Please reply *Yes* to continue or *No* to cancel booking."
+      );
+      return true;
+    }
   
-    return true;
-  }
-
-  /* ===============================
-     BOOKING_TRAVELLERS_START
-  =============================== */
+    /* -------------------------------
+       PHASE 2: INIT TRAVELLERS (ONCE)
+    -------------------------------- */
   
-  if (conversation.state === "BOOKING_TRAVELLERS_START") {
-  
-    // 🔒 IDEMPOTENCY GUARD — must run once only
     if (conversation.booking._travellersInitDone) {
       return true;
     }
@@ -452,7 +454,7 @@ async function handle(context) {
   
     await sendWhatsAppMessage(
       from,
-      `🧑 Traveller details\n\n`
+      `🧑 Traveller details\n\n` +
       `Traveller 1 of ${total}\n` +
       `Please enter first name and last name.\n\n` +
       `Example: Rahul Sharma`
@@ -460,7 +462,6 @@ async function handle(context) {
   
     return true;
   }
-
 
   // NAME INPUT → AGE
   
