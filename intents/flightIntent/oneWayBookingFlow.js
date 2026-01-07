@@ -428,23 +428,25 @@ async function handle(context) {
   
       return true;
     }
-  
-    /* ❌ NO → EXIT BOOKING SAFELY */
+
+    /* ❌ NO → EXIT BOOKING CLEANLY */
     if (["no", "n"].includes(input)) {
-  
+    
       setConversation(from, {
-        intent: "FLIGHT_SEARCH",
-        flow: "ONE_WAY",
-        state: "RESULTS",
-        results: conversation.results,
-        booking: null
+        intent: "FLIGHT_MENU",
+        state: "MENU"
       });
-  
+    
       await sendWhatsAppMessage(
         from,
-        "❌ Traveller details not added.\n\nYou’re back at flight results."
+        "❌ Booking cancelled.\n\n" +
+        "✈️ Flights menu\n\n" +
+        "Reply:\n" +
+        "➡️ oneway\n" +
+        "➡️ roundtrip\n" +
+        "➡️ multicity"
       );
-  
+    
       return true;
     }
   
