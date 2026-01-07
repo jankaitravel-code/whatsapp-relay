@@ -77,34 +77,32 @@ function isValidHumanName(input) {
 
   const trimmed = input.trim();
 
-  // Must contain at least two words
+  // Split once, define once
   const parts = trimmed.split(/\s+/);
+
+  // Must have at least two name parts
   if (parts.length < 2) return false;
 
   /*
-    Allowed:
-    - Unicode letters
-    - Space
-    - Dot (for initials)
-    - Hyphen
-    - Apostrophe
-
-    Disallowed:
-    - Digits
-    - Emojis
-    - Other symbols
+    Reject:
+    - digits
+    - emojis
+    - symbols (except . ' -)
   */
-
-  const invalidCharRegex = /[0-9!@#$%^&*()_+=\[\]{};:"\\|<>/?~`₹€😃😄😁😆😅😂🤣😊😉🙂🥳🥲😍😎😐😑😶]/;
+  const invalidCharRegex =
+    /[0-9!@#$%^&*()_+=\[\]{};:"\\|<>/?~`₹€]/;
 
   if (invalidCharRegex.test(trimmed)) {
     return false;
   }
 
-  // Each word must be reasonable:
-  // - Either a letter sequence
-  // - Or an initial like "R" or "R."
-  const wordRegex = /^[\p{L}]+\.?$/u;
+  /*
+    Each word must be:
+    - Unicode letters
+    - Optional trailing dot (initials)
+    - May include apostrophe or hyphen inside
+  */
+  const wordRegex = /^[\p{L}]+([.'-][\p{L}]+)*\.?$/u;
 
   for (const part of parts) {
     if (!wordRegex.test(part)) {
@@ -114,6 +112,7 @@ function isValidHumanName(input) {
 
   return true;
 }
+
 
 async function runPriceCompute({
   from,
