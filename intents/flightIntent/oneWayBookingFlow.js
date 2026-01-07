@@ -502,7 +502,6 @@ async function handle(context) {
   }
 
   // NAME INPUT → AGE
-  
   if (conversation.state === "BOOKING_TRAVELLER_NAME") {
     const idx = conversation.booking.currentTravellerIndex;
   
@@ -510,22 +509,32 @@ async function handle(context) {
     if (conversation.booking._nameCapturedForIndex === idx) {
       return true;
     }
-
-    if (!isValidHumanName(rawText)) {
+  
+    const raw = rawText?.trim();
+  
+    if (!isValidHumanName(raw)) {
       await sendWhatsAppMessage(
         from,
         "❌ Please enter a valid full name as it appears on your identity proof document\n\n" +
-        "Example: Rahul Sharma"
+        "Examples:\n" +
+        "• Rahul Sharma\n" +
+        "• Rahul R. Sharma\n" +
+        "• Ananya Sharma P."
       );
       return true;
     }
+  
+    // ✅ PARSE NAME HERE (this was missing)
+    const parts = raw.split(/\s+/);
+    const firstName = parts[0];
+    const lastName = parts.slice(1).join(" ");
   
     const travellers = [...conversation.booking.travellers];
   
     travellers[idx] = {
       index: idx + 1,
-      firstName: parts[0],
-      lastName: parts.slice(1).join(" "),
+      firstName,
+      lastName,
       ageCategory: "ADULT",
       specialFare: "NONE",
       seat: null,
