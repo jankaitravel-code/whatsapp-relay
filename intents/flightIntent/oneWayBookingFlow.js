@@ -453,6 +453,13 @@ async function handle(context) {
     await sendWhatsAppMessage(
       from,
       `🧑 Traveller details\n\n`
+      `Traveller 1 of ${total}\n` +
+      `Please enter first name and last name.\n\n` +
+      `Example: Rahul Sharma`
+    );
+  
+    return true;
+  }
 
 
   // NAME INPUT → AGE
