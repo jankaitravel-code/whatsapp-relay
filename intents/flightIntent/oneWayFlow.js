@@ -341,13 +341,16 @@ async function handle(context) {
        user: from,
        newDate: dateStr
      });
-   
-     setConversation(from, {
-       intent: "FLIGHT_SEARCH",
-       flow: "ONE_WAY",
-       state: "AWAITING_RECONFIRMATION",
-       flightQuery: updatedQuery
-     });
+
+      setConversation(from, {
+        intent: "FLIGHT_SEARCH",
+        flow: "ONE_WAY",
+        state: "SEARCH_PASSENGER_COUNT",
+        flightQuery: {
+          ...updatedQuery,
+          passengerCount: null
+        }
+      });
    
      await sendWhatsAppMessage(
        from,
@@ -408,13 +411,16 @@ async function handle(context) {
        user: from,
        origin: parsed.origin.cityCode
      });
-   
-     setConversation(from, {
-       intent: "FLIGHT_SEARCH",
-       flow: "ONE_WAY",
-       state: "AWAITING_RECONFIRMATION",
-       flightQuery: updatedQuery
-     });
+
+      setConversation(from, {
+        intent: "FLIGHT_SEARCH",
+        flow: "ONE_WAY",
+        state: "SEARCH_PASSENGER_COUNT",
+        flightQuery: {
+          ...updatedQuery,
+          passengerCount: null
+        }
+      });
    
      await sendWhatsAppMessage(
        from,
@@ -475,13 +481,16 @@ async function handle(context) {
        user: from,
        destination: parsed.destination.cityCode
      });
-   
-     setConversation(from, {
-       intent: "FLIGHT_SEARCH",
-       flow: "ONE_WAY",
-       state: "AWAITING_RECONFIRMATION",
-       flightQuery: updatedQuery
-     });
+
+      setConversation(from, {
+        intent: "FLIGHT_SEARCH",
+        flow: "ONE_WAY",
+        state: "SEARCH_PASSENGER_COUNT",
+        flightQuery: {
+          ...updatedQuery,
+          passengerCount: null
+        }
+      });
    
      await sendWhatsAppMessage(
        from,
@@ -517,13 +526,16 @@ async function handle(context) {
        user: from,
        cabinClass: selected
      });
-   
-     setConversation(from, {
-       intent: "FLIGHT_SEARCH",
-       flow: "ONE_WAY",
-       state: "AWAITING_RECONFIRMATION",
-       flightQuery: updatedQuery
-     });
+
+      setConversation(from, {
+        intent: "FLIGHT_SEARCH",
+        flow: "ONE_WAY",
+        state: "SEARCH_PASSENGER_COUNT",
+        flightQuery: {
+          ...updatedQuery,
+          passengerCount: null
+        }
+      });
    
      await sendWhatsAppMessage(
        from,
