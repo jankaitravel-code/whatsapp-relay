@@ -72,6 +72,49 @@ function resetBookingState(conversation) {
   };
 }
 
+function isValidHumanName(input) {
+  if (!input) return false;
+
+  const trimmed = input.trim();
+
+  // Must contain at least two words
+  const parts = trimmed.split(/\s+/);
+  if (parts.length < 2) return false;
+
+  /*
+    Allowed:
+    - Unicode letters
+    - Space
+    - Dot (for initials)
+    - Hyphen
+    - Apostrophe
+
+    Disallowed:
+    - Digits
+    - Emojis
+    - Other symbols
+  */
+
+  const invalidCharRegex = /[0-9!@#$%^&*()_+=\[\]{};:"\\|<>/?~`₹€😃😄😁😆😅😂🤣😊😉🙂🥳🥲😍😎😐😑😶]/;
+
+  if (invalidCharRegex.test(trimmed)) {
+    return false;
+  }
+
+  // Each word must be reasonable:
+  // - Either a letter sequence
+  // - Or an initial like "R" or "R."
+  const wordRegex = /^[\p{L}]+\.?$/u;
+
+  for (const part of parts) {
+    if (!wordRegex.test(part)) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
 async function runPriceCompute({
   from,
   conversation,
@@ -468,13 +511,12 @@ async function handle(context) {
     if (conversation.booking._nameCapturedForIndex === idx) {
       return true;
     }
-  
-    const parts = rawText.trim().split(" ");
-  
-    if (parts.length < 2) {
+
+    if (!isValidHumanName(rawText)) {
       await sendWhatsAppMessage(
         from,
-        "❌ Please enter FULL name of the traveller as it appears on the identity proof.\nExample: Rahul Sharma"
+        "❌ Please enter a valid full name as it appears on your identity proof document\n\n" +
+        "Example: Rahul Sharma"
       );
       return true;
     }
