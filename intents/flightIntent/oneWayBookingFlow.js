@@ -113,6 +113,27 @@ function isValidHumanName(input) {
   return true;
 }
 
+function isValidFrequentFlyer(input) {
+  if (!input) return false;
+
+  const trimmed = input.trim();
+
+  // Must be single-line
+  if (trimmed.includes("\n")) return false;
+
+  // Reject emojis and symbols outside ASCII-ish range
+  const invalidCharRegex =
+    /[\p{Extended_Pictographic}₹€£¥$]/u;
+
+  if (invalidCharRegex.test(trimmed)) {
+    return false;
+  }
+
+  // Must be at least 5 chars (industry-safe lower bound)
+  if (trimmed.length < 5) return false;
+
+  return true;
+}
 
 async function runPriceCompute({
   from,
@@ -959,7 +980,7 @@ async function handle(context) {
     }
   
     /* ✏️ MANUAL ENTRY */
-    if (rawText && rawText.length >= 5) {
+    if (isValidFrequentFlyer(rawText)) {
       setConversation(from, {
         ...conversation,
         state: "BOOKING_GST_DETAILS",
