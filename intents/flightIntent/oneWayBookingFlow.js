@@ -1037,24 +1037,15 @@ async function handle(context) {
     if (!rawText || !rawText.trim()) {
       return true;
     }
-
-    
-    // 🔒 HARD IDEMPOTENCY — FIRST
-    if (!conversation.booking._gstPrompted && !conversation.booking._gstCaptured) {
-      return true;
-    }
-
-    if (!isPlausibleGSTInput(rawText)) {
-      await sendWhatsAppMessage(
-        from,
-        "❌ Please enter a valid GST number or reply *NONE* to skip."
-      );
-      return true;
-    }
   
+    // 🔒 TRUE idempotency — only block AFTER capture
+    if (conversation.booking._gstCaptured) {
+      return true;
+    }
   
     const input = lower.trim();
   
+    // ⏭️ SKIP — MUST COME FIRST
     if (input === "none") {
       const updatedConversation = {
         ...conversation,
@@ -1081,8 +1072,18 @@ async function handle(context) {
       return true;
     }
   
+    // 🔒 PLAUSIBILITY (emoji / garbage guard)
+    if (!isPlausibleGSTInput(rawText)) {
+      await sendWhatsAppMessage(
+        from,
+        "❌ Please enter a valid GST number or reply *NONE* to skip."
+      );
+      return true;
+    }
+  
+    // ✅ STRICT GST FORMAT
     const gstRegex =
-      /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/;
+      /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/;
   
     if (gstRegex.test(rawText.trim().toUpperCase())) {
       const updatedConversation = {
@@ -1113,6 +1114,7 @@ async function handle(context) {
       return true;
     }
   
+    // 🔁 FALLBACK PROMPT (once)
     if (!conversation.booking._gstPrompted) {
       setConversation(from, {
         ...conversation,
