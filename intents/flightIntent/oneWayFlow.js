@@ -570,7 +570,25 @@ async function handle(context) {
      }
    
      const selectedFlight = results.rawFlights[index];
-   
+
+      if (
+        !Number.isInteger(conversation.lockedFlightQuery?.passengerCount) ||
+        conversation.lockedFlightQuery.passengerCount < 1
+      ) {
+        log("PASSENGER_COUNT_MISSING_AT_BOOKING_HANDOFF", {
+          user: from,
+          flightQuery: conversation.lockedFlightQuery
+        });
+      
+        await sendWhatsAppMessage(
+          from,
+          "⚠️ Passenger information is missing. Please restart your search."
+        );
+      
+        clearConversation(from);
+        return true;
+      }
+
      // ✅ LOG MUST BE HERE — BEFORE HANDOFF
      log("BOOKING_OWNERSHIP_LOCKED", {
        user: from,
@@ -594,7 +612,7 @@ async function handle(context) {
         booking: {
           selectedFlight,
           flightQuery: conversation.lockedFlightQuery,
-          passengersCount: conversation.lockedFlightQuery.passengers || 2,
+          passengersCount: conversation.lockedFlightQuery.passengerCount,
           searchResults: results.rawFlights   // ✅ REQUIRED
         }
       });
@@ -619,7 +637,7 @@ async function handle(context) {
           booking: {
             selectedFlight,
             flightQuery: conversation.lockedFlightQuery,
-            passengersCount: conversation.lockedFlightQuery.passengers || 2,
+            passengersCount: conversation.lockedFlightQuery.passengerCount,
             searchResults: results.rawFlights,
              // 🔒 CRITICAL — prevents re-entry logs
             _bookingFlowStarted: true
