@@ -171,39 +171,39 @@ async function handle(context) {
        destination: parsed.destination,
        date: parsed.date || null
      };
-   
-     // If date already present → confirm
+
+      // If date already present → passenger count
+      if (updated.date) {
+        setConversation(from, {
+          intent: "FLIGHT_SEARCH",
+          flow: "ONE_WAY",
+          state: "SEARCH_PASSENGER_COUNT",
+          flightQuery: {
+            ...updated,
+            passengerCount: null
+          }
+        });
+      
+        await sendWhatsAppMessage(
+          from,
+          "👥 How many passengers will be travelling? (1–9)"
+        );
+        return true;
+      }
+      
+      // Else ask for date (UNCHANGED)
       setConversation(from, {
         intent: "FLIGHT_SEARCH",
         flow: "ONE_WAY",
-        state: "SEARCH_PASSENGER_COUNT",
-        flightQuery: {
-          ...updated,
-          passengerCount: null
-        }
+        state: "COLLECTING",
+        flightQuery: updated
       });
       
       await sendWhatsAppMessage(
         from,
-        "👥 How many passengers will be travelling? (1–9)"
+        "📅 What date would you like to travel? (YYYY-MM-DD)"
       );
       return true;
-   
-     // Else ask for date
-     setConversation(from, {
-       intent: "FLIGHT_SEARCH",
-       flow: "ONE_WAY",
-       state: "COLLECTING",
-       flightQuery: updated
-     });
-   
-     await sendWhatsAppMessage(
-       from,
-       "📅 What date would you like to travel? (YYYY-MM-DD)"
-     );
-     return true;
-   }
-
    
    /* ===============================
       DATE-ONLY INPUT
@@ -245,6 +245,58 @@ async function handle(context) {
         "👥 How many passengers will be travelling? (1–9)"
       );
       return true;
+   }
+
+            /* ===============================
+               SEARCH → PASSENGER COUNT
+            =============================== */
+            if (conversation?.state === "SEARCH_PASSENGER_COUNT") {
+              const trimmed = (rawText || "").trim();
+            
+              // digits only
+              if (!/^\d+$/.test(trimmed)) {
+                await sendWhatsAppMessage(
+                  from,
+                  "❌ Please enter a valid passenger count between 1 and 9."
+                );
+                return true;
+              }
+            
+              const count = Number(trimmed);
+            
+              if (count < 1 || count > 9) {
+                await sendWhatsAppMessage(
+                  from,
+                  "❌ Passenger count must be between 1 and 9."
+                );
+                return true;
+              }
+            
+              const updatedQuery = {
+                ...conversation.flightQuery,
+                passengerCount: count
+              };
+            
+              log("PASSENGER_COUNT_CAPTURED", {
+                user: from,
+                passengerCount: count
+              });
+            
+              setConversation(from, {
+                intent: "FLIGHT_SEARCH",
+                flow: "ONE_WAY",
+                state: "READY_TO_CONFIRM",
+                flightQuery: updatedQuery,
+                _passengerCountCaptured: true
+              });
+            
+              await sendWhatsAppMessage(
+                from,
+                buildConfirmationMessage(updatedQuery)
+              );
+            
+              return true;
+            }
 
    if (
      conversation?.state === "RESULTS" &&
@@ -649,58 +701,6 @@ async function handle(context) {
       return true;
    }
 
-      /* ===============================
-         SEARCH → PASSENGER COUNT
-      =============================== */
-      if (conversation?.state === "SEARCH_PASSENGER_COUNT") {
-        const trimmed = (rawText || "").trim();
-      
-        // digits only
-        if (!/^\d+$/.test(trimmed)) {
-          await sendWhatsAppMessage(
-            from,
-            "❌ Please enter a valid passenger count between 1 and 9."
-          );
-          return true;
-        }
-      
-        const count = Number(trimmed);
-      
-        if (count < 1 || count > 9) {
-          await sendWhatsAppMessage(
-            from,
-            "❌ Passenger count must be between 1 and 9."
-          );
-          return true;
-        }
-      
-        const updatedQuery = {
-          ...conversation.flightQuery,
-          passengerCount: count
-        };
-      
-        log("PASSENGER_COUNT_CAPTURED", {
-          user: from,
-          passengerCount: count
-        });
-      
-        setConversation(from, {
-          intent: "FLIGHT_SEARCH",
-          flow: "ONE_WAY",
-          state: "READY_TO_CONFIRM",
-          flightQuery: updatedQuery,
-          _passengerCountCaptured: true
-        });
-      
-        await sendWhatsAppMessage(
-          from,
-          buildConfirmationMessage(updatedQuery)
-        );
-      
-        return true;
-      }
-
-
    if (conversation?.state === "AWAITING_RECONFIRMATION") {
 
      if (lower === "change date") {
@@ -789,7 +789,8 @@ async function handle(context) {
           originLocationCode: q.origin.cityCode,
           destinationLocationCode: q.destination.cityCode,
           date: q.date,
-          travelClass: q.cabinClass
+          travelClass: q.cabinClass,
+          adults: q.passengerCount
         });
       
         flights = result.flights;
@@ -968,7 +969,8 @@ async function handle(context) {
              originLocationCode: q.origin.cityCode,
              destinationLocationCode: q.destination.cityCode,
              date: q.date,
-             travelClass: q.cabinClass
+             travelClass: q.cabinClass,
+             adults: q.passengerCount
            });
          
            flights = result.flights;
