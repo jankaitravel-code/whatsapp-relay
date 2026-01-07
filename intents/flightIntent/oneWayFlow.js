@@ -204,6 +204,8 @@ async function handle(context) {
         "📅 What date would you like to travel? (YYYY-MM-DD)"
       );
       return true;
+
+   }
    
    /* ===============================
       DATE-ONLY INPUT
