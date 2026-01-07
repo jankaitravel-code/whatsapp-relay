@@ -9,12 +9,21 @@ const { getAccessToken } = require("./amadeusClient");
 const AMADEUS_BASE_URL = "https://test.api.amadeus.com";
 
 async function searchFlights(input) {
-  const { originLocationCode, destinationLocationCode, date } = input;
+  const {
+    originLocationCode,
+    destinationLocationCode,
+    date,
+    adults
+  } = input;
+
+  const passengerCount =
+  Number.isInteger(adults) && adults > 0 ? adults : 1;
 
   console.log("🛫 Amadeus flight search params:", {
     originLocationCode,
     destinationLocationCode,
-    departureDate: date
+    departureDate: date,
+    adults: passengerCount
   });
 
   const token = await getAccessToken();
@@ -29,7 +38,7 @@ async function searchFlights(input) {
         originLocationCode,
         destinationLocationCode,
         departureDate: date,
-        adults: 1,
+        adults: passengerCount,
         max: 5
       }
     }
