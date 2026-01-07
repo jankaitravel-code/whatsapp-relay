@@ -464,7 +464,7 @@ async function handle(context) {
         from,
         `🧑 Traveller details\n\n` +
         `Traveller 1 of ${total}\n` +
-        `Please enter first name and last name.\n\n` +
+        `Please enter the full name of the traveller as it appears on the proof document.\n\n` +
         `Example: Rahul Sharma`
       );
   
