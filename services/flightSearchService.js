@@ -5,8 +5,9 @@
 
 const axios = require("axios");
 const { getAccessToken } = require("./amadeusClient");
-
 const AMADEUS_BASE_URL = "https://test.api.amadeus.com";
+const { normalizeBaggage } = require("./baggage/normalizeBaggage");
+
 
 function durationToMinutes(isoDuration) {
   if (!isoDuration) return Infinity;
@@ -81,14 +82,10 @@ async function searchFlights(input) {
     }
   );
 
-  const flights = response.data.data || [];
-
-  flights.slice(0, 1).forEach((f, i) => {
-    console.log("🧳 RAW BAGGAGE SAMPLE", {
-      index: i,
-      travelerPricings: f.travelerPricings
-    });
-  });
+  const flights = (response.data.data || []).map(f => ({
+    ...f,
+    _normalizedBaggage: normalizeBaggage(f)
+  }));
   
   return {
     flights,
