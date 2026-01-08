@@ -69,7 +69,7 @@ function buildConfirmationMessage(q) {
     `Class: ${q.cabinClass.replace("_", " ")}\n\n` +
     `Reply:\n` +
     `• Yes — to search\n` +
-    `• Change date / origin / destination / class — to modify\n`
+    `• Change date / origin / destination / passengers / class — to modify\n`
   );
 }
 
@@ -345,13 +345,10 @@ async function handle(context) {
       setConversation(from, {
         intent: "FLIGHT_SEARCH",
         flow: "ONE_WAY",
-        state: "SEARCH_PASSENGER_COUNT",
-        flightQuery: {
-          ...updatedQuery,
-          passengerCount: null
-        }
+        state: "AWAITING_RECONFIRMATION",
+        flightQuery: updatedQuery
       });
-   
+      
      await sendWhatsAppMessage(
        from,
        buildConfirmationMessage(updatedQuery)
@@ -415,11 +412,8 @@ async function handle(context) {
       setConversation(from, {
         intent: "FLIGHT_SEARCH",
         flow: "ONE_WAY",
-        state: "SEARCH_PASSENGER_COUNT",
-        flightQuery: {
-          ...updatedQuery,
-          passengerCount: null
-        }
+        state: "AWAITING_RECONFIRMATION",
+        flightQuery: updatedQuery
       });
    
      await sendWhatsAppMessage(
@@ -485,11 +479,8 @@ async function handle(context) {
       setConversation(from, {
         intent: "FLIGHT_SEARCH",
         flow: "ONE_WAY",
-        state: "SEARCH_PASSENGER_COUNT",
-        flightQuery: {
-          ...updatedQuery,
-          passengerCount: null
-        }
+        state: "AWAITING_RECONFIRMATION",
+        flightQuery: updatedQuery
       });
    
      await sendWhatsAppMessage(
@@ -530,12 +521,9 @@ async function handle(context) {
       setConversation(from, {
         intent: "FLIGHT_SEARCH",
         flow: "ONE_WAY",
-        state: "SEARCH_PASSENGER_COUNT",
-        flightQuery: {
-          ...updatedQuery,
-          passengerCount: null
-        }
-      });
+        state: "AWAITING_RECONFIRMATION",
+        flightQuery: updatedQuery
+      });      
    
      await sendWhatsAppMessage(
        from,
@@ -762,6 +750,27 @@ async function handle(context) {
        return true;
       }
 
+      if (lower === "change passengers") {
+        log("CHANGE_PASSENGERS_REQUESTED", { user: from });
+      
+        setConversation(from, {
+          intent: "FLIGHT_SEARCH",
+          flow: "ONE_WAY",
+          state: "SEARCH_PASSENGER_COUNT",
+          flightQuery: {
+            ...conversation.flightQuery,
+            passengerCount: null
+          }
+        });
+      
+        await sendWhatsAppMessage(
+          from,
+          "👥 How many passengers will be travelling? (1–9)"
+        );
+        return true;
+      }
+
+
       if (lower === "change class") {
         log("CHANGE_CLASS_FROM_RECONFIRMATION", { user: from });
       
@@ -879,7 +888,7 @@ async function handle(context) {
    
      await sendWhatsAppMessage(
        from,
-       "Please reply with *Yes*, *Change date / origin / destination / CLASS*"
+       "Please reply with *Yes*, *Change date / origin / destination / passengers / class*"
      );
      return true;
    }
@@ -932,6 +941,27 @@ async function handle(context) {
         );
         return true;
       }
+
+      if (lower === "change passengers") {
+        log("CHANGE_PASSENGERS_REQUESTED", { user: from });
+      
+        setConversation(from, {
+          intent: "FLIGHT_SEARCH",
+          flow: "ONE_WAY",
+          state: "SEARCH_PASSENGER_COUNT",
+          flightQuery: {
+            ...conversation.flightQuery,
+            passengerCount: null
+          }
+        });
+      
+        await sendWhatsAppMessage(
+          from,
+          "👥 How many passengers will be travelling? (1–9)"
+        );
+        return true;
+      }
+
 
       if (lower === "change class") {
         log("CHANGE_CLASS_AT_CONFIRMATION", { user: from });
@@ -1058,7 +1088,7 @@ async function handle(context) {
    
       await sendWhatsAppMessage(
         from,
-        "Please reply with *Yes*, *Change date / origin / destination / class*"
+        "Please reply with *Yes*, *Change date / origin / destination / passengers / passengers / class *"
       );
       return true;
     }
