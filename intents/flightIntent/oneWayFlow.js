@@ -75,6 +75,25 @@ function buildConfirmationMessage(q) {
   );
 }
 
+function formatBaggage(baggage) {
+  if (!baggage) return "";
+
+  const parts = [];
+
+  if (baggage.cabin) {
+    parts.push(`Cabin: ${baggage.cabin}`);
+  }
+
+  if (baggage.checkIn) {
+    parts.push(`Check-in: ${baggage.checkIn}`);
+  }
+
+  if (!parts.length) return "";
+
+  return `   🧳 ${parts.join(" · ")}\n`;
+}
+
+
 /* ===============================
    Flow Entry
 =============================== */
@@ -856,15 +875,16 @@ async function handle(context) {
            if (i === fastestIndex) tags.push("⚡ Fastest");
          
            const tagLine = tags.length ? `   ${tags.join(" · ")}\n` : "";
+           const baggageLine = formatBaggage(f._normalizedBaggage);
 
-
-           return (
-             `${i + 1}. ${getAirlineName(first.carrierCode, carriers)} — ₹${f.price.total}\n` +
-             tagLine +
-             `   ${first.departure.iataCode} ${formatTime(first.departure.at)} → ` +
-             `${last.arrival.iataCode} ${formatTime(last.arrival.at)}\n` +
-             `   ${formatDuration(f.itineraries[0].duration)} · ${segs.length - 1} stop(s)`
-           );
+          return (
+            `${i + 1}. ${getAirlineName(first.carrierCode, carriers)} — ₹${f.price.total}\n` +
+            tagLine +
+            baggageLine +
+            `   ${first.departure.iataCode} ${formatTime(first.departure.at)} → ` +
+            `${last.arrival.iataCode} ${formatTime(last.arrival.at)}\n` +
+            `   ${formatDuration(f.itineraries[0].duration)} · ${segs.length - 1} stop(s)`
+          );
          });
    
        const PAGE_SIZE = 3;
@@ -1067,11 +1087,12 @@ async function handle(context) {
             if (i === fastestIndex) tags.push("⚡ Fastest");
             
             const tagLine = tags.length ? `   ${tags.join(" · ")}\n` : "";
-
+            const baggageLine = formatBaggage(f._normalizedBaggage);
 
             return (
               `${i + 1}. ${getAirlineName(first.carrierCode, carriers)} — ₹${f.price.total}\n` +
               tagLine +
+              baggageLine +
               `   ${first.departure.iataCode} ${formatTime(first.departure.at)} → ` +
               `${last.arrival.iataCode} ${formatTime(last.arrival.at)}\n` +
               `   ${formatDuration(f.itineraries[0].duration)} · ${segs.length - 1} stop(s)`
