@@ -4,60 +4,61 @@
  * Rules:
  * - Pure function
  * - No mutation
- * - No throws
- * - Returns null if baggage info unavailable
+ * - No inference
+ * - Deterministic output
+ * - Always returns a string for UX
  */
 
 function normalizeBaggage(flightOffer) {
-  if (!flightOffer || !Array.isArray(flightOffer.travelerPricings)) {
-    return null;
-  }
+  const pricing = flightOffer?.travelerPricings?.[0];
+  const segments = pricing?.fareDetailsBySegment;
 
-  let cabinKg = Infinity;
-  let checkinKg = Infinity;
-  let checkinPieces = Infinity;
+  let cabin = "Not specified";
+  let checkin = "Not specified";
 
-  flightOffer.travelerPricings.forEach(tp => {
-    if (!Array.isArray(tp.fareDetailsBySegment)) return;
+  if (Array.isArray(segments)) {
+    for (const seg of segments) {
+      const cabinBag = seg?.includedCabinBags;
+      const checkedBag = seg?.includedCheckedBags;
 
-    tp.fareDetailsBySegment.forEach(seg => {
-      const checked = seg.includedCheckedBags;
-      const cabin = seg.includedCabinBags;
-
-      // Checked baggage
-      if (checked) {
-        if (Number.isFinite(checked.weight)) {
-          checkinKg = Math.min(checkinKg, checked.weight);
-        }
-        if (Number.isFinite(checked.quantity)) {
-          checkinPieces = Math.min(checkinPieces, checked.quantity);
+      // Cabin baggage
+      if (cabinBag) {
+        if (Number.isInteger(cabinBag.quantity)) {
+          cabin =
+            cabinBag.quantity === 0
+              ? "Not included"
+              : `${cabinBag.quantity} bag`;
+        } else if (
+          Number.isFinite(cabinBag.weight) &&
+          cabinBag.weightUnit
+        ) {
+          cabin = `${cabinBag.weight} ${cabinBag.weightUnit}`;
         }
       }
 
-      // Cabin baggage (rare but exists)
-      if (cabin && Number.isFinite(cabin.weight)) {
-        cabinKg = Math.min(cabinKg, cabin.weight);
+      // Check-in baggage
+      if (checkedBag) {
+        if (Number.isInteger(checkedBag.quantity)) {
+          checkin =
+            checkedBag.quantity === 0
+              ? "Not included"
+              : `${checkedBag.quantity} bag`;
+        } else if (
+          Number.isFinite(checkedBag.weight) &&
+          checkedBag.weightUnit
+        ) {
+          checkin = `${checkedBag.weight} ${checkedBag.weightUnit}`;
+        }
       }
-    });
-  });
 
-  const hasCabin = cabinKg !== Infinity;
-  const hasCheckinKg = checkinKg !== Infinity;
-  const hasCheckinPieces = checkinPieces !== Infinity;
-
-  if (!hasCabin && !hasCheckinKg && !hasCheckinPieces) {
-    return null;
+      // First definitive info wins
+      if (cabin !== "Not specified" || checkin !== "Not specified") {
+        break;
+      }
+    }
   }
 
-  return {
-    cabin: hasCabin ? `${cabinKg}kg` : null,
-    checkin: hasCheckinKg
-      ? `${checkinKg}kg`
-      : hasCheckinPieces
-      ? `${checkinPieces} pc`
-      : null,
-    note: "per passenger"
-  };
+  return `Baggage: Cabin ${cabin} | Check-in ${checkin}`;
 }
 
 module.exports = {
