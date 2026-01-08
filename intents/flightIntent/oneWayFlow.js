@@ -16,6 +16,10 @@ const {
   searchFlights,
   findCheapestAndFastest
 } = require("../../services/flightSearchService");
+const {
+  normalizeBaggage
+} = require("../../services/baggage/normalizeBaggage");
+
 
 /* ===============================
    Helpers (unchanged)
@@ -74,25 +78,6 @@ function buildConfirmationMessage(q) {
     `• Change date / origin / destination / passengers / class — to modify\n`
   );
 }
-
-function formatBaggage(baggage) {
-  if (!baggage) return "";
-
-  const parts = [];
-
-  if (baggage.cabin) {
-    parts.push(`Cabin: ${baggage.cabin}`);
-  }
-
-  if (baggage.checkIn) {
-    parts.push(`Check-in: ${baggage.checkIn}`);
-  }
-
-  if (!parts.length) return "";
-
-  return `   🧳 ${parts.join(" · ")}\n`;
-}
-
 
 /* ===============================
    Flow Entry
@@ -602,15 +587,15 @@ async function handle(context) {
           if (absoluteIndex === fastestIndex) tags.push("⚡ Fastest");
       
           const tagLine = tags.length ? `   ${tags.join(" · ")}\n` : "";
-          const baggageLine = formatBaggage(f._normalizedBaggage);
+          const baggageLine = normalizeBaggage(f) || "Baggage: Not specified";
       
           return (
             `${absoluteIndex + 1}. ${getAirlineName(first.carrierCode, carriers)} — ₹${f.price.total}\n` +
             tagLine +
-            baggageLine +
             `   ${first.departure.iataCode} ${formatTime(first.departure.at)} → ` +
             `${last.arrival.iataCode} ${formatTime(last.arrival.at)}\n` +
-            `   ${formatDuration(f.itineraries[0].duration)} · ${segs.length - 1} stop(s)`
+            `   ${formatDuration(f.itineraries[0].duration)} · ${segs.length - 1} stop(s)\n` +
+            `${baggageLine}`
           );
         })
         .join("\n\n");
@@ -902,15 +887,15 @@ async function handle(context) {
            if (i === fastestIndex) tags.push("⚡ Fastest");
          
            const tagLine = tags.length ? `   ${tags.join(" · ")}\n` : "";
-           const baggageLine = formatBaggage(f._normalizedBaggage);
+           const baggageLine = normalizeBaggage(f) || "Baggage: Not specified";
 
           return (
             `${i + 1}. ${getAirlineName(first.carrierCode, carriers)} — ₹${f.price.total}\n` +
             tagLine +
-            baggageLine +
             `   ${first.departure.iataCode} ${formatTime(first.departure.at)} → ` +
             `${last.arrival.iataCode} ${formatTime(last.arrival.at)}\n` +
-            `   ${formatDuration(f.itineraries[0].duration)} · ${segs.length - 1} stop(s)`
+            `   ${formatDuration(f.itineraries[0].duration)} · ${segs.length - 1} stop(s)\n` +
+            `${baggageLine}`
           );
          });
    
@@ -1114,16 +1099,16 @@ async function handle(context) {
             if (i === fastestIndex) tags.push("⚡ Fastest");
             
             const tagLine = tags.length ? `   ${tags.join(" · ")}\n` : "";
-            const baggageLine = formatBaggage(f._normalizedBaggage);
+            const baggageLine = normalizeBaggage(f) || "Baggage: Not specified";
 
-            return (
-              `${i + 1}. ${getAirlineName(first.carrierCode, carriers)} — ₹${f.price.total}\n` +
-              tagLine +
-              baggageLine +
-              `   ${first.departure.iataCode} ${formatTime(first.departure.at)} → ` +
-              `${last.arrival.iataCode} ${formatTime(last.arrival.at)}\n` +
-              `   ${formatDuration(f.itineraries[0].duration)} · ${segs.length - 1} stop(s)`
-            );
+          return (
+            `${i + 1}. ${getAirlineName(first.carrierCode, carriers)} — ₹${f.price.total}\n` +
+            tagLine +
+            `   ${first.departure.iataCode} ${formatTime(first.departure.at)} → ` +
+            `${last.arrival.iataCode} ${formatTime(last.arrival.at)}\n` +
+            `   ${formatDuration(f.itineraries[0].duration)} · ${segs.length - 1} stop(s)\n` +
+            `${baggageLine}`
+          );
           });
 
         const PAGE_SIZE = 3;
