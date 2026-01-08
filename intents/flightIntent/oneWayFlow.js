@@ -9,11 +9,13 @@
 
 
 const { parseFlightQuery } = require("../../services/flightParser");
-const { searchFlights } = require("../../services/flightSearchService");
 const { log } = require("../../utils/logger");
 const { recordSignal } = require("../../utils/abuseSignals");
 const oneWayBookingFlow = require("./oneWayBookingFlow");
-
+const {
+  searchFlights,
+  findCheapestAndFastest
+} = require("../../services/flightSearchService");
 
 /* ===============================
    Helpers (unchanged)
@@ -839,6 +841,9 @@ async function handle(context) {
          );
          return true;
        }
+
+        const { cheapestIndex, fastestIndex } =
+           findCheapestAndFastest(flights);
    
        const formatted = flights
          .filter(f => f.itineraries?.[0]?.segments?.length)
@@ -846,9 +851,16 @@ async function handle(context) {
            const segs = f.itineraries[0].segments;
            const first = segs[0];
            const last = segs[segs.length - 1];
-   
+           const tags = [];
+           if (i === cheapestIndex) tags.push("🟢 Cheapest");
+           if (i === fastestIndex) tags.push("⚡ Fastest");
+         
+           const tagLine = tags.length ? `   ${tags.join(" · ")}\n` : "";
+
+
            return (
              `${i + 1}. ${getAirlineName(first.carrierCode, carriers)} — ₹${f.price.total}\n` +
+             tagLine +
              `   ${first.departure.iataCode} ${formatTime(first.departure.at)} → ` +
              `${last.arrival.iataCode} ${formatTime(last.arrival.at)}\n` +
              `   ${formatDuration(f.itineraries[0].duration)} · ${segs.length - 1} stop(s)`
@@ -1041,15 +1053,25 @@ async function handle(context) {
           return true;
         }
 
+         const { cheapestIndex, fastestIndex } =
+           findCheapestAndFastest(flights);
+
         const formatted = flights
           .filter(f => f.itineraries?.[0]?.segments?.length)
           .map((f, i) => {
             const segs = f.itineraries[0].segments;
             const first = segs[0];
             const last = segs[segs.length - 1];
+            const tags = [];
+            if (i === cheapestIndex) tags.push("🟢 Cheapest");
+            if (i === fastestIndex) tags.push("⚡ Fastest");
+            
+            const tagLine = tags.length ? `   ${tags.join(" · ")}\n` : "";
+
 
             return (
               `${i + 1}. ${getAirlineName(first.carrierCode, carriers)} — ₹${f.price.total}\n` +
+              tagLine +
               `   ${first.departure.iataCode} ${formatTime(first.departure.at)} → ` +
               `${last.arrival.iataCode} ${formatTime(last.arrival.at)}\n` +
               `   ${formatDuration(f.itineraries[0].duration)} · ${segs.length - 1} stop(s)`
