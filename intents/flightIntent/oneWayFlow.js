@@ -583,9 +583,36 @@ async function handle(context) {
         );
         return true;
       }
-   
-      const nextPage = displayItems
+
+      const { rawFlights, carriers } = results;
+
+      const { cheapestIndex, fastestIndex } =
+        findCheapestAndFastest(rawFlights);
+      
+      const nextPage = rawFlights
         .slice(cursor, cursor + pageSize)
+        .map((f, i) => {
+          const absoluteIndex = cursor + i;
+          const segs = f.itineraries[0].segments;
+          const first = segs[0];
+          const last = segs[segs.length - 1];
+      
+          const tags = [];
+          if (absoluteIndex === cheapestIndex) tags.push("🟢 Cheapest");
+          if (absoluteIndex === fastestIndex) tags.push("⚡ Fastest");
+      
+          const tagLine = tags.length ? `   ${tags.join(" · ")}\n` : "";
+          const baggageLine = formatBaggage(f._normalizedBaggage);
+      
+          return (
+            `${absoluteIndex + 1}. ${getAirlineName(first.carrierCode, carriers)} — ₹${f.price.total}\n` +
+            tagLine +
+            baggageLine +
+            `   ${first.departure.iataCode} ${formatTime(first.departure.at)} → ` +
+            `${last.arrival.iataCode} ${formatTime(last.arrival.at)}\n` +
+            `   ${formatDuration(f.itineraries[0].duration)} · ${segs.length - 1} stop(s)`
+          );
+        })
         .join("\n\n");
 
       log("FLIGHT_RESULTS_PAGINATED", {
