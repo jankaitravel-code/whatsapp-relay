@@ -23,13 +23,28 @@ function getEmptyPreferences() {
   };
 }
 
-function getIncludedBaggage(selectedFlight) {
-  // 🔒 Stub for now — replace with real Amadeus parsing later
-  return {
-    cabinKg: 5,
-    checkinKg: 15
-  };
+function formatBaggageForBooking(baggage) {
+  if (!baggage) {
+    return "Baggage details will be confirmed by the airline.";
+  }
+
+  const lines = [];
+
+  if (baggage.cabin) {
+    lines.push(`Cabin baggage: ${baggage.cabin}`);
+  }
+
+  if (baggage.checkIn) {
+    lines.push(`Check-in baggage: ${baggage.checkIn}`);
+  }
+
+  if (!lines.length) {
+    return "Baggage details will be confirmed by the airline.";
+  }
+
+  return lines.join("\n");
 }
+
 
 function getFlexibilityOptions(selectedFlight) {
   // 🔒 Stub pricing — replace with fare rules later
@@ -282,14 +297,18 @@ async function handle(context) {
           _baggageInitDone: true
         }
       });
-  
+
+      const baggageText = formatBaggageForBooking(
+        conversation.booking?.selectedFlight?._normalizedBaggage
+      );
+      
       await sendWhatsAppMessage(
         from,
-        `Your flight includes:\n` +
-        `• Cabin baggage: ${included.cabinKg} kg\n` +
-        `• Check-in baggage: ${included.checkinKg} kg\n\n` +
-        "Do you need EXTRA baggage allowance, reply with the total additional weight.\n" +
-        "Example: 0, 5, 10 or 15"
+        "✈️ Flight selected. Customising your booking...\n\n" +
+        "Your flight includes:\n" +
+        baggageText
+        "\n\n Incase you need additional allowance, enter the exact weight else enter 0.\n"
+        "Example: 0, 5, 10, or 15" 
       );
   
       return true;
