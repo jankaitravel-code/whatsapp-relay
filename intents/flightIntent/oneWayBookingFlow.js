@@ -284,8 +284,8 @@ async function handle(context) {
 
     // 🔒 ENTRY LOGIC — runs ONCE only
     if (!conversation.booking._baggageInitDone) {
-      const included = getIncludedBaggage(
-        conversation.booking.selectedFlight
+      const included = formatBaggageForBooking(
+          conversation.booking?.selectedFlight?._normalizedBaggage
       );
   
       setConversation(from, {
