@@ -306,8 +306,8 @@ async function handle(context) {
         from,
         "✈️ Flight selected. Customising your booking...\n\n" +
         "Your flight includes:\n" +
-        baggageText
-        "\n\n Incase you need additional allowance, enter the exact weight else enter 0.\n"
+        baggageText +
+        "\n\n Incase you need additional allowance, enter the exact weight else enter 0.\n"+
         "Example: 0, 5, 10, or 15" 
       );
   
