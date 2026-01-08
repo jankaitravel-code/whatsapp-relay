@@ -8,6 +8,43 @@ const { getAccessToken } = require("./amadeusClient");
 
 const AMADEUS_BASE_URL = "https://test.api.amadeus.com";
 
+function durationToMinutes(isoDuration) {
+  if (!isoDuration) return Infinity;
+
+  const match = isoDuration.match(/PT(?:(\d+)H)?(?:(\d+)M)?/);
+  if (!match) return Infinity;
+
+  const hours = Number(match[1] || 0);
+  const minutes = Number(match[2] || 0);
+
+  return hours * 60 + minutes;
+}
+
+function findCheapestAndFastest(flights) {
+  let cheapestIndex = -1;
+  let fastestIndex = -1;
+
+  let lowestPrice = Infinity;
+  let shortestDuration = Infinity;
+
+  flights.forEach((f, i) => {
+    const price = Number(f.price?.total);
+    const duration = durationToMinutes(f.itineraries?.[0]?.duration);
+
+    if (!isNaN(price) && price < lowestPrice) {
+      lowestPrice = price;
+      cheapestIndex = i;
+    }
+
+    if (duration < shortestDuration) {
+      shortestDuration = duration;
+      fastestIndex = i;
+    }
+  });
+
+  return { cheapestIndex, fastestIndex };
+}
+
 async function searchFlights(input) {
   const {
     originLocationCode,
@@ -51,5 +88,6 @@ async function searchFlights(input) {
 }
 
 module.exports = {
-  searchFlights
+  searchFlights,
+  findCheapestAndFastest
 };
