@@ -11,6 +11,10 @@
 const { log } = require("../../utils/logger");
 const { recordSignal } = require("../../utils/abuseSignals");
 const { computeOneWayFinalPrice } = require("../../services/price/computeOneWayFinalPrice");
+const {
+  normalizeBaggage
+} = require("../../services/baggage/normalizeBaggage");
+
 
 
 function getEmptyPreferences() {
@@ -25,26 +29,19 @@ function getEmptyPreferences() {
 
 function formatBaggageForBooking(baggage) {
   if (!baggage) {
-    return "Baggage details will be confirmed by the airline.";
+    return "Baggage: Cabin Not specified | Check-in Not specified";
   }
 
-  const lines = [];
+  const cabin = baggage.cabin
+    ? `Cabin ${baggage.cabin}`
+    : "Cabin Not specified";
 
-  if (baggage.cabin) {
-    lines.push(`Cabin baggage: ${baggage.cabin}`);
-  }
+  const checkin = baggage.checkin
+    ? `Check-in ${baggage.checkin}`
+    : "Check-in Not specified";
 
-  if (baggage.checkIn) {
-    lines.push(`Check-in baggage: ${baggage.checkIn}`);
-  }
-
-  if (!lines.length) {
-    return "Baggage details will be confirmed by the airline.";
-  }
-
-  return lines.join("\n");
+  return `Baggage: ${cabin} | ${checkin}`;
 }
-
 
 function getFlexibilityOptions(selectedFlight) {
   // 🔒 Stub pricing — replace with fare rules later
@@ -285,7 +282,7 @@ async function handle(context) {
     // 🔒 ENTRY LOGIC — runs ONCE only
     if (!conversation.booking._baggageInitDone) {
       const included = formatBaggageForBooking(
-          conversation.booking?.selectedFlight?._normalizedBaggage
+        normalizeBaggage(conversation.booking.selectedFlight)
       );
   
       setConversation(from, {
@@ -299,7 +296,7 @@ async function handle(context) {
       });
 
       const baggageText = formatBaggageForBooking(
-        conversation.booking?.selectedFlight?._normalizedBaggage
+        normalizeBaggage(conversation.booking.selectedFlight)
       );
       
       await sendWhatsAppMessage(
@@ -307,7 +304,7 @@ async function handle(context) {
         "✈️ Flight selected. Customising your booking...\n\n" +
         "Your flight includes:\n" +
         baggageText +
-        "\n\n Incase you need additional allowance, enter the exact weight else enter 0.\n"+
+        "\n\n If you need additional allowance, enter the exact weight or enter 0.\n"+
         "Example: 0, 5, 10, or 15" 
       );
   
