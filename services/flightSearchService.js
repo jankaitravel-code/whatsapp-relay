@@ -81,8 +81,17 @@ async function searchFlights(input) {
     }
   );
 
+  const flights = response.data.data || [];
+
+  flights.slice(0, 1).forEach((f, i) => {
+    console.log("🧳 RAW BAGGAGE SAMPLE", {
+      index: i,
+      travelerPricings: f.travelerPricings
+    });
+  });
+  
   return {
-    flights: response.data.data || [],
+    flights,
     carriers: response.data.dictionaries?.carriers || {}
   };
 }
