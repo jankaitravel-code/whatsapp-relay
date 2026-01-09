@@ -317,9 +317,12 @@ async function handle(context) {
     return true;
   }
 
+  /*==============================
+    Insurance block
+  ==============================*/
+
   if (conversation.state === "BOOKING_INSURANCE") {
   
-    // 🔒 IDEMPOTENCY GUARD
     if (conversation.booking._insuranceSelected) {
       return true;
     }
@@ -327,16 +330,14 @@ async function handle(context) {
     if (lower !== "1" && lower !== "2") {
       await sendWhatsAppMessage(
         from,
-        "❌ Please choose a valid option:\n\n" +
-        "1️⃣ Yes, add insurance\n" +
-        "2️⃣ No, continue without insurance"
+        "❌ Please choose a valid option:\n\n1️⃣ Yes\n2️⃣ No"
       );
       return true;
     }
   
     const insuranceSelected = lower === "1";
   
-    setConversation(from, {
+    const updatedConversation = {
       ...conversation,
       state: "BOOKING_FLEXIBILITY",
       booking: {
@@ -347,18 +348,24 @@ async function handle(context) {
         },
         _insuranceSelected: true
       }
-    });
+    };
+  
+    // 🔒 Persist
+    setConversation(from, updatedConversation);
   
     await sendWhatsAppMessage(
       from,
-      (insuranceSelected
+      insuranceSelected
         ? "🛡️ Travel insurance added.\n\n"
-        : "⏭️ Skipping travel insurance.\n\n")
+        : "⏭️ Skipping travel insurance.\n\n"
     );
   
-    // 🔥 FORCE FLEXIBILITY ENTRY IN SAME TURN
-    context.rawText = "__AUTO__";
-    return handle(context);
+    // 🔥 RE-ENTER WITH NEW STATE
+    return handle({
+      ...context,
+      rawText: "__AUTO__",
+      conversation: updatedConversation
+    });
   }
 
   /*========================================
