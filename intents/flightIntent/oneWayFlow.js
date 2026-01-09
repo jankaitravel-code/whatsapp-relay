@@ -574,9 +574,9 @@ async function handle(context) {
         await sendWhatsAppMessage(from, "⚠️ No more results available.");
         return true;
       }
-      
-      const { rawFlights, cursor, pageSize } = results;
-      
+
+      const { rawFlights, carriers, cursor, pageSize } = results;
+     
       if (cursor >= rawFlights.length) {
         await sendWhatsAppMessage(
           from,
@@ -584,8 +584,6 @@ async function handle(context) {
         );
         return true;
       }
-
-      const { rawFlights, carriers } = results;
 
       const { cheapestIndex, fastestIndex } =
         findCheapestAndFastest(rawFlights);
