@@ -566,25 +566,21 @@ async function handle(context) {
       lower === "show more"
     ) {
       const results = conversation.results;
-   
+
       if (
         !results ||
-        !Array.isArray(results.displayItems) ||
         !Array.isArray(results.rawFlights)
       ) {
-        await sendWhatsAppMessage(
-          from,
-          "⚠️ No more results available."
-        );
+        await sendWhatsAppMessage(from, "⚠️ No more results available.");
         return true;
       }
-   
-      const { displayItems, cursor, pageSize } = results;
-
-      if (cursor >= displayItems.length) {
+      
+      const { rawFlights, cursor, pageSize } = results;
+      
+      if (cursor >= rawFlights.length) {
         await sendWhatsAppMessage(
           from,
-          "⚠️ That's all the results I have. Please select a flight or can reply cancel to search again."
+          "⚠️ That's all the results I have. Please select a flight or reply cancel to search again."
         );
         return true;
       }
@@ -612,9 +608,6 @@ async function handle(context) {
 
           return (
             `${absoluteIndex + 1}. ${getAirlineName(first.carrierCode, carriers)} — ₹${f.price.total}\n` +
-
-            //`${i + 1}. ${getAirlineName(first.carrierCode, carriers)} — ₹${f.price.total}\n` +
-
             tagLine +
             `   ${first.departure.iataCode} ${formatTime(first.departure.at)} → ` +
             `${last.arrival.iataCode} ${formatTime(last.arrival.at)}\n` +
@@ -901,32 +894,36 @@ async function handle(context) {
         const { cheapestIndex, fastestIndex } =
            findCheapestAndFastest(flights);
    
-       const formatted = flights
-         .filter(f => f.itineraries?.[0]?.segments?.length)
-         .map((f, i) => {
-           const segs = f.itineraries[0].segments;
-           const first = segs[0];
-           const last = segs[segs.length - 1];
-           const tags = [];
-           if (i === cheapestIndex) tags.push("🟢 Cheapest");
-           if (i === fastestIndex) tags.push("⚡ Fastest");
-         
-           const tagLine = tags.length ? `   ${tags.join(" · ")}\n` : "";
-           const baggageLine = normalizeBaggage(f) || "Baggage: Not specified";
-           const flexibilityLine = formatFlexibilityIndicator(f);
+        const PAGE_SIZE = 3;
+        
+        const firstPage = flights
+          .slice(0, PAGE_SIZE)
+          .map((f, i) => {
+            const absoluteIndex = i;
+        
+            const segs = f.itineraries[0].segments;
+            const first = segs[0];
+            const last = segs[segs.length - 1];
+        
+            const tags = [];
+            if (absoluteIndex === cheapestIndex) tags.push("🟢 Cheapest");
+            if (absoluteIndex === fastestIndex) tags.push("⚡ Fastest");
+        
+            const tagLine = tags.length ? `   ${tags.join(" · ")}\n` : "";
+            const baggageLine = normalizeBaggage(f) || "Baggage: Not specified";
+            const flexibilityLine = formatFlexibilityIndicator(f);
+        
+            return (
+              `${absoluteIndex + 1}. ${getAirlineName(first.carrierCode, carriers)} — ₹${f.price.total}\n` +
+              tagLine +
+              `   ${first.departure.iataCode} ${formatTime(first.departure.at)} → ` +
+              `${last.arrival.iataCode} ${formatTime(last.arrival.at)}\n` +
+              `   ${formatDuration(f.itineraries[0].duration)} · ${segs.length - 1} stop(s)\n` +
+              `   ${baggageLine}\n` +
+              `   ${flexibilityLine}`
+            );
+          });
 
-          return (
-            `${i + 1}. ${getAirlineName(first.carrierCode, carriers)} — ₹${f.price.total}\n` +
-            tagLine +
-            `   ${first.departure.iataCode} ${formatTime(first.departure.at)} → ` +
-            `${last.arrival.iataCode} ${formatTime(last.arrival.at)}\n` +
-            `   ${formatDuration(f.itineraries[0].duration)} · ${segs.length - 1} stop(s)\n` +
-            `   ${baggageLine}\n` +
-            `   ${flexibilityLine}`
-          );
-         });
-   
-       const PAGE_SIZE = 3;
    
        setConversation(from, {
          intent: "FLIGHT_SEARCH",
@@ -934,7 +931,6 @@ async function handle(context) {
          state: "RESULTS",
          lockedFlightQuery: q,
          results: {
-           displayItems: formatted,   // strings for WhatsApp
            rawFlights: flights,
            carriers,
            cursor: PAGE_SIZE,
@@ -948,11 +944,12 @@ async function handle(context) {
          pageSize: PAGE_SIZE
        });
 
-       await sendWhatsAppMessage(
-         from,
-         `✈️ Flight options with base fare (final price will change)\n\n${formatted.slice(0, PAGE_SIZE).join("\n\n")}\n\n` +
-         `Reply:\n• show more\n• change date / origin / destination`
-       );
+        await sendWhatsAppMessage(
+          from,
+          `✈️ Flight options with base fare (final price will change)\n\n` +
+          `${firstPage.join("\n\n")}\n\n` +
+          `Reply:\n• show more\n• change date / origin / destination`
+        );
    
        return true;
      }
@@ -1115,33 +1112,36 @@ async function handle(context) {
          const { cheapestIndex, fastestIndex } =
            findCheapestAndFastest(flights);
 
-        const formatted = flights
-          .filter(f => f.itineraries?.[0]?.segments?.length)
+        const PAGE_SIZE = 3;
+        
+        const firstPage = flights
+          .slice(0, PAGE_SIZE)
           .map((f, i) => {
+            const absoluteIndex = i;
+        
             const segs = f.itineraries[0].segments;
             const first = segs[0];
             const last = segs[segs.length - 1];
+        
             const tags = [];
-            if (i === cheapestIndex) tags.push("🟢 Cheapest");
-            if (i === fastestIndex) tags.push("⚡ Fastest");
-            
+            if (absoluteIndex === cheapestIndex) tags.push("🟢 Cheapest");
+            if (absoluteIndex === fastestIndex) tags.push("⚡ Fastest");
+        
             const tagLine = tags.length ? `   ${tags.join(" · ")}\n` : "";
             const baggageLine = normalizeBaggage(f) || "Baggage: Not specified";
-
-          return (
-            `${absoluteIndex + 1}. ${getAirlineName(first.carrierCode, carriers)} — ₹${f.price.total}\n` +
-
-            //`${i + 1}. ${getAirlineName(first.carrierCode, carriers)} — ₹${f.price.total}\n` +
-            
-            tagLine +
-            `   ${first.departure.iataCode} ${formatTime(first.departure.at)} → ` +
-            `${last.arrival.iataCode} ${formatTime(last.arrival.at)}\n` +
-            `   ${formatDuration(f.itineraries[0].duration)} · ${segs.length - 1} stop(s)\n` +
-            `${baggageLine}`
-          );
+            const flexibilityLine = formatFlexibilityIndicator(f);
+        
+            return (
+              `${absoluteIndex + 1}. ${getAirlineName(first.carrierCode, carriers)} — ₹${f.price.total}\n` +
+              tagLine +
+              `   ${first.departure.iataCode} ${formatTime(first.departure.at)} → ` +
+              `${last.arrival.iataCode} ${formatTime(last.arrival.at)}\n` +
+              `   ${formatDuration(f.itineraries[0].duration)} · ${segs.length - 1} stop(s)\n` +
+              `   ${baggageLine}\n` +
+              `   ${flexibilityLine}`
+            );
           });
 
-        const PAGE_SIZE = 3;
 
         setConversation(from, {
           intent: "FLIGHT_SEARCH",
@@ -1149,7 +1149,6 @@ async function handle(context) {
           state: "RESULTS",
           lockedFlightQuery: q,
           results: {
-            displayItems: formatted,   // strings for WhatsApp
             rawFlights: flights,
             carriers,
             cursor: PAGE_SIZE,
@@ -1162,10 +1161,11 @@ async function handle(context) {
            count: flights.length,
            pageSize: PAGE_SIZE
          });
-         
+
         await sendWhatsAppMessage(
           from,
-          `✈️ Flight options with base fare (final price may change)\n\n${formatted.slice(0, PAGE_SIZE).join("\n\n")}\n\n` +
+          `✈️ Flight options with base fare (final price will change)\n\n` +
+          `${firstPage.join("\n\n")}\n\n` +
           `Reply:\n• show more\n• change date / origin / destination`
         );
         return true;
