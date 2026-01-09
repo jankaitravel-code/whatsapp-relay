@@ -1,17 +1,17 @@
 const { normalizeFareRules } = require("./normalizeFareRules");
-const { computeFlexibilityRisk } = require("./computeFlexibilityRisk");
+const { scoreFareFlexibility } = require("./scoreFareFlexibility");
 
 function attachFlexibilityRisk(flightOffer) {
   if (!flightOffer) return flightOffer;
 
   const rules = normalizeFareRules(flightOffer);
-  const risk = computeFlexibilityRisk(rules);
+  const risk = scoreFareFlexibility({ fareRules: rules });
 
   return {
     ...flightOffer,
     _flexibilityRisk: {
       ...risk,
-      rulesSnapshot: rules
+      _rulesSnapshot: rules
     }
   };
 }
