@@ -4,13 +4,18 @@
  */
 
 function buildFlexibilityOptions({
+  baseFare,
   fareRules,
   flexibilityRisk
 }) {
-  const options = [];
-  const riskLevel = flexibilityRisk?.level || "UNKNOWN";
+  // 🔒 Defensive defaults
+  const safeRules = fareRules || {};
+  const changeRule = safeRules.change || {};
+  const cancelRule = safeRules.cancellation || {};
 
-  // 1️⃣ No flexibility — always available
+  const options = [];
+
+  // 1️⃣ No flexibility (always available)
   options.push({
     code: "NONE",
     label: "No date change or cancellation",
@@ -18,10 +23,7 @@ function buildFlexibilityOptions({
   });
 
   // 2️⃣ Date change
-  if (
-    fareRules.change.allowed !== "NO" &&
-    riskLevel !== "LOW"
-  ) {
+  if (changeRule.allowed && changeRule.allowed !== "NO") {
     options.push({
       code: "DATE_CHANGE",
       label: "Date change allowed",
@@ -30,10 +32,7 @@ function buildFlexibilityOptions({
   }
 
   // 3️⃣ Cancellation
-  if (
-    fareRules.cancellation.allowed !== "NO" &&
-    (riskLevel === "HIGH" || riskLevel === "MEDIUM")
-  ) {
+  if (cancelRule.allowed && cancelRule.allowed !== "NO") {
     options.push({
       code: "CANCELLATION",
       label: "Date change + cancellation",
@@ -42,7 +41,8 @@ function buildFlexibilityOptions({
   }
 
   return {
-    currency: fareRules?.change?.penalty?.currency || "INR",
+    currency: "INR",
+    baseFare: baseFare ?? null,
     options
   };
 }
