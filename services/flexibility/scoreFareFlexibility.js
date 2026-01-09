@@ -63,6 +63,17 @@ function scoreFareFlexibility({ fareRules, airlineMeta }) {
     signals,
     confidence
   };
+
+  const { log } = require("../../utils/logger");
+
+  log("FLEXIBILITY_RISK_COMPUTED", {
+    flightId: flight.id,
+    airline: flight.validatingAirlineCodes?.[0],
+    riskLevel: risk.level,
+    score: risk.score,
+    confidence: risk.confidence,
+    reasons: risk.reasons
+  });
 }
 
 module.exports = {
