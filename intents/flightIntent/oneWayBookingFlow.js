@@ -43,27 +43,6 @@ function formatBaggageForBooking(baggage) {
   return `Baggage: ${cabin} | ${checkin}`;
 }
 
-function getFlexibilityOptions(selectedFlight) {
-  // 🔒 Stub pricing — replace with fare rules later
-  return [
-    {
-      code: "NONE",
-      label: "No flexibility",
-      price: 0
-    },
-    {
-      code: "DATE_CHANGE",
-      label: "Free date change (no change fee)",
-      price: 899
-    },
-    {
-      code: "FULL_FLEX",
-      label: "Free date change + cancellation",
-      price: 1499
-    }
-  ];
-}
-
 function getEligibleSpecialFares(age) {
   const fares = [];
 
