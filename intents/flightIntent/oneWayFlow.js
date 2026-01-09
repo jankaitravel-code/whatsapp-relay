@@ -658,6 +658,23 @@ async function handle(context) {
    
      const selectedFlight = results.rawFlights[index];
 
+      const { normalizeFareRules } = require("../../services/fareRules/normalizeFareRules");
+      const { buildFlexibilityOptions } = require("../../services/flexibility/buildFlexibilityOptions");
+      
+      // Airline truth
+      const fareRules = normalizeFareRules(selectedFlight);
+      
+      // OTA flexibility product (your implementation)
+      const flexibility = buildFlexibilityOptions({
+        flight: selectedFlight,
+        fareRules
+      });
+      
+      // Attach once — booking owns from here
+      selectedFlight._fareRules = fareRules;
+      selectedFlight._flexibility = flexibility;
+
+
       if (
         !Number.isInteger(conversation.lockedFlightQuery?.passengerCount) ||
         conversation.lockedFlightQuery.passengerCount < 1
