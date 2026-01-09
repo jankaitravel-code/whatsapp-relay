@@ -8,6 +8,7 @@ const { getAccessToken } = require("./amadeusClient");
 const AMADEUS_BASE_URL = "https://test.api.amadeus.com";
 const { normalizeBaggage } = require("./baggage/normalizeBaggage");
 const { attachFlexibilityRisk } = require("./flexibility/attachFlexibilityRisk");
+const { log } = require("../utils/logger");
 
 
 function durationToMinutes(isoDuration) {
@@ -48,21 +49,24 @@ function findCheapestAndFastest(flights) {
 }
 
 async function searchFlights(input) {
+
   const {
     originLocationCode,
     destinationLocationCode,
     date,
-    adults
+    adults,
+    travelClass
   } = input;
 
   const passengerCount =
   Number.isInteger(adults) && adults > 0 ? adults : 1;
 
-  console.log("🛫 Amadeus flight search params:", {
+  log("FLIGHT_SEARCH_REQUEST", {
     originLocationCode,
     destinationLocationCode,
     departureDate: date,
-    adults: passengerCount
+    adults: passengerCount,
+    travelClass: travelClass || "ECONOMY"
   });
 
   const token = await getAccessToken();
@@ -78,18 +82,24 @@ async function searchFlights(input) {
         destinationLocationCode,
         departureDate: date,
         adults: passengerCount,
+        ...(travelClass ? { travelClass } : {}),
         max: 5
       }
     }
   );
 
   const flights = (response.data.data || []).map(f => {
-    const withBaggage = {
+    const enriched = {
       ...f,
       _normalizedBaggage: normalizeBaggage(f)
     };
   
-    return attachFlexibilityRisk(withBaggage);
+    // 🔒 Idempotent — attach only once
+    if (!enriched._flexibilityRisk) {
+      return attachFlexibilityRisk(enriched);
+    }
+  
+    return enriched;
   });
   
   return {
