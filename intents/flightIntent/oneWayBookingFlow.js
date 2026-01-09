@@ -362,8 +362,17 @@ async function handle(context) {
   /*========================================
           Flexibility Block
   ==========================================*/
-  
+ 
   if (conversation.state === "BOOKING_FLEXIBILITY") {
+
+    // 🔒 HARD TERMINAL GUARD — must be first
+    if (conversation.booking._flexibilityCompleted) {
+      log("BOOKING_FLEXIBILITY_ALREADY_COMPLETED", {
+        user: from,
+        flightId: conversation.booking.selectedFlight.id
+      });
+      return true;
+    }
   
     const { buildFlexibilityOptions } = require(
       "../../services/flexibility/buildFlexibilityOptions"
@@ -398,12 +407,14 @@ async function handle(context) {
       log("FLEXIBILITY_OPTIONS_BUILT", {
         user: from,
         flightId: conversation.booking.selectedFlight.id,
-        options: flex.options.map(o => ({
-          code: o.code,
-          label: o.label,
-          priceDelta: o.priceDelta ?? null
-        })),
-        currency: flex.currency
+        options: Array.isArray(flex?.options)
+          ? flex.options.map(o => ({
+              code: o.code,
+              label: o.label,
+              priceDelta: o.priceDelta ?? null
+            }))
+          : [],
+        currency: flex?.currency ?? null
       });
 
       if (!conversation.booking.selectedFlight._fareRules) {
@@ -422,7 +433,7 @@ async function handle(context) {
           flightId: conversation.booking.selectedFlight.id,
           reason: "NO_VALID_OPTIONS"
         });
-        
+
         setConversation(from, {
           ...conversation,
           state: "BOOKING_DISCOUNT",
@@ -432,8 +443,9 @@ async function handle(context) {
               ...conversation.booking.preferences,
               flexibility: "NONE"
             },
-            _flexibilitySelected: true,
             _flexibilityInitDone: true,
+            _flexibilitySelected: true,
+            _flexibilityCompleted: true,   // ✅ ADD THIS
             _flexibilityOptions: null,
             _flexibilityOptionMap: null
           }
@@ -457,9 +469,10 @@ async function handle(context) {
         optionMap[key] = opt.code;
         message += `${key}️⃣ ${opt.label}\n`;
       });
-  
+
       setConversation(from, {
         ...conversation,
+        state: "BOOKING_FLEXIBILITY", // ✅ explicit
         booking: {
           ...conversation.booking,
           _flexibilityOptions: flex.options,
@@ -475,7 +488,7 @@ async function handle(context) {
     /* ===============================
        INPUT — CAPTURE SELECTION
     =============================== */
-  
+
     if (conversation.booking._flexibilitySelected) {
       return true;
     }
@@ -496,7 +509,7 @@ async function handle(context) {
       flightId: conversation.booking.selectedFlight.id,
       selectedCode
     });
-    
+
     setConversation(from, {
       ...conversation,
       state: "BOOKING_DISCOUNT",
@@ -504,9 +517,10 @@ async function handle(context) {
         ...conversation.booking,
         preferences: {
           ...conversation.booking.preferences,
-          flexibility: selectedCode   // 🔒 STORE CODE ONLY
+          flexibility: selectedCode   // 🔒 CODE ONLY (correct)
         },
-        _flexibilitySelected: true
+        _flexibilitySelected: true,
+        _flexibilityCompleted: true   // ✅ ADD THIS
       }
     });
   
