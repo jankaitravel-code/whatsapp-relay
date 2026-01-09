@@ -83,18 +83,18 @@ function formatFlexibilityIndicator(flight) {
   const risk = flight?._flexibilityRisk;
 
   if (!risk || !risk.level) {
-    return "⚪ Fare flexibility unknown";
+    return "⚪ Flexibility details unavailable";
   }
 
   switch (risk.level) {
-    case "HIGH_FARE_FLEXIBILITY":
+    case "HIGH":
       return "🟢 High fare flexibility";
-    case "MEDIUM_FARE_FLEXIBILITY":
+    case "MEDIUM":
       return "🟡 Medium fare flexibility";
-    case "LOW_FARE_FLEXIBILITY":
+    case "LOW":
       return "🔴 Low fare flexibility";
     default:
-      return "⚪ Fare flexibility unknown";
+      return "⚪ Flexibility details unavailable";
   }
 }
 
@@ -679,23 +679,6 @@ async function handle(context) {
      }
    
      const selectedFlight = results.rawFlights[index];
-
-      const { normalizeFareRules } = require("../../services/fareRules/normalizeFareRules");
-      const { buildFlexibilityOptions } = require("../../services/flexibility/buildFlexibilityOptions");
-      
-      // Airline truth
-      const fareRules = normalizeFareRules(selectedFlight);
-      
-      // OTA flexibility product (your implementation)
-      const flexibility = buildFlexibilityOptions({
-        flight: selectedFlight,
-        fareRules
-      });
-      
-      // Attach once — booking owns from here
-      selectedFlight._fareRules = fareRules;
-      selectedFlight._flexibility = flexibility;
-
 
       if (
         !Number.isInteger(conversation.lockedFlightQuery?.passengerCount) ||
