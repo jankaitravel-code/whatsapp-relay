@@ -9,7 +9,6 @@
 
 
 const { log } = require("../../utils/logger");
-const { recordSignal } = require("../../utils/abuseSignals");
 const { computeOneWayFinalPrice } = require("../../services/price/computeOneWayFinalPrice");
 const {
   normalizeBaggage
@@ -20,7 +19,7 @@ const {
 function getEmptyPreferences() {
   return {
     baggageKg: 0,
-    Meas: null,
+    meal: null,
     seats: null,
     insurance: false,
     flexibility: null
@@ -50,17 +49,6 @@ function getEligibleSpecialFares(age) {
   if (age >= 12 && age <= 25) fares.push("STUDENT");
 
   return fares;
-}
-
-function resetBookingState(conversation) {
-  return {
-    ...conversation,
-    booking: {
-      selectedFlight: conversation.booking.selectedFlight,
-      passengersCount: conversation.booking.passengersCount
-    },
-    temp: null
-  };
 }
 
 function isValidHumanName(input) {
@@ -365,7 +353,7 @@ async function handle(context) {
       from,
       (insuranceSelected
         ? "🛡️ Travel insurance added.\n\n"
-        : "⏭️ Skipping travel insurance.\n\n") +
+        : "⏭️ Skipping travel insurance.\n\n")
     );
   
     return true;
@@ -402,6 +390,14 @@ async function handle(context) {
         })),
         currency: flex.currency
       });
+
+      if (!conversation.booking.selectedFlight._fareRules) {
+        log("FLEXIBILITY_RULES_MISSING", {
+          user: from,
+          flightId: conversation.booking.selectedFlight.id
+        });
+      }
+
   
       // ❌ No valid options → auto continue
       if (!flex || !Array.isArray(flex.options) || flex.options.length === 0) {
@@ -422,7 +418,9 @@ async function handle(context) {
               flexibility: "NONE"
             },
             _flexibilitySelected: true,
-            _flexibilityInitDone: true
+            _flexibilityInitDone: true,
+            _flexibilityOptions: null,
+            _flexibilityOptionMap: null
           }
         });
   
