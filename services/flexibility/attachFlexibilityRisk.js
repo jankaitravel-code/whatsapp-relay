@@ -11,6 +11,7 @@ function attachFlexibilityRisk(flightOffer) {
 
   return {
     ...flightOffer,
+    _fareRules: rules,
     _flexibilityRisk: {
       ...risk,
       rulesSnapshot: rules
