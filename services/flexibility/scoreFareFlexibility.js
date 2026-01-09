@@ -4,6 +4,8 @@
  * Pure, deterministic, price-agnostic
  */
 
+const { log } = require("../../utils/logger");
+
 function scoreFareFlexibility({ fareRules }) {
   if (!fareRules) {
     return {
@@ -65,6 +67,17 @@ function scoreFareFlexibility({ fareRules }) {
     unknowns === 0 ? "HIGH" :
     unknowns <= 1 ? "MEDIUM" :
     "LOW";
+
+  // 🔍 PHASE 7 — Observability (confidence downgrade only)
+  if (confidence !== "HIGH") {
+    log("FLEX_RISK_CONFIDENCE_DOWNGRADED", {
+      missingSignals: Object.entries(signals)
+        .filter(([, value]) => value === "UNKNOWN")
+        .map(([key]) => key),
+      originalConfidence: "HIGH",
+      finalConfidence: confidence
+    });
+  }
 
   return {
     score,
