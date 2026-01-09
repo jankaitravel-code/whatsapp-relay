@@ -391,24 +391,30 @@ async function handle(context) {
   
     return true;
   }
-    /*========================================
-        Flexibility Block
-    ==========================================*/
+
+  /*========================================
+          Flexibility Block
+  ==========================================*/
   
   if (conversation.state === "BOOKING_FLEXIBILITY") {
-      
-       //ENTRY — SHOW OPTIONS (ONCE)
-
+  
+    const { buildFlexibilityOptions } = require(
+      "../../services/flexibility/buildFlexibilityOptions"
+    );
+  
+    /* ===============================
+       ENTRY — SHOW OPTIONS (ONCE)
+    =============================== */
+  
     if (!conversation.booking._flexibilityInitDone) {
   
-      const flex = conversation.booking.selectedFlight?._flexibility;
+      const flex = buildFlexibilityOptions({
+        fareRules: conversation.booking.selectedFlight._fareRules,
+        flexibilityRisk: conversation.booking.selectedFlight._flexibilityRisk
+      });
   
+      // ❌ No valid options → auto continue
       if (!flex || !Array.isArray(flex.options) || flex.options.length === 0) {
-        await sendWhatsAppMessage(
-          from,
-          "⚠️ Flexibility options are unavailable for this flight.\n\n" +
-          "Continuing without flexibility."
-        );
   
         setConversation(from, {
           ...conversation,
@@ -424,52 +430,57 @@ async function handle(context) {
           }
         });
   
+        await sendWhatsAppMessage(
+          from,
+          "⚠️ Flexibility options are unavailable for this flight.\n\n" +
+          "Continuing without flexibility."
+        );
+  
         return true;
       }
   
-      const optionsText = flex.options
-        .map(
-          (o, i) =>
-            `${i + 1}️⃣ ${o.label} (${flex.currency} ${o.priceDelta})`
-        )
-        .join("\n");
+      // ✅ Build option map
+      let message = "🔁 Choose a flexibility option:\n\n";
+      const optionMap = {};
+  
+      flex.options.forEach((opt, idx) => {
+        const key = String(idx + 1);
+        optionMap[key] = opt.code;
+        message += `${key}️⃣ ${opt.label}\n`;
+      });
   
       setConversation(from, {
         ...conversation,
         booking: {
           ...conversation.booking,
+          _flexibilityOptions: flex.options,
+          _flexibilityOptionMap: optionMap,
           _flexibilityInitDone: true
         }
       });
   
-      await sendWhatsAppMessage(
-        from,
-        "🔁 Choose a flexibility option:\n\n" +
-        optionsText +
-        "\n\nReply with the option number."
-      );
-  
+      await sendWhatsAppMessage(from, message);
       return true;
     }
   
-       //INPUT — CAPTURE SELECTION
+    /* ===============================
+       INPUT — CAPTURE SELECTION
+    =============================== */
   
     if (conversation.booking._flexibilitySelected) {
       return true;
     }
   
-    const flex = conversation.booking.selectedFlight?._flexibility;
-    const index = Number(lower) - 1;
+    const map = conversation.booking._flexibilityOptionMap;
+    const selectedCode = map?.[lower];
   
-    if (!flex?.options?.[index]) {
+    if (!selectedCode) {
       await sendWhatsAppMessage(
         from,
         "❌ Please select a valid flexibility option."
       );
       return true;
     }
-  
-    const selected = flex.options[index];
   
     setConversation(from, {
       ...conversation,
@@ -478,7 +489,7 @@ async function handle(context) {
         ...conversation.booking,
         preferences: {
           ...conversation.booking.preferences,
-          flexibility: selected.code   // 🔒 STORE CODE ONLY
+          flexibility: selectedCode   // 🔒 STORE CODE ONLY
         },
         _flexibilitySelected: true
       }
@@ -486,7 +497,7 @@ async function handle(context) {
   
     await sendWhatsAppMessage(
       from,
-      `🔁 Flexibility selected: ${selected.label}\n\n` +
+      `🔁 Flexibility selected.\n\n` +
       "If you have a discount or coupon code, please enter it now.\n" +
       "Reply *NONE* if you don’t have one."
     );
