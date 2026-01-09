@@ -15,7 +15,7 @@ function normalizeFareRules(flightOffer) {
   try {
     if (!flightOffer) return emptyRules();
 
-    const currency = flightOffer.price?.currency;
+    const currency = flightOffer.price?.currency || "INR";
 
     /* -------------------------------
        1️⃣ REFUNDABILITY
@@ -40,33 +40,37 @@ function normalizeFareRules(flightOffer) {
     let changePenalty = null;
     let cancelPenalty = null;
 
-    const segments = Array.isArray(flightOffer.fareDetailsBySegment)
-      ? flightOffer.fareDetailsBySegment
+    const travelerPricings = Array.isArray(flightOffer.travelerPricings)
+      ? flightOffer.travelerPricings
       : [];
-
-    segments.forEach(seg => {
-      if (!Array.isArray(seg.penalties)) return;
-
-      seg.penalties.forEach(p => {
-        if (!p || !p.type) return;
-
-        const amount = Number(p.amount);
-
-        if (p.type === "CHANGE" && Number.isFinite(amount)) {
-          changePenalty = {
-            type: "FIXED_FEE",
-            amount,
-            currency
-          };
-        }
-
-        if (p.type === "CANCELLATION" && Number.isFinite(amount)) {
-          cancelPenalty = {
-            type: "FIXED_FEE",
-            amount,
-            currency
-          };
-        }
+    
+    travelerPricings.forEach(tp => {
+      if (!Array.isArray(tp.fareDetailsBySegment)) return;
+    
+      tp.fareDetailsBySegment.forEach(seg => {
+        if (!Array.isArray(seg.penalties)) return;
+    
+        seg.penalties.forEach(p => {
+          if (!p || !p.type) return;
+    
+          const amount = Number(p.amount);
+    
+          if (p.type === "CHANGE" && Number.isFinite(amount)) {
+            changePenalty = {
+              type: "FIXED_FEE",
+              amount,
+              currency
+            };
+          }
+    
+          if (p.type === "CANCELLATION" && Number.isFinite(amount)) {
+            cancelPenalty = {
+              type: "FIXED_FEE",
+              amount,
+              currency
+            };
+          }
+        });
       });
     });
 
@@ -154,6 +158,7 @@ function inferFromText(text, kind) {
   if (kind === "CANCEL") {
     if (text.includes("NON-REFUNDABLE")) return "NO";
     if (text.includes("CANCELLATION CHARGES APPLY")) return "YES";
+    if (text.includes("REFUNDABLE")) return "YES";
   }
 
   return null;
