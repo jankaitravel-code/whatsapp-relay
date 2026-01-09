@@ -5,8 +5,7 @@
 
 function buildFlexibilityOptions({
   baseFare,
-  fareRules,
-  flexibilityRisk
+  fareRules
 }) {
   // 🔒 Defensive defaults
   const safeRules = fareRules || {};
@@ -22,21 +21,21 @@ function buildFlexibilityOptions({
     priceDelta: 0
   });
 
-  // 2️⃣ Date change
-  if (changeRule.allowed && changeRule.allowed !== "NO") {
+  // 2️⃣ Date change — ONLY if explicitly allowed
+  if (changeRule.allowed === "YES") {
     options.push({
       code: "DATE_CHANGE",
       label: "Date change allowed",
-      priceDelta: 10   // TEMP OTA pricing
+      priceDelta: 10 // TEMP_OTA_DELTA
     });
   }
 
-  // 3️⃣ Cancellation
-  if (cancelRule.allowed && cancelRule.allowed !== "NO") {
+  // 3️⃣ Cancellation — ONLY if explicitly allowed
+  if (cancelRule.allowed === "YES") {
     options.push({
       code: "CANCELLATION",
       label: "Date change + cancellation",
-      priceDelta: 25   // TEMP OTA pricing
+      priceDelta: 25 // TEMP_OTA_DELTA
     });
   }
 
