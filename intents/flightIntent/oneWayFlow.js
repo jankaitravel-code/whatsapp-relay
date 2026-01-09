@@ -79,6 +79,26 @@ function buildConfirmationMessage(q) {
   );
 }
 
+function formatFlexibilityIndicator(flight) {
+  const risk = flight?._flexibilityRisk;
+
+  if (!risk || !risk.level) {
+    return "⚪ Fare flexibility unknown";
+  }
+
+  switch (risk.level) {
+    case "HIGH_FARE_FLEXIBILITY":
+      return "🟢 High fare flexibility";
+    case "MEDIUM_FARE_FLEXIBILITY":
+      return "🟡 Medium fare flexibility";
+    case "LOW_FARE_FLEXIBILITY":
+      return "🔴 Low fare flexibility";
+    default:
+      return "⚪ Fare flexibility unknown";
+  }
+}
+
+
 /* ===============================
    Flow Entry
 =============================== */
@@ -588,14 +608,16 @@ async function handle(context) {
       
           const tagLine = tags.length ? `   ${tags.join(" · ")}\n` : "";
           const baggageLine = normalizeBaggage(f) || "Baggage: Not specified";
-      
+          const flexibilityLine = formatFlexibilityIndicator(f);
+
           return (
-            `${absoluteIndex + 1}. ${getAirlineName(first.carrierCode, carriers)} — ₹${f.price.total}\n` +
+            `${i + 1}. ${getAirlineName(first.carrierCode, carriers)} — ₹${f.price.total}\n` +
             tagLine +
             `   ${first.departure.iataCode} ${formatTime(first.departure.at)} → ` +
             `${last.arrival.iataCode} ${formatTime(last.arrival.at)}\n` +
             `   ${formatDuration(f.itineraries[0].duration)} · ${segs.length - 1} stop(s)\n` +
-            `${baggageLine}`
+            `   ${baggageLine}\n` +
+            `   ${flexibilityLine}`
           );
         })
         .join("\n\n");
@@ -905,6 +927,7 @@ async function handle(context) {
          
            const tagLine = tags.length ? `   ${tags.join(" · ")}\n` : "";
            const baggageLine = normalizeBaggage(f) || "Baggage: Not specified";
+           const flexibilityLine = formatFlexibilityIndicator(f);
 
           return (
             `${i + 1}. ${getAirlineName(first.carrierCode, carriers)} — ₹${f.price.total}\n` +
@@ -912,7 +935,8 @@ async function handle(context) {
             `   ${first.departure.iataCode} ${formatTime(first.departure.at)} → ` +
             `${last.arrival.iataCode} ${formatTime(last.arrival.at)}\n` +
             `   ${formatDuration(f.itineraries[0].duration)} · ${segs.length - 1} stop(s)\n` +
-            `${baggageLine}`
+            `   ${baggageLine}\n` +
+            `   ${flexibilityLine}`
           );
          });
    
