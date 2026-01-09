@@ -412,10 +412,27 @@ async function handle(context) {
         fareRules: conversation.booking.selectedFlight._fareRules,
         flexibilityRisk: conversation.booking.selectedFlight._flexibilityRisk
       });
+
+      log("FLEXIBILITY_OPTIONS_BUILT", {
+        user: from,
+        flightId: conversation.booking.selectedFlight.id,
+        options: flex.options.map(o => ({
+          code: o.code,
+          label: o.label,
+          priceDelta: o.priceDelta ?? null
+        })),
+        currency: flex.currency
+      });
   
       // ❌ No valid options → auto continue
       if (!flex || !Array.isArray(flex.options) || flex.options.length === 0) {
-  
+
+        log("FLEXIBILITY_SKIPPED", {
+          user: from,
+          flightId: conversation.booking.selectedFlight.id,
+          reason: "NO_VALID_OPTIONS"
+        });
+        
         setConversation(from, {
           ...conversation,
           state: "BOOKING_DISCOUNT",
@@ -481,7 +498,13 @@ async function handle(context) {
       );
       return true;
     }
-  
+
+    log("FLEXIBILITY_SELECTED", {
+      user: from,
+      flightId: conversation.booking.selectedFlight.id,
+      selectedCode
+    });
+    
     setConversation(from, {
       ...conversation,
       state: "BOOKING_DISCOUNT",
