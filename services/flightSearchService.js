@@ -7,6 +7,7 @@ const axios = require("axios");
 const { getAccessToken } = require("./amadeusClient");
 const AMADEUS_BASE_URL = "https://test.api.amadeus.com";
 const { normalizeBaggage } = require("./baggage/normalizeBaggage");
+const { attachFlexibilityRisk } = require("./flexibility/attachFlexibilityRisk");
 
 
 function durationToMinutes(isoDuration) {
@@ -82,10 +83,14 @@ async function searchFlights(input) {
     }
   );
 
-  const flights = (response.data.data || []).map(f => ({
-    ...f,
-    _normalizedBaggage: normalizeBaggage(f)
-  }));
+  const flights = (response.data.data || []).map(f => {
+    const withBaggage = {
+      ...f,
+      _normalizedBaggage: normalizeBaggage(f)
+    };
+  
+    return attachFlexibilityRisk(withBaggage);
+  });
   
   return {
     flights,
