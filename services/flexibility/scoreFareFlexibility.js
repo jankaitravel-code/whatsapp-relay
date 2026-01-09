@@ -4,14 +4,24 @@
  * Pure, deterministic, price-agnostic
  */
 
-function computeFlexibilityRisk({ fareRules, airlineMeta }) {
+function scoreFareFlexibility({ fareRules }) {
+  if (!fareRules) {
+    return {
+      score: 0,
+      level: "LOW",
+      label: "Low fare flexibility",
+      signals: {},
+      confidence: "LOW"
+    };
+  }
+
   let score = 100;
   let unknowns = 0;
 
   const signals = {
-    refundability: fareRules.refundability.status,
-    changeAllowed: fareRules.change.allowed,
-    cancelAllowed: fareRules.cancellation.allowed
+    refundability: fareRules.refundability?.status,
+    changeAllowed: fareRules.change?.allowed,
+    cancelAllowed: fareRules.cancellation?.allowed
   };
 
   // Refundability
@@ -66,5 +76,5 @@ function computeFlexibilityRisk({ fareRules, airlineMeta }) {
 }
 
 module.exports = {
-  computeFlexibilityRisk
+  scoreFareFlexibility
 };
