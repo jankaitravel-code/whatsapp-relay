@@ -356,7 +356,9 @@ async function handle(context) {
         : "⏭️ Skipping travel insurance.\n\n")
     );
   
-    return true;
+    // 🔥 FORCE FLEXIBILITY ENTRY IN SAME TURN
+    context.rawText = "__AUTO__";
+    return handle(context);
   }
 
   /*========================================
