@@ -374,6 +374,21 @@ async function handle(context) {
     =============================== */
   
     if (!conversation.booking._flexibilityInitDone) {
+
+      const risk = conversation.booking.selectedFlight._flexibilityRisk;
+
+      if (risk) {
+        log("FLEX_RISK_CONSUMED_IN_BOOKING", {
+          flightId: conversation.booking.selectedFlight.id,
+          riskLevel: risk.level,
+          confidence: risk.confidence
+        });
+      } else {
+        log("FLEX_RISK_MISSING_AT_BOOKING", {
+          flightId: conversation.booking.selectedFlight.id
+        });
+      }
+
   
       const flex = buildFlexibilityOptions({
         fareRules: conversation.booking.selectedFlight._fareRules,
