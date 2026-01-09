@@ -4,40 +4,45 @@
  */
 
 function buildFlexibilityOptions({
-  baseFare,
-  fareRules
+  fareRules,
+  flexibilityRisk
 }) {
-  // Default conservative behaviour
   const options = [];
+  const riskLevel = flexibilityRisk?.level || "UNKNOWN";
 
-  // 1️⃣ No flexibility
+  // 1️⃣ No flexibility — always available
   options.push({
     code: "NONE",
     label: "No date change or cancellation",
-    delta: 0
+    priceDelta: 0
   });
 
   // 2️⃣ Date change
-  if (fareRules.change.allowed !== "NO") {
+  if (
+    fareRules.change.allowed !== "NO" &&
+    riskLevel !== "LOW"
+  ) {
     options.push({
       code: "DATE_CHANGE",
       label: "Date change allowed",
-      delta: 10   // TEMP OTA pricing
+      priceDelta: 10   // TEMP OTA pricing
     });
   }
 
   // 3️⃣ Cancellation
-  if (fareRules.cancellation.allowed !== "NO") {
+  if (
+    fareRules.cancellation.allowed !== "NO" &&
+    (riskLevel === "HIGH" || riskLevel === "MEDIUM")
+  ) {
     options.push({
       code: "CANCELLATION",
       label: "Date change + cancellation",
-      delta: 25   // TEMP OTA pricing
+      priceDelta: 25   // TEMP OTA pricing
     });
   }
 
   return {
-    currency: "INR",
-    baseFare,
+    currency: fareRules?.change?.penalty?.currency || "INR",
     options
   };
 }
