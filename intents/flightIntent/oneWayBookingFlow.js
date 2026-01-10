@@ -393,24 +393,35 @@ async function handle(context) {
   
     if (!conversation.booking._flexibilityInitDone) {
 
-      const risk = conversation.booking.selectedFlight._flexibilityRisk;
+      const capability =
+        conversation.booking.selectedFlight._flexibilityCapability;
 
-      if (risk) {
-        log("FLEX_RISK_CONSUMED_IN_BOOKING", {
+      if (capability) {
+        log("FLEX_CAPABILITY_CONSUMED_IN_BOOKING", {
           flightId: conversation.booking.selectedFlight.id,
-          riskLevel: risk.level,
-          confidence: risk.confidence
+          level: capability.level,
+          searchTag: capability.searchTag
         });
       } else {
-        log("FLEX_RISK_MISSING_AT_BOOKING", {
+        log("FLEX_CAPABILITY_MISSING_AT_BOOKING", {
           flightId: conversation.booking.selectedFlight.id
         });
       }
 
-  
+      if (
+        conversation.booking.selectedFlight._flexibilityCapability &&
+        !conversation.booking.selectedFlight._flexibilityCapability.level
+      ) {
+        log("FLEX_CAPABILITY_MALFORMED", {
+          flightId: conversation.booking.selectedFlight.id
+        });
+      }
+
       const flex = buildFlexibilityOptions({
+        baseFare: conversation.booking.selectedFlight.price?.base ?? null,
         fareRules: conversation.booking.selectedFlight._fareRules,
-        flexibilityRisk: conversation.booking.selectedFlight._flexibilityRisk
+        flexibilityCapability:
+          conversation.booking.selectedFlight._flexibilityCapability
       });
 
       log("FLEXIBILITY_OPTIONS_BUILT", {
