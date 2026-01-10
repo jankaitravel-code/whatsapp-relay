@@ -19,6 +19,10 @@ const {
 const {
   normalizeBaggage
 } = require("../../services/baggage/normalizeBaggage");
+const {
+  deriveFlexibilityCapability
+} = require("../../services/flexibility/deriveFlexibilityCapability");
+
 
 
 /* ===============================
@@ -80,23 +84,32 @@ function buildConfirmationMessage(q) {
 }
 
 function formatFlexibilityIndicator(flight) {
-  const risk = flight?._flexibilityRisk;
+  const cap = flight?._flexibilityCapability;
 
-  if (!risk || !risk.level) {
-    return "⚪ Flexibility details unavailable";
+  if (!cap) {
+    return "⚪ Flexibility not specified";
   }
 
-  switch (risk.level) {
-    case "HIGH":
-      return "🟢 High fare flexibility";
-    case "MEDIUM":
-      return "🟡 Medium fare flexibility";
-    case "LOW":
-      return "🔴 Low fare flexibility";
+  switch (cap.searchTag) {
+    case "FLEXIBLE":
+      return "🟢 Free date change & cancellation";
+    case "SEMI_FLEXIBLE":
+      return "🟡 Date change available";
+    case "NON_FLEXIBLE":
     default:
-      return "⚪ Flexibility details unavailable";
+      return "🔴 Not flexible";
   }
 }
+
+function attachFlexibilityCapability(flight) {
+  if (!flight._flexibilityCapability) {
+    flight._flexibilityCapability = deriveFlexibilityCapability({
+      fareRules: flight._fareRules,
+      flexibilityRisk: flight._flexibilityRisk
+    });
+  }
+}
+
 
 
 /* ===============================
@@ -587,11 +600,14 @@ async function handle(context) {
 
       const { cheapestIndex, fastestIndex } =
         findCheapestAndFastest(rawFlights);
-      
+
       const nextPage = rawFlights
         .slice(cursor, cursor + pageSize)
         .map((f, i) => {
+          attachFlexibilityCapability(f);
+      
           const absoluteIndex = cursor + i;
+      
           const segs = f.itineraries[0].segments;
           const first = segs[0];
           const last = segs[segs.length - 1];
@@ -603,7 +619,7 @@ async function handle(context) {
           const tagLine = tags.length ? `   ${tags.join(" · ")}\n` : "";
           const baggageLine = normalizeBaggage(f) || "Baggage: Not specified";
           const flexibilityLine = formatFlexibilityIndicator(f);
-
+      
           return (
             `${absoluteIndex + 1}. ${getAirlineName(first.carrierCode, carriers)} — ₹${f.price.total}\n` +
             tagLine +
@@ -628,7 +644,6 @@ async function handle(context) {
         state: "RESULTS",
         lockedFlightQuery: conversation.lockedFlightQuery,
         results: {
-          displayItems: results.displayItems,
           rawFlights: results.rawFlights,
           carriers: results.carriers,
           pageSize: results.pageSize,
@@ -692,6 +707,12 @@ async function handle(context) {
         return true;
       }
 
+     log("FLEX_CAPABILITY_AT_HANDOFF", {
+       flightId: selectedFlight.id,
+       capability: selectedFlight._flexibilityCapability
+     });
+
+
      // ✅ LOG MUST BE HERE — BEFORE HANDOFF
      log("BOOKING_OWNERSHIP_LOCKED", {
        user: from,
@@ -700,6 +721,13 @@ async function handle(context) {
        destination: conversation.lockedFlightQuery?.destination?.cityCode,
        date: conversation.lockedFlightQuery?.date
      });
+
+     if (!selectedFlight._flexibilityCapability) {
+      log("MISSING_FLEX_CAPABILITY_AT_HANDOFF", {
+        flightId: selectedFlight.id
+      });
+    }
+
 
      // 🔐 HANDOFF TO BOOKING FLOW (STRICT)
       setConversation(from, {
@@ -893,10 +921,11 @@ async function handle(context) {
            findCheapestAndFastest(flights);
    
         const PAGE_SIZE = 3;
-        
         const firstPage = flights
           .slice(0, PAGE_SIZE)
           .map((f, i) => {
+            attachFlexibilityCapability(f);
+        
             const absoluteIndex = i;
         
             const segs = f.itineraries[0].segments;
@@ -921,7 +950,6 @@ async function handle(context) {
               `   ${flexibilityLine}`
             );
           });
-
    
        setConversation(from, {
          intent: "FLIGHT_SEARCH",
@@ -1111,10 +1139,12 @@ async function handle(context) {
            findCheapestAndFastest(flights);
 
         const PAGE_SIZE = 3;
-        
+
         const firstPage = flights
           .slice(0, PAGE_SIZE)
           .map((f, i) => {
+            attachFlexibilityCapability(f);
+        
             const absoluteIndex = i;
         
             const segs = f.itineraries[0].segments;
@@ -1139,7 +1169,6 @@ async function handle(context) {
               `   ${flexibilityLine}`
             );
           });
-
 
         setConversation(from, {
           intent: "FLIGHT_SEARCH",
