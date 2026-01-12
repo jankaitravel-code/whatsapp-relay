@@ -101,16 +101,6 @@ function formatFlexibilityIndicator(flight) {
   }
 }
 
-function attachFlexibilityCapability(flight) {
-  if (!flight._flexibilityCapability) {
-    flight._flexibilityCapability = deriveFlexibilityCapability({
-      fareRules: flight._fareRules,
-      flexibilityRisk: flight._flexibilityRisk
-    });
-  }
-}
-
-
 
 /* ===============================
    Flow Entry
@@ -604,7 +594,9 @@ async function handle(context) {
       const nextPage = rawFlights
         .slice(cursor, cursor + pageSize)
         .map((f, i) => {
-          attachFlexibilityCapability(f);
+          f._flexibilityCapability = deriveFlexibilityCapability({
+            fareRules: f._fareRules
+          });
       
           const absoluteIndex = cursor + i;
       
@@ -688,6 +680,19 @@ async function handle(context) {
      }
    
      const selectedFlight = results.rawFlights[index];
+
+     if (!selectedFlight._flexibilityCapability) {
+        selectedFlight._flexibilityCapability =
+          deriveFlexibilityCapability({
+            fareRules: selectedFlight._fareRules
+          });
+      
+        log("FLEX_CAPABILITY_DERIVED_AT_HANDOFF", {
+          flightId: selectedFlight.id,
+          capability: selectedFlight._flexibilityCapability
+        });
+      }
+
 
       if (
         !Number.isInteger(conversation.lockedFlightQuery?.passengerCount) ||
@@ -924,7 +929,9 @@ async function handle(context) {
         const firstPage = flights
           .slice(0, PAGE_SIZE)
           .map((f, i) => {
-            attachFlexibilityCapability(f);
+            f._flexibilityCapability = deriveFlexibilityCapability({
+              fareRules: f._fareRules
+            });
         
             const absoluteIndex = i;
         
@@ -1143,7 +1150,9 @@ async function handle(context) {
         const firstPage = flights
           .slice(0, PAGE_SIZE)
           .map((f, i) => {
-            attachFlexibilityCapability(f);
+            f._flexibilityCapability = deriveFlexibilityCapability({
+              fareRules: f._fareRules
+            });
         
             const absoluteIndex = i;
         
