@@ -10,7 +10,7 @@ const { normalizeBaggage } = require("./baggage/normalizeBaggage");
 const { log } = require("../utils/logger");
 
 const { normalizeFareRules } = require(
-  "./flexibility/fareRules/normalizeFareRules"
+  "./fareRules/normalizeFareRules"
 );
 
 
