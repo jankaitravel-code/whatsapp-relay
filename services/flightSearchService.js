@@ -13,6 +13,11 @@ const { normalizeFareRules } = require(
   "./fareRules/normalizeFareRules"
 );
 
+const {
+  deriveFlexibilityCapability
+} = require("./flexibility/deriveFlexibilityCapability");
+
+
 
 function durationToMinutes(isoDuration) {
   if (!isoDuration) return Infinity;
@@ -91,19 +96,46 @@ async function searchFlights(input) {
     }
   );
 
-  const flights = (response.data.data || []).map(f => {
-    const fareRules = normalizeFareRules(f);
+  const flights = (response.data.data || []).map((f, idx) => {
+    let fareRules = normalizeFareRules(f);
+  
+    /* =====================================================
+       🧪 DEV-ONLY FLEXIBILITY INJECTION (SAFE TO DELETE)
+       ===================================================== */
+    if (
+      process.env.NODE_ENV === "development" &&
+      idx === 0 // 🔒 only first flight
+    ) {
+      fareRules = {
+        refundability: {
+          status: "REFUNDABLE",
+          confidence: "HIGH"
+        },
+        change: {
+          allowed: "YES",
+          penalty: { type: "FIXED_FEE", amount: 0, currency: "INR" },
+          confidence: "HIGH",
+          source: "DEV_INJECTED"
+        },
+        cancellation: {
+          allowed: "YES",
+          penalty: { type: "FIXED_FEE", amount: 0, currency: "INR" },
+          confidence: "HIGH",
+          source: "DEV_INJECTED"
+        }
+      };
+    }
+    /* ===================================================== */
+  
+    const capability = deriveFlexibilityCapability({
+      fareRules
+    });
   
     return {
       ...f,
       _normalizedBaggage: normalizeBaggage(f),
-  
-      // 🔒 Defensive shape guarantee (NO logic change)
-      _fareRules: fareRules || {
-        refundability: { status: "UNKNOWN", confidence: "LOW" },
-        change: { allowed: "UNKNOWN", confidence: "LOW", source: "MISSING" },
-        cancellation: { allowed: "UNKNOWN", confidence: "LOW", source: "MISSING" }
-      }
+      _fareRules: fareRules,
+      _flexibilityCapability: capability
     };
   });
 
