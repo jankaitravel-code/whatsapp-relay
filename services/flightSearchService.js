@@ -58,6 +58,10 @@ function findCheapestAndFastest(flights) {
 
 async function searchFlights(input) {
 
+  log("ENV_CHECK", {
+    NODE_ENV: process.env.NODE_ENV
+  });
+
   const {
     originLocationCode,
     destinationLocationCode,
