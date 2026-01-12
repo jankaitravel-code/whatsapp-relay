@@ -3,52 +3,27 @@
  * Used by BOTH search and booking
  */
 
-function deriveFlexibilityCapability({ fareRules, flexibilityRisk }) {
-  // HARD FALLBACK — no rules means no promises
-  if (!fareRules) {
+function deriveFlexibilityCapability({ fareRules }) {
+
+  // 🧪 TEST MODE — explicit and reversible
+  const forced = process.env.TEST_FLEX_MODE;
+  if (forced) {
     return {
-      level: "NONE",
-      refundType: "NONE",
-      confidence: "LOW",
-      searchTag: "NON_FLEXIBLE",
-      source: "FALLBACK_NO_RULES"
+      level: forced,              // NONE | CHANGE_ONLY | CHANGE_CANCEL
+      source: "FORCED"
     };
   }
 
-  let level;
-
-  if (!fareRules.changeAllowed && !fareRules.cancelAllowed) {
-    level = "NONE";
-  } else if (fareRules.changeAllowed && !fareRules.cancelAllowed) {
-    level = "CHANGE_ONLY";
-  } else {
-    level = "CHANGE_CANCEL";
+  // 🔒 Real airline rules only
+  if (fareRules?.changeAllowed === true && fareRules?.cancelAllowed === true) {
+    return { level: "CHANGE_CANCEL", source: "FARE_RULES" };
   }
 
-  const refundType =
-    fareRules.refundType === "ORIGINAL" ? "ORIGINAL" :
-    fareRules.refundType === "CREDIT"   ? "CREDIT" :
-    "NONE";
+  if (fareRules?.changeAllowed === true) {
+    return { level: "CHANGE_ONLY", source: "FARE_RULES" };
+  }
 
-  // 🎛️ CONTROLLED RISK (THIS IS THE NEW PART)
-  const rawConfidence = flexibilityRisk?.confidence ?? "LOW";
-
-  const searchTag =
-    level === "NONE"
-      ? "NON_FLEXIBLE"
-      : level === "CHANGE_ONLY"
-      ? "SEMI_FLEXIBLE"
-      : "FLEXIBLE";
-
-  return {
-    level,
-    refundType,
-    confidence,
-    searchTag,
-    source: "FARE_RULES"
-  };
+  return { level: "NONE", source: "FARE_RULES" };
 }
 
-module.exports = {
-  deriveFlexibilityCapability
-};
+module.exports = { deriveFlexibilityCapability };
