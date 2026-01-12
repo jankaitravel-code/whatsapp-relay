@@ -592,9 +592,6 @@ async function handle(context) {
       const nextPage = rawFlights
         .slice(cursor, cursor + pageSize)
         .map((f, i) => {
-          f._flexibilityCapability = deriveFlexibilityCapability({
-            fareRules: f._fareRules
-          });
       
           const absoluteIndex = cursor + i;
       
@@ -927,9 +924,6 @@ async function handle(context) {
         const firstPage = flights
           .slice(0, PAGE_SIZE)
           .map((f, i) => {
-            f._flexibilityCapability = deriveFlexibilityCapability({
-              fareRules: f._fareRules
-            });
         
             const absoluteIndex = i;
         
@@ -1148,9 +1142,6 @@ async function handle(context) {
         const firstPage = flights
           .slice(0, PAGE_SIZE)
           .map((f, i) => {
-            f._flexibilityCapability = deriveFlexibilityCapability({
-              fareRules: f._fareRules
-            });
         
             const absoluteIndex = i;
         
