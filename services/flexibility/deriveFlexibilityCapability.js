@@ -23,6 +23,12 @@ function deriveFlexibilityCapability({ fareRules }) {
     return { level: "CHANGE_ONLY", source: "FARE_RULES" };
   }
 
+  if (!fareRules) {
+    log("FLEX_CAPABILITY_FALLBACK_NO_RULES", {
+      reason: "fareRules_missing"
+    });
+  }
+
   return { level: "NONE", source: "FARE_RULES" };
 }
 
