@@ -5,7 +5,6 @@
  */
 
 const { log } = require("../../utils/logger");
-const { controlRiskLevel } = require("./riskLevelController");
 
 function scoreFareFlexibility({ fareRules }) {
   if (!fareRules) {
@@ -68,12 +67,6 @@ function scoreFareFlexibility({ fareRules }) {
     unknowns === 0 ? "HIGH" :
     unknowns <= 1 ? "MEDIUM" :
     "LOW";
-
-  const confidence = controlRiskLevel({
-    rawRisk: rawConfidence,
-    signals,
-    unknowns
-  });
 
   log("FLEX_RISK_CONTROLLED", {
     rawConfidence,
