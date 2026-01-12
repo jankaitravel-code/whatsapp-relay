@@ -8,7 +8,7 @@ const { getAccessToken } = require("./amadeusClient");
 const AMADEUS_BASE_URL = "https://test.api.amadeus.com";
 const { normalizeBaggage } = require("./baggage/normalizeBaggage");
 const { log } = require("../utils/logger");
-const { normalizeFareRules } = require("./flexibility/normalizeFareRules");
+const { normalizeFareRules } = require("./flexibility/fareRules/normalizeFareRules");
 
 
 function durationToMinutes(isoDuration) {
