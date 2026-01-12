@@ -5,15 +5,6 @@
 
 function deriveFlexibilityCapability({ fareRules }) {
 
-  // 🧪 TEST MODE — explicit and reversible
-  const forced = process.env.TEST_FLEX_MODE;
-  if (forced) {
-    return {
-      level: forced,   // NONE | CHANGE_ONLY | CHANGE_CANCEL
-      source: "FORCED"
-    };
-  }
-
   // 🔒 No rules → no promises
   if (!fareRules) {
     return { level: "NONE", source: "FARE_RULES" };
