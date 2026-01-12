@@ -86,21 +86,19 @@ function buildConfirmationMessage(q) {
 function formatFlexibilityIndicator(flight) {
   const cap = flight?._flexibilityCapability;
 
-  if (!cap) {
+  if (!cap || !cap.level) {
     return "⚪ Flexibility not specified";
   }
 
-  switch (cap.searchTag) {
-    case "FLEXIBLE":
+  switch (cap.level) {
+    case "CHANGE_CANCEL":
       return "🟢 Free date change & cancellation";
-    case "SEMI_FLEXIBLE":
+    case "CHANGE_ONLY":
       return "🟡 Date change available";
-    case "NON_FLEXIBLE":
     default:
-      return "🔴 Not flexible";
+      return "🔴 No flexibility";
   }
 }
-
 
 /* ===============================
    Flow Entry
