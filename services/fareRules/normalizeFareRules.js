@@ -124,8 +124,9 @@ function emptyRules() {
 function ruleUnknown() {
   return {
     allowed: "UNKNOWN",
-    penalty: { type: "UNKNOWN" },
-    confidence: "LOW"
+    penalty: null,
+    confidence: "LOW",
+    source: "MISSING"   // 👈 NEW (optional but powerful)
   };
 }
 
@@ -170,7 +171,8 @@ function resolveRule({ structuredPenalty, inferred }) {
     return {
       allowed: "YES",
       penalty: structuredPenalty,
-      confidence: "HIGH"
+      confidence: "HIGH",
+      source: "STRUCTURED"
     };
   }
 
@@ -178,7 +180,8 @@ function resolveRule({ structuredPenalty, inferred }) {
     return {
       allowed: "YES",
       penalty: { type: "UNKNOWN" },
-      confidence: "MEDIUM"
+      confidence: "MEDIUM",
+      source: "TEXT"
     };
   }
 
