@@ -7,7 +7,6 @@ const axios = require("axios");
 const { getAccessToken } = require("./amadeusClient");
 const AMADEUS_BASE_URL = "https://test.api.amadeus.com";
 const { normalizeBaggage } = require("./baggage/normalizeBaggage");
-const { attachFlexibilityRisk } = require("./flexibility/attachFlexibilityRisk");
 const { log } = require("../utils/logger");
 
 
@@ -96,7 +95,7 @@ async function searchFlights(input) {
   
     // 🔒 Idempotent — attach only once
     if (!enriched._flexibilityRisk) {
-      return attachFlexibilityRisk(enriched);
+      return;
     }
   
     return enriched;
