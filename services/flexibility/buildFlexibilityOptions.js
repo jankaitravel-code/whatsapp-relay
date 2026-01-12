@@ -7,57 +7,35 @@
  * Options may downgrade (NONE), but must never contradict search.
  */
 
-function buildFlexibilityOptions({
-  baseFare,
-  fareRules,
-  capability
-}) {
-  // 🔒 Hard guard
-  if (!capability || capability.level === "NONE") {
-    return {
-      currency: "INR",
-      baseFare: baseFare ?? null,
-      options: [
-        {
-          code: "NONE",
-          label: "No date change or cancellation",
-          priceDelta: 0
-        }
-      ]
-    };
-  }
-
+function buildFlexibilityOptions({ baseFare, capability }) {
   const options = [];
 
-  // NONE is always present as downgrade
+  // Always include NONE
   options.push({
     code: "NONE",
     label: "No date change or cancellation",
     priceDelta: 0
   });
 
-  const changeAllowed = fareRules?.change?.allowed === "YES";
-  const cancelAllowed = fareRules?.cancellation?.allowed === "YES";
-
-  // CHANGE_ONLY or CHANGE_CANCEL
-  if (
-    (capability.level === "CHANGE_ONLY" ||
-     capability.level === "CHANGE_CANCEL") &&
-    changeAllowed
-  ) {
+  if (capability?.level === "CHANGE_ONLY") {
     options.push({
       code: "DATE_CHANGE",
       label: "Date change allowed",
-      priceDelta: 10 // OTA upsell
+      priceDelta: 0
     });
   }
 
-  // CHANGE_CANCEL only
-  if (capability.level === "CHANGE_CANCEL" && cancelAllowed) {
+  if (capability?.level === "CHANGE_CANCEL") {
+    options.push({
+      code: "DATE_CHANGE",
+      label: "Free date change",
+      priceDelta: 0
+    });
+
     options.push({
       code: "CANCELLATION",
-      label: "Date change + cancellation",
-      priceDelta: 25 // OTA upsell
+      label: "Free cancellation",
+      priceDelta: 0
     });
   }
 
@@ -67,6 +45,7 @@ function buildFlexibilityOptions({
     options
   };
 }
+
 
 module.exports = {
   buildFlexibilityOptions
