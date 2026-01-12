@@ -169,7 +169,7 @@ function resolveRule({ structuredPenalty, inferred }) {
   // Structured always wins
   if (structuredPenalty) {
     return {
-      allowed: "YES",
+      allowed: "YES", // interpreted as "permitted with penalty"
       penalty: structuredPenalty,
       confidence: "HIGH",
       source: "STRUCTURED"
@@ -189,7 +189,8 @@ function resolveRule({ structuredPenalty, inferred }) {
     return {
       allowed: "NO",
       penalty: { type: "UNKNOWN" },
-      confidence: "MEDIUM"
+      confidence: "MEDIUM",
+      source: "TEXT"
     };
   }
 
