@@ -13,6 +13,10 @@ const { computeOneWayFinalPrice } = require("../../services/price/computeOneWayF
 const {
   normalizeBaggage
 } = require("../../services/baggage/normalizeBaggage");
+const { buildFlexibilityOptions } = require(
+      "../../services/flexibility/buildFlexibilityOptions"
+    );
+  
 
 
 
@@ -375,7 +379,10 @@ async function handle(context) {
   if (conversation.state === "BOOKING_FLEXIBILITY") {
 
     // 🔒 HARD TERMINAL GUARD — must be first
-    if (conversation.booking._flexibilityCompleted) {
+    if (
+      conversation.booking._flexibilityCompleted ||
+      conversation.booking._flexibilitySelected
+    ) {
       log("BOOKING_FLEXIBILITY_ALREADY_COMPLETED", {
         user: from,
         flightId: conversation.booking.selectedFlight.id
@@ -383,10 +390,7 @@ async function handle(context) {
       return true;
     }
   
-    const { buildFlexibilityOptions } = require(
-      "../../services/flexibility/buildFlexibilityOptions"
-    );
-  
+    
     /* ===============================
        ENTRY — SHOW OPTIONS (ONCE)
     =============================== */
@@ -420,8 +424,7 @@ async function handle(context) {
       const flex = buildFlexibilityOptions({
         baseFare: conversation.booking.selectedFlight.price?.base ?? null,
         fareRules: conversation.booking.selectedFlight._fareRules,
-        flexibilityCapability:
-          conversation.booking.selectedFlight._flexibilityCapability
+        capability: conversation.booking.selectedFlight._flexibilityCapability
       });
 
       log("FLEXIBILITY_OPTIONS_BUILT", {
