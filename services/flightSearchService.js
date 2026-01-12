@@ -8,6 +8,7 @@ const { getAccessToken } = require("./amadeusClient");
 const AMADEUS_BASE_URL = "https://test.api.amadeus.com";
 const { normalizeBaggage } = require("./baggage/normalizeBaggage");
 const { log } = require("../utils/logger");
+const { normalizeFareRules } = require("./flexibility/normalizeFareRules");
 
 
 function durationToMinutes(isoDuration) {
@@ -88,17 +89,31 @@ async function searchFlights(input) {
   );
 
   const flights = (response.data.data || []).map(f => {
-    const enriched = {
+    const fareRules = normalizeFareRules(f);
+  
+    return {
       ...f,
-      _normalizedBaggage: normalizeBaggage(f)
+      _normalizedBaggage: normalizeBaggage(f),
+  
+      // 🔒 Defensive shape guarantee (NO logic change)
+      _fareRules: fareRules || {
+        refundability: { status: "UNKNOWN", confidence: "LOW" },
+        change: { allowed: "UNKNOWN", confidence: "LOW", source: "MISSING" },
+        cancellation: { allowed: "UNKNOWN", confidence: "LOW", source: "MISSING" }
+      }
     };
-  
-    // 🔒 Idempotent — attach only once
-    if (!enriched._flexibilityRisk) {
-      return;
-    }
-  
-    return enriched;
+  });
+
+  log("FLIGHT_FARE_RULES_NORMALIZED", {
+    count: flights.length,
+    sample: flights.slice(0, 1).map(f => ({
+      flightId: f.id,
+      refundability: f._fareRules?.refundability?.status ?? "MISSING",
+      changeAllowed: f._fareRules?.change?.allowed ?? "MISSING",
+      cancelAllowed: f._fareRules?.cancellation?.allowed ?? "MISSING",
+      changeSource: f._fareRules?.change?.source ?? "UNKNOWN",
+      cancelSource: f._fareRules?.cancellation?.source ?? "UNKNOWN"
+    }))
   });
   
   return {
