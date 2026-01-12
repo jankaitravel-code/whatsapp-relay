@@ -5,6 +5,7 @@
  */
 
 const { log } = require("../../utils/logger");
+const { controlRiskLevel } = require("./riskLevelController");
 
 function scoreFareFlexibility({ fareRules }) {
   if (!fareRules) {
@@ -63,19 +64,32 @@ function scoreFareFlexibility({ fareRules }) {
     label = "Low fare flexibility";
   }
 
-  const confidence =
+  const rawConfidence =
     unknowns === 0 ? "HIGH" :
     unknowns <= 1 ? "MEDIUM" :
     "LOW";
 
+  const confidence = controlRiskLevel({
+    rawRisk: rawConfidence,
+    signals,
+    unknowns
+  });
+
+  log("FLEX_RISK_CONTROLLED", {
+    rawConfidence,
+    effectiveConfidence: confidence,
+    mode: process.env.FLEX_RISK_MODE || "STRICT"
+  });
+
   // 🔍 PHASE 7 — Observability (confidence downgrade only)
-  if (confidence !== "HIGH") {
+
+  if (rawConfidence !== "HIGH") {
     log("FLEX_RISK_CONFIDENCE_DOWNGRADED", {
       missingSignals: Object.entries(signals)
         .filter(([, value]) => value === "UNKNOWN")
         .map(([key]) => key),
       originalConfidence: "HIGH",
-      finalConfidence: confidence
+      finalConfidence: rawConfidence
     });
   }
 
