@@ -3,8 +3,6 @@
  * Used by BOTH search and booking
  */
 
-const { controlRiskLevel } = require("./riskLevelController");
-
 function deriveFlexibilityCapability({ fareRules, flexibilityRisk }) {
   // HARD FALLBACK — no rules means no promises
   if (!fareRules) {
@@ -34,12 +32,6 @@ function deriveFlexibilityCapability({ fareRules, flexibilityRisk }) {
 
   // 🎛️ CONTROLLED RISK (THIS IS THE NEW PART)
   const rawConfidence = flexibilityRisk?.confidence ?? "LOW";
-
-  const confidence = controlRiskLevel({
-    rawRisk: rawConfidence,
-    flight: null,
-    log: flexibilityRisk?.log
-  });
 
   const searchTag =
     level === "NONE"
