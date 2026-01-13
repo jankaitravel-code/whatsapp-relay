@@ -591,12 +591,12 @@ async function handle(context) {
         upgrades.forEach(upg => {
           const key = String(idx++);
           optionMap[key] = {
-            type: upg.level,
+            type: upg.type,
             price: upg.price,
             source: "PAID_UPGRADE"
-          };    
+          };
           message += `${key}️⃣ ${
-            upg.level === "CHANGE_CANCEL" ? "Free cancellation" : "Date change"
+            upg.type === "CHANGE_CANCEL" ? "Free cancellation" : "Date change"
           } – ₹${upg.price}\n`;
         });
     
@@ -622,7 +622,7 @@ async function handle(context) {
           user: from,
           flightId: conversation.booking.selectedFlight.id,
           options: Object.values(optionMap).map(o => ({
-            level: o.level,
+            type: o.level,
             price: o.price,
             source: o.source
           }))
