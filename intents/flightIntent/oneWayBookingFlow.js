@@ -10,9 +10,6 @@
 
 const { log } = require("../../utils/logger");
 const { computeOneWayFinalPrice } = require("../../services/price/computeOneWayFinalPrice");
-const {
-  normalizeBaggage
-} = require("../../services/baggage/normalizeBaggage");
 
 const { priceFlexibilityOptions } = require("../../services/flexibility/priceFlexibilityOptions");
 
@@ -28,22 +25,6 @@ function getEmptyPreferences() {
     insurance: false,
     flexibility: null
   };
-}
-
-function formatBaggageForBooking(baggage) {
-  if (!baggage) {
-    return "Baggage: Cabin Not specified | Check-in Not specified";
-  }
-
-  const cabin = baggage.cabin
-    ? `Cabin ${baggage.cabin}`
-    : "Cabin Not specified";
-
-  const checkin = baggage.checkin
-    ? `Check-in ${baggage.checkin}`
-    : "Check-in Not specified";
-
-  return `Baggage: ${cabin} | ${checkin}`;
 }
 
 function getEligibleSpecialFares(age) {
@@ -256,9 +237,14 @@ async function handle(context) {
 
     // 🔒 ENTRY LOGIC — runs ONCE only
     if (!conversation.booking._baggageInitDone) {
-      const included = formatBaggageForBooking(
-        normalizeBaggage(conversation.booking.selectedFlight)
-      );
+      const baggageText =
+        conversation.booking.selectedFlight._normalizedBaggage ||
+        "Baggage: Cabin Not specified | Check-in Not specified";
+
+      log("BAGGAGE_CONSUMED_IN_BOOKING", {
+        flightId: conversation.booking.selectedFlight.id,
+        baggage: baggageText
+      });
   
       setConversation(from, {
         ...conversation,
@@ -269,11 +255,7 @@ async function handle(context) {
           _baggageInitDone: true
         }
       });
-
-      const baggageText = formatBaggageForBooking(
-        normalizeBaggage(conversation.booking.selectedFlight)
-      );
-      
+ 
       await sendWhatsAppMessage(
         from,
         "✈️ Flight selected. Customising your booking...\n\n" +
