@@ -13,9 +13,7 @@ const { computeOneWayFinalPrice } = require("../../services/price/computeOneWayF
 const {
   normalizeBaggage
 } = require("../../services/baggage/normalizeBaggage");
-const { buildFlexibilityOptions } = require(
-      "../../services/flexibility/buildFlexibilityOptions"
-    );
+
 const { priceFlexibilityOptions } = require("../../services/flexibility/priceFlexibilityOptions");
 
   
@@ -378,270 +376,199 @@ async function handle(context) {
     });
   }
 
-  /*========================================
-          Flexibility Block
-  ==========================================*/
- 
-  if (conversation.state === "BOOKING_FLEXIBILITY") {
-
-    // 🔒 HARD TERMINAL GUARD — must be first
-    if (
-      conversation.booking._flexibilityCompleted ||
-      conversation.booking._flexibilitySelected
-    ) {
-      log("BOOKING_FLEXIBILITY_ALREADY_COMPLETED", {
-        user: from,
-        flightId: conversation.booking.selectedFlight.id
-      });
-      return true;
-    }
-  
+    /*========================================
+            BOOKING_FLEXIBILITY
+    ==========================================*/
     
-    /* ===============================
-       ENTRY — SHOW OPTIONS (ONCE)
-    =============================== */
-  
-    if (!conversation.booking._flexibilityInitDone) {
-
-      const capability =
-        conversation.booking.selectedFlight._flexibilityCapability;
-
-      if (capability) {
-        log("FLEX_CAPABILITY_CONSUMED_IN_BOOKING", {
-          flightId: conversation.booking.selectedFlight.id,
-          level: capability.level,
-          searchTag: capability.searchTag
-        });
-      } else {
-        log("FLEX_CAPABILITY_MISSING_AT_BOOKING", {
-          flightId: conversation.booking.selectedFlight.id
-        });
-      }
-
+    if (conversation.state === "BOOKING_FLEXIBILITY") {
+    
+      // 🔒 HARD TERMINAL GUARD
       if (
-        conversation.booking.selectedFlight._flexibilityCapability &&
-        !conversation.booking.selectedFlight._flexibilityCapability.level
+        conversation.booking._flexibilityCompleted ||
+        conversation.booking._flexibilitySelected
       ) {
-        log("FLEX_CAPABILITY_MALFORMED", {
-          flightId: conversation.booking.selectedFlight.id
-        });
-      }
-
-      const flex = buildFlexibilityOptions({
-        baseFare: conversation.booking.selectedFlight.price?.base ?? null,
-        fareRules: conversation.booking.selectedFlight._fareRules,
-        capability: conversation.booking.selectedFlight._flexibilityCapability
-      });
-
-      log("FLEXIBILITY_OPTIONS_BUILT", {
-        user: from,
-        flightId: conversation.booking.selectedFlight.id,
-        options: Array.isArray(flex?.options)
-          ? flex.options.map(o => ({
-              code: o.code,
-              label: o.label,
-              priceDelta: o.priceDelta ?? null
-            }))
-          : [],
-        currency: flex?.currency ?? null
-      });
-
-      if (!conversation.booking.selectedFlight._fareRules) {
-        log("FLEXIBILITY_RULES_MISSING", {
+        log("BOOKING_FLEXIBILITY_ALREADY_COMPLETED", {
           user: from,
           flightId: conversation.booking.selectedFlight.id
         });
-      }
-
-  
-      // ❌ No valid options → auto continue
-      if (!flex || !Array.isArray(flex.options) || flex.options.length === 0) {
-
-        log("FLEXIBILITY_SKIPPED", {
-          user: from,
-          flightId: conversation.booking.selectedFlight.id,
-          reason: "NO_VALID_OPTIONS"
-        });
-
-        setConversation(from, {
-          ...conversation,
-          state: "BOOKING_DISCOUNT",
-          booking: {
-            ...conversation.booking,
-            preferences: {
-              ...conversation.booking.preferences,
-              null
-            },
-            _flexibilityInitDone: true,
-            _flexibilitySelected: true,
-            _flexibilityCompleted: true,   // ✅ ADD THIS
-            _flexibilityOptions: null,
-            _flexibilityOptionMap: null
-          }
-        });
-  
-        await sendWhatsAppMessage(
-          from,
-          "⚠️ Flexibility options are unavailable for this flight.\n\n" +
-          "Continuing without flexibility."
-        );
-  
         return true;
       }
-  
-      // ✅ Build option map
-
-      const cap = conversation.booking.selectedFlight._flexibilityCapability;
-
-      // 🔒 AUTO-SKIP: already fully flexible
-      if (cap?.level === "CHANGE_CANCEL") {
-        log("FLEXIBILITY_SKIPPED", {
-          user: from,
-          flightId: conversation.booking.selectedFlight.id,
-          reason: "ALREADY_FULLY_FLEXIBLE"
+    
+      /* ===============================
+         ENTRY — SHOW OPTIONS (ONCE)
+      =============================== */
+    
+      if (!conversation.booking._flexibilityInitDone) {
+    
+        const cap = conversation.booking.selectedFlight._flexibilityCapability;
+    
+        if (cap) {
+          log("FLEX_CAPABILITY_CONSUMED_IN_BOOKING", {
+            flightId: conversation.booking.selectedFlight.id,
+            level: cap.level
+          });
+        }
+    
+        // 🟢 INCLUDED FULL FLEXIBILITY → AUTO SKIP
+        if (cap?.level === "CHANGE_CANCEL") {
+          setConversation(from, {
+            ...conversation,
+            state: "BOOKING_DISCOUNT",
+            booking: {
+              ...conversation.booking,
+              preferences: {
+                ...conversation.booking.preferences,
+                flexibility: {
+                  level: "CHANGE_CANCEL",
+                  price: 0,
+                  source: "INCLUDED"
+                }
+              },
+              _flexibilityInitDone: true,
+              _flexibilitySelected: true,
+              _flexibilityCompleted: true
+            }
+          });
+    
+          await sendWhatsAppMessage(
+            from,
+            "🟢 Free date change & cancellation included.\n\n" +
+            "You can now enter a discount or coupon code."
+          );
+          return true;
+        }
+    
+        // 💰 PAID UPGRADES
+        const upgrades = priceFlexibilityOptions({
+          flight: conversation.booking.selectedFlight,
+          baseCapability: cap
         });
-      
-        setConversation(from, {
-          ...conversation,
-          state: "BOOKING_DISCOUNT",
-          booking: {
-            ...conversation.booking,
-            preferences: {
-              ...conversation.booking.preferences,
-              flexibility: {
-                level: "CHANGE_CANCEL",
-                price: 0,
-                source: "INCLUDED"
-              }
-            },
-            _flexibilityInitDone: true,
-            _flexibilitySelected: true,
-            _flexibilityCompleted: true
-          }
+    
+        // ❌ NOTHING TO OFFER
+        if (!Array.isArray(upgrades) || upgrades.length === 0) {
+          setConversation(from, {
+            ...conversation,
+            state: "BOOKING_DISCOUNT",
+            booking: {
+              ...conversation.booking,
+              preferences: {
+                ...conversation.booking.preferences,
+                flexibility: null
+              },
+              _flexibilityInitDone: true,
+              _flexibilitySelected: true,
+              _flexibilityCompleted: true
+            }
+          });
+    
+          await sendWhatsAppMessage(
+            from,
+            "⚠️ No flexibility upgrades available.\n\nContinuing without flexibility."
+          );
+          return true;
+        }
+    
+        // 🔧 BUILD UI
+        let message = "🔁 Flexibility\n\n";
+        const optionMap = {};
+        let idx = 1;
+    
+        if (!cap || cap.level === "NONE") {
+          message += "🔴 No date change or cancellation included.\n\n";
+        } else if (cap.level === "CHANGE_ONLY") {
+          message += "🟡 Date change available.\n\n";
+        }
+    
+        upgrades.forEach(upg => {
+          const key = String(idx++);
+          optionMap[key] = {
+            level: upg.level,
+            price: upg.price,
+            source: "PAID_UPGRADE"
+          };
+    
+          message += `${key}️⃣ ${
+            upg.level === "CHANGE_CANCEL" ? "Free cancellation" : "Date change"
+          } – ₹${upg.price}\n`;
         });
-      
-        await sendWhatsAppMessage(
-          from,
-          "🟢 Free date change & cancellation included.\n\n" +
-          "You can now enter a discount or coupon code."
-        );
-      
-        return true;
-      }
-      
-      const pricedUpgrades = priceFlexibilityOptions({
-        flight: conversation.booking.selectedFlight,
-        baseCapability: cap
-      });
-      
-      let flexMessage = "🔁 Flexibility\n\n";
-      const optionMap = {};
-      let optionIndex = 1;
-      
-      /* Capability info */
-      if (!cap || cap.level === "NONE") {
-        flexMessage += "🔴 No date change or cancellation included.\n\n";
-      } else if (cap.level === "CHANGE_ONLY") {
-        flexMessage += "🟡 Date change available.\n\n";
-      }
-      
-      /* Paid upgrades */
-      pricedUpgrades.forEach(upg => {
-        const key = String(optionIndex++);
-        optionMap[key] = {
-          level: upg.level,
-          price: upg.price,
-          source: "PAID_UPGRADE"
+    
+        const skipKey = String(idx);
+        optionMap[skipKey] = {
+          level: "NONE",
+          price: 0,
+          source: "SKIPPED"
         };
-      
-        const label =
-          upg.level === "CHANGE_CANCEL"
-            ? "Free cancellation"
-            : "Date change";
-      
-        flexMessage += `${key}️⃣ ${label} – ₹${upg.price}\n`;
-      });
-      
-      /* Skip */
-      const skipKey = String(optionIndex);
-      optionMap[skipKey] = {
-        level: "NONE",
-        price: 0,
-        source: "SKIPPED"
-      };
-      
-      flexMessage += `${skipKey}️⃣ Continue without flexibility\n`;
-      
+    
+        message += `${skipKey}️⃣ Continue without flexibility\n`;
+    
+        setConversation(from, {
+          ...conversation,
+          booking: {
+            ...conversation.booking,
+            _flexibilityOptionMap: optionMap,
+            _flexibilityInitDone: true
+          }
+        });
+
+        log("FLEXIBILITY_OPTIONS_SHOWN", {
+          user: from,
+          flightId: conversation.booking.selectedFlight.id,
+          options: Object.values(optionMap).map(o => ({
+            level: o.level,
+            price: o.price,
+            source: o.source
+          }))
+        });
+
+    
+        await sendWhatsAppMessage(from, message);
+        return true;
+      }
+    
+      /* ===============================
+         INPUT — CAPTURE SELECTION
+      =============================== */
+    
+      const map = conversation.booking._flexibilityOptionMap;
+      const selected = map?.[lower];
+    
+      if (!selected) {
+        await sendWhatsAppMessage(
+          from,
+          "❌ Please select a valid flexibility option."
+        );
+        return true;
+      }
+
+      const { _flexibilityOptionMap, ...bookingRest } = conversation.booking;
+
       setConversation(from, {
         ...conversation,
+        state: "BOOKING_DISCOUNT",
         booking: {
-          ...conversation.booking,
-          _flexibilityOptionMap: optionMap,
-          _flexibilityInitDone: true
+          ...bookingRest,
+          preferences: {
+            ...bookingRest.preferences,
+            flexibility:
+              selected.level === "NONE"
+                ? null
+                : selected
+          },
+          _flexibilitySelected: true,
+          _flexibilityCompleted: true
         }
       });
-      
-      await sendWhatsAppMessage(from, flexMessage);
-      return true;
-    }
-  
-    /* ===============================
-       INPUT — CAPTURE SELECTION
-    =============================== */
-
-    if (conversation.booking._flexibilitySelected) {
-      return true;
-    }
-
-    const map = conversation.booking._flexibilityOptionMap;
-    const selected = map?.[lower];
-
-    if (!selected) {
+    
       await sendWhatsAppMessage(
         from,
-        "❌ Please select a valid flexibility option."
+        "🔁 Flexibility selected.\n\n" +
+        "If you have a discount or coupon code, please enter it now.\n" +
+        "Reply *NONE* if you don’t have one."
       );
+    
       return true;
     }
 
-    log("FLEXIBILITY_SELECTED", {
-      user: from,
-      flightId: conversation.booking.selectedFlight.id,
-      level: selected.level,
-      price: selected.price,
-      source: selected.source
-    });
-
-    setConversation(from, {
-      ...conversation,
-      state: "BOOKING_DISCOUNT",
-      booking: {
-        ...conversation.booking,
-        preferences: {
-          ...conversation.booking.preferences,
-          flexibility:
-            selected.level === "NONE"
-              ? null
-              : {
-                  level: selected.level,
-                  price: selected.price,
-                  source: selected.source
-                }
-        },
-        _flexibilitySelected: true,
-        _flexibilityCompleted: true   // ✅ ADD THIS
-      }
-    });
-  
-    await sendWhatsAppMessage(
-      from,
-      `🔁 Flexibility selected.\n\n` +
-      "If you have a discount or coupon code, please enter it now.\n" +
-      "Reply *NONE* if you don’t have one."
-    );
-  
-    return true;
-  }
 
   /* ===============================
      BOOKING_DISCOUNT
