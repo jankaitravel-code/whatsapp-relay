@@ -16,6 +16,8 @@ const {
 const { buildFlexibilityOptions } = require(
       "../../services/flexibility/buildFlexibilityOptions"
     );
+const { priceFlexibilityOptions } = require("../../services/flexibility/priceFlexibilityOptions");
+
   
 
 
@@ -194,6 +196,7 @@ async function runPriceCompute({
     from,
     `💰 Final Price\n\n` +
     `Base Fare: ${price.currency} ${price.base.total}\n` +
+    `Flexibility: ${price.currency} ${conversation.booking.preferences.flexibility.price}\n` +
     `Extras: ${price.currency} ${price.totals.bookingAdjustments}\n` +
     `Discount: ${price.currency} ${price.bookingAdjustments.discount.delta}\n\n` +
     `*Total Payable: ${price.currency} ${price.totals.grandTotal}*\n\n` +
@@ -427,6 +430,12 @@ async function handle(context) {
         capability: conversation.booking.selectedFlight._flexibilityCapability
       });
 
+      const pricedUpgrades = priceFlexibilityOptions({
+        flight: conversation.booking.selectedFlight,
+        baseCapability: conversation.booking.selectedFlight._flexibilityCapability
+      });
+
+
       log("FLEXIBILITY_OPTIONS_BUILT", {
         user: from,
         flightId: conversation.booking.selectedFlight.id,
@@ -486,12 +495,49 @@ async function handle(context) {
       // ✅ Build option map
       let message = "🔁 Choose a flexibility option:\n\n";
       const optionMap = {};
-  
-      flex.options.forEach((opt, idx) => {
-        const key = String(idx + 1);
-        optionMap[key] = opt.code;
+
+      let message = "🔁 Choose a flexibility option:\n\n";
+      const optionMap = {};
+      let optionIndex = 1;
+      
+      /* INCLUDED OPTIONS (FREE) */
+      flex.options.forEach(opt => {
+        const key = String(optionIndex++);
+        optionMap[key] = {
+          level: opt.code,
+          price: 0,
+          source: "INCLUDED"
+        };
+      
         message += `${key}️⃣ ${opt.label}\n`;
       });
+      
+      /* PAID UPGRADES */
+      pricedUpgrades.forEach(upg => {
+        const key = String(optionIndex++);
+        optionMap[key] = {
+          level: upg.level,
+          price: upg.price,
+          source: "PAID_UPGRADE"
+        };
+      
+        const label =
+          upg.level === "CHANGE_CANCEL"
+            ? "Free cancellation"
+            : "Date change";
+      
+        message += `${key}️⃣ ${label} – ₹${upg.price}\n`;
+      });
+      
+      /* SKIP */
+      const skipKey = String(optionIndex);
+      optionMap[skipKey] = {
+        level: "NONE",
+        price: 0,
+        source: "SKIPPED"
+      };
+      
+      message += `${skipKey}️⃣ Continue without flexibility\n`;
 
       setConversation(from, {
         ...conversation,
@@ -515,10 +561,10 @@ async function handle(context) {
     if (conversation.booking._flexibilitySelected) {
       return true;
     }
-  
+
     const map = conversation.booking._flexibilityOptionMap;
-    const selectedCode = map?.[lower];
-  
+    const selected = map?.[lower];
+
     if (!selectedCode) {
       await sendWhatsAppMessage(
         from,
@@ -530,7 +576,9 @@ async function handle(context) {
     log("FLEXIBILITY_SELECTED", {
       user: from,
       flightId: conversation.booking.selectedFlight.id,
-      selectedCode
+      level: selected.level,
+      price: selected.price,
+      source: selected.source
     });
 
     setConversation(from, {
@@ -540,7 +588,14 @@ async function handle(context) {
         ...conversation.booking,
         preferences: {
           ...conversation.booking.preferences,
-          flexibility: selectedCode   // 🔒 CODE ONLY (correct)
+          flexibility:
+            selected.level === "NONE"
+              ? null
+              : {
+                  level: selected.level,
+                  price: selected.price,
+                  source: selected.source
+                }
         },
         _flexibilitySelected: true,
         _flexibilityCompleted: true   // ✅ ADD THIS
