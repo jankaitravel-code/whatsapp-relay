@@ -87,16 +87,16 @@ function formatFlexibilityIndicator(flight) {
   const cap = flight?._flexibilityCapability;
 
   if (!cap || !cap.level) {
-    return "⚪ Flexibility not specified";
+    return "⚪ Fare flexibility not specified";
   }
 
   switch (cap.level) {
     case "CHANGE_CANCEL":
       return "🟢 Free date change & cancellation";
     case "CHANGE_ONLY":
-      return "🟡 Date change available";
+      return "🟡 Free date change";
     default:
-      return "🔴 No flexibility";
+      return "🔴 Fare flexibility not free";
   }
 }
 
