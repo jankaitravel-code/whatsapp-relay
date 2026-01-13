@@ -523,7 +523,7 @@ async function handle(context) {
               preferences: {
                 ...conversation.booking.preferences,
                 flexibility: {
-                  level: "CHANGE_CANCEL",
+                  type: "CHANGE_CANCEL",
                   price: 0,
                   source: "INCLUDED"
                 }
@@ -586,11 +586,10 @@ async function handle(context) {
         upgrades.forEach(upg => {
           const key = String(idx++);
           optionMap[key] = {
-            level: upg.level,
+            type: upg.level,
             price: upg.price,
             source: "PAID_UPGRADE"
-          };
-    
+          };    
           message += `${key}️⃣ ${
             upg.level === "CHANGE_CANCEL" ? "Free cancellation" : "Date change"
           } – ₹${upg.price}\n`;
@@ -598,7 +597,7 @@ async function handle(context) {
     
         const skipKey = String(idx);
         optionMap[skipKey] = {
-          level: "NONE",
+          type: "NONE",
           price: 0,
           source: "SKIPPED"
         };
@@ -654,7 +653,7 @@ async function handle(context) {
           preferences: {
             ...bookingRest.preferences,
             flexibility:
-              selected.level === "NONE"
+              selected.type === "NONE"
                 ? null
                 : selected
           },
