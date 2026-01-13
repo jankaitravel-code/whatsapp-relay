@@ -13,6 +13,8 @@ const { computeOneWayFinalPrice } = require("../../services/price/computeOneWayF
 
 const { priceFlexibilityOptions } = require("../../services/flexibility/priceFlexibilityOptions");
 const BAGGAGE_PRICE_PER_KG = 500;
+const INSURANCE_PRICE = 200;
+
 
 function getEmptyPreferences() {
   return {
@@ -20,7 +22,7 @@ function getEmptyPreferences() {
     baggageCost: 0,
     meal: null,
     seats: null,
-    insurance: false,
+    insurance: { selected: false, price: 0 },
     flexibility: null
   };
 }
@@ -173,9 +175,11 @@ async function runPriceCompute({
   conversation.booking.preferences?.flexibility?.price || 0;
   const baggageCost =
   conversation.booking.preferences?.baggageCost || 0;
+  const insuranceCost =
+  conversation.booking.preferences?.insurance?.price || 0;
   const otherExtras = Math.max(
     0,
-    price.totals.bookingAdjustments - baggageCost
+    price.totals.bookingAdjustments - baggageCost - insuranceCost
   );
 
 
@@ -184,8 +188,9 @@ async function runPriceCompute({
     `💰 Final Price\n\n` +
     `Base Fare: ${price.currency} ${price.base.total}\n` +
     `Extra Baggage: ${price.currency} ${baggageCost}\n` +
+    `Insurance: ${price.currency} ${insuranceCost}\n` +
     `Flexibility: ${price.currency} ${flexPrice}\n` +
-    `Extras (Seats / Meals / Insurance): ${price.currency} ${otherExtras}\n` +
+    `Extras (Seats / Meals): ${price.currency} ${otherExtras}\n` +
     `Discount: ${price.currency} ${price.bookingAdjustments.discount.delta}\n\n` +
     `*Total Payable: ${price.currency} ${price.totals.grandTotal}*\n\n` +
     `Reply *PAY* to continue`
@@ -309,8 +314,8 @@ async function handle(context) {
         from,
         "🧳 No extra baggage added.\n\n" +
         "🛡️ Would you like to add travel insurance?\n\n" +
-        "1️⃣ Yes, add insurance\n" +
-        "2️⃣ No, continue without insurance"
+        "1️⃣ Yes (₹200 additional)\n" +
+        "2️⃣ No"
       );
     
       return true;
@@ -409,8 +414,8 @@ async function handle(context) {
       from,
       `✅ Extra baggage added: ${pending.kg} kg (₹${pending.cost})\n\n` +
       "🛡️ Would you like to add travel insurance?\n\n" +
-      "1️⃣ Yes, add insurance\n" +
-      "2️⃣ No, continue without insurance"
+      "1️⃣ Yes (₹200 additional)\n" +
+      "2️⃣ No"
     );
   
     return true;
@@ -445,6 +450,8 @@ async function handle(context) {
         preferences: {
           ...conversation.booking.preferences,
           insurance: insuranceSelected
+            ? { selected: true, price: INSURANCE_PRICE }
+            : { selected: false, price: 0 }
         },
         _insuranceSelected: true
       }
@@ -452,6 +459,13 @@ async function handle(context) {
   
     // 🔒 Persist
     setConversation(from, updatedConversation);
+
+    log("INSURANCE_SELECTED", {
+      user: from,
+      selected: insuranceSelected,
+      price: insuranceSelected ? INSURANCE_PRICE : 0
+    });
+
   
     await sendWhatsAppMessage(
       from,
