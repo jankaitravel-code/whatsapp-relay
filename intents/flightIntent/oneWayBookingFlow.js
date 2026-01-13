@@ -250,7 +250,7 @@ async function handle(context) {
         ...conversation,
         booking: {
           ...conversation.booking,
-          includedBaggage: included,
+          includedBaggage: baggageText,
           preferences: getEmptyPreferences(),
           _baggageInitDone: true
         }
