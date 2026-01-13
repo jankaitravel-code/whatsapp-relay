@@ -32,10 +32,6 @@ function getMealPrice(meal) {
   return map[meal] ?? 0;
 }
 
-function getInsurancePrice(enabled) {
-  return enabled ? 499 : 0;
-}
-
 function getDiscountDelta(code) {
   if (!code) return 0;
 
@@ -105,7 +101,7 @@ function computeOneWayFinalPrice({
      BOOKING-LEVEL ADJUSTMENTS
   ------------------------------ */
   const baggagePrice = preferences?.baggageCost ?? 0;
-  const insurancePrice = getInsurancePrice(preferences?.insurance);
+  const insurancePrice = preferences?.insurance?.price ?? 0;
   const flexibilityPrice = preferences?.flexibility?.price ?? 0;
   const discountDelta = getDiscountDelta(discountCode);
 
