@@ -22,7 +22,7 @@ function getEmptyPreferences() {
     baggageCost: 0,
     meal: null,
     seats: null,
-    insurance: { selected: false, price: 0 },
+    insurance: false,
     flexibility: null
   };
 }
@@ -450,8 +450,6 @@ async function handle(context) {
         preferences: {
           ...conversation.booking.preferences,
           insurance: insuranceSelected
-            ? { selected: true, price: INSURANCE_PRICE }
-            : { selected: false, price: 0 }
         },
         _insuranceSelected: true
       }
