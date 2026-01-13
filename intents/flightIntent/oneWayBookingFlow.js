@@ -177,14 +177,12 @@ async function runPriceCompute({
   conversation.booking.preferences?.baggageCost || 0;
   const insuranceCost =
   conversation.booking.preferences?.insurance?.price || 0;
-  const otherExtras = Math.max(
-    0,
+  const otherExtras =
     price.totals.bookingAdjustments -
-      baggageCost -
-      insuranceCost -
-      flexPrice
-  );
-
+    baggageCost -
+    insuranceCost -
+    flexPrice -
+    (price.bookingAdjustments.discount?.delta ?? 0);
 
   await sendWhatsAppMessage(
     from,
@@ -512,9 +510,10 @@ async function handle(context) {
         const cap = conversation.booking.selectedFlight._flexibilityCapability;
     
         if (cap) {
+
           log("FLEX_CAPABILITY_CONSUMED_IN_BOOKING", {
             flightId: conversation.booking.selectedFlight.id,
-            level: cap.level
+            capability: cap.level
           });
         }
     
@@ -622,12 +621,11 @@ async function handle(context) {
           user: from,
           flightId: conversation.booking.selectedFlight.id,
           options: Object.values(optionMap).map(o => ({
-            type: o.level,
+            type: o.type,
             price: o.price,
             source: o.source
           }))
         });
-
     
         await sendWhatsAppMessage(from, message);
         return true;
