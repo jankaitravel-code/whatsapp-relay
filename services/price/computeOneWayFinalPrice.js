@@ -36,18 +36,6 @@ function getInsurancePrice(enabled) {
   return enabled ? 499 : 0;
 }
 
-function getFlexibilityPrice(flex) {
-  if (!flex || !flex.type) return 0;
-
-  const map = {
-    NONE: 0,
-    DATE_CHANGE: 899,
-    FULL_FLEX: 1499
-  };
-
-  return map[flex.type] ?? 0;
-}
-
 function getDiscountDelta(code) {
   if (!code) return 0;
 
@@ -118,7 +106,7 @@ function computeOneWayFinalPrice({
   ------------------------------ */
   const baggagePrice = preferences?.baggageCost ?? 0;
   const insurancePrice = getInsurancePrice(preferences?.insurance);
-  const flexibilityPrice = getFlexibilityPrice(preferences?.flexibility);
+  const flexibilityPrice = preferences?.flexibility?.price ?? 0;
   const discountDelta = getDiscountDelta(discountCode);
 
   const bookingAdjustmentTotal =
