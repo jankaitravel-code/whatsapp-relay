@@ -179,7 +179,10 @@ async function runPriceCompute({
   conversation.booking.preferences?.insurance?.price || 0;
   const otherExtras = Math.max(
     0,
-    price.totals.bookingAdjustments - baggageCost - insuranceCost
+    price.totals.bookingAdjustments -
+      baggageCost -
+      insuranceCost -
+      flexPrice
   );
 
 
