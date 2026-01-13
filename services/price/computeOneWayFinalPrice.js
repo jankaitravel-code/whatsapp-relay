@@ -138,7 +138,10 @@ function computeOneWayFinalPrice({
         extraKg: preferences?.baggageKg ?? 0,
         price: baggagePrice
       },
-      enabled: preferences?.insurance === true,    
+      insurance: {
+        selected: preferences?.insurance?.selected ?? false,
+        price: insurancePrice
+      },
       flexibility: {
         type: preferences?.flexibility?.type ?? "NONE",
         price: flexibilityPrice
@@ -148,7 +151,6 @@ function computeOneWayFinalPrice({
         delta: discountDelta
       }
     },
-
     totals: {
       travellerAdjustments: travellerDeltaTotal,
       bookingAdjustments: bookingAdjustmentTotal,
