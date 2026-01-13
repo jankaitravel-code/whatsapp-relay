@@ -493,8 +493,6 @@ async function handle(context) {
       }
   
       // ✅ Build option map
-      let message = "🔁 Choose a flexibility option:\n\n";
-      const optionMap = {};
 
       let message = "🔁 Choose a flexibility option:\n\n";
       const optionMap = {};
