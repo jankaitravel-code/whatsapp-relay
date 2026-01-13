@@ -32,11 +32,6 @@ function getMealPrice(meal) {
   return map[meal] ?? 0;
 }
 
-function getBaggagePrice(extraKg) {
-  if (!extraKg || extraKg <= 0) return 0;
-  return extraKg * 120; // ₹120 per kg (stub)
-}
-
 function getInsurancePrice(enabled) {
   return enabled ? 499 : 0;
 }
@@ -121,7 +116,7 @@ function computeOneWayFinalPrice({
   /* ------------------------------
      BOOKING-LEVEL ADJUSTMENTS
   ------------------------------ */
-  const baggagePrice = getBaggagePrice(preferences?.baggageKg);
+  const baggagePrice = preferences?.baggageCost ?? 0;
   const insurancePrice = getInsurancePrice(preferences?.insurance);
   const flexibilityPrice = getFlexibilityPrice(preferences?.flexibility);
   const discountDelta = getDiscountDelta(discountCode);
