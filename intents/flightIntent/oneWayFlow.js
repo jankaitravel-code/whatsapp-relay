@@ -673,8 +673,20 @@ async function handle(context) {
        );
        return true;
      }
-   
-     const selectedFlight = results.rawFlights[index];
+
+     const selectedFlightRaw = results.rawFlights[index];
+
+     const selectedFlight = {
+       ...selectedFlightRaw,
+       _normalizedBaggage: normalizeBaggage(selectedFlightRaw)
+     };
+
+     log("BAGGAGE_NORMALIZED_AT_HANDOFF", {
+        flightId: selectedFlight.id,
+        baggage: selectedFlight._normalizedBaggage
+      });
+
+
 
      if (!selectedFlight._flexibilityCapability) {
         selectedFlight._flexibilityCapability =
