@@ -14,12 +14,12 @@ function round(amount) {
   return Math.round(amount);
 }
 
-function calculateUpgradePrice(flight, level) {
+function calculateUpgradePrice(flight, type) {
   const baseFare = Number(flight?.price?.total || 0);
 
   if (!baseFare) return 0;
 
-  switch (level) {
+  switch (type) {
     case "CHANGE_ONLY":
       return round(baseFare * 0.07);
 
@@ -42,7 +42,7 @@ function priceFlexibilityOptions({ flight, baseCapability }) {
 
     case "CHANGE_ONLY":
       options.push({
-        level: "CHANGE_CANCEL",
+        type: "CHANGE_CANCEL",
         price: calculateUpgradePrice(flight, "CHANGE_CANCEL"),
         source: "PAID_UPGRADE"
       });
@@ -51,12 +51,12 @@ function priceFlexibilityOptions({ flight, baseCapability }) {
     case "NONE":
       options.push(
         {
-          level: "CHANGE_ONLY",
+          type: "CHANGE_ONLY",
           price: calculateUpgradePrice(flight, "CHANGE_ONLY"),
           source: "PAID_UPGRADE"
         },
         {
-          level: "CHANGE_CANCEL",
+          type: "CHANGE_CANCEL",
           price: calculateUpgradePrice(flight, "CHANGE_CANCEL"),
           source: "PAID_UPGRADE"
         }
