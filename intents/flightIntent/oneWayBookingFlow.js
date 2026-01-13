@@ -12,14 +12,12 @@ const { log } = require("../../utils/logger");
 const { computeOneWayFinalPrice } = require("../../services/price/computeOneWayFinalPrice");
 
 const { priceFlexibilityOptions } = require("../../services/flexibility/priceFlexibilityOptions");
-
-  
-
-
+const BAGGAGE_PRICE_PER_KG = 500;
 
 function getEmptyPreferences() {
   return {
     baggageKg: 0,
+    baggageCost: 0,
     meal: null,
     seats: null,
     insurance: false,
@@ -173,13 +171,21 @@ async function runPriceCompute({
 
   const flexPrice =
   conversation.booking.preferences?.flexibility?.price || 0;
+  const baggageCost =
+  conversation.booking.preferences?.baggageCost || 0;
+  const otherExtras = Math.max(
+    0,
+    price.totals.bookingAdjustments - baggageCost
+  );
+
 
   await sendWhatsAppMessage(
     from,
     `💰 Final Price\n\n` +
     `Base Fare: ${price.currency} ${price.base.total}\n` +
+    `Extra Baggage: ${price.currency} ${baggageCost}\n` +
     `Flexibility: ${price.currency} ${flexPrice}\n` +
-    `Extras: ${price.currency} ${price.totals.bookingAdjustments}\n` +
+    `Extras (Seats / Meals / Insurance): ${price.currency} ${otherExtras}\n` +
     `Discount: ${price.currency} ${price.bookingAdjustments.discount.delta}\n\n` +
     `*Total Payable: ${price.currency} ${price.totals.grandTotal}*\n\n` +
     `Reply *PAY* to continue`
@@ -281,7 +287,102 @@ async function handle(context) {
       );
       return true;
     }
+
+    // 🔹 ZERO KG → SKIP COSTING
+    if (kg === 0) {
+      setConversation(from, {
+        ...conversation,
+        state: "BOOKING_INSURANCE",
+        booking: {
+          ...conversation.booking,
+          preferences: {
+            ...conversation.booking.preferences,
+            baggageKg: 0,
+            baggageCost: 0
+          },
+          _pendingBaggage: null,
+          _baggageCaptured: true
+        }
+      });
+    
+      await sendWhatsAppMessage(
+        from,
+        "🧳 No extra baggage added.\n\n" +
+        "🛡️ Would you like to add travel insurance?\n\n" +
+        "1️⃣ Yes, add insurance\n" +
+        "2️⃣ No, continue without insurance"
+      );
+    
+      return true;
+    }
+    
+    // 🔹 PAID BAGGAGE → CONFIRM COST
+    const baggageCost = kg * BAGGAGE_PRICE_PER_KG;
+    
+    setConversation(from, {
+      ...conversation,
+      state: "BOOKING_BAGGAGE_CONFIRM",
+      booking: {
+        ...conversation.booking,
+        _pendingBaggage: {
+          kg,
+          cost: baggageCost
+        }
+      }
+    });
+    
+    await sendWhatsAppMessage(
+      from,
+      `🧳 Extra baggage summary\n\n` +
+      `Additional baggage: ${kg} kg\n` +
+      `Cost: ₹${baggageCost}\n\n` +
+      `Reply *YES* to confirm or *NO* to change baggage`
+    );
+    
+    return true;
+  }
+
+  /*==============================
+    Excess Baggage confirmation block
+  ==============================*/
+
+
+  if (conversation.state === "BOOKING_BAGGAGE_CONFIRM") {
   
+    const pending = conversation.booking._pendingBaggage;
+  
+    if (!pending) {
+      return true; // safety
+    }
+  
+    if (lower === "no") {
+      // Go back to baggage input
+      setConversation(from, {
+        ...conversation,
+        state: "BOOKING_BAGGAGE",
+        booking: {
+          ...conversation.booking,
+          _baggageCaptured: false,
+          _pendingBaggage: null
+        }
+      });
+  
+      await sendWhatsAppMessage(
+        from,
+        "🔁 Please enter extra baggage weight again.\nExample: 0, 5, 10, or 15"
+      );
+      return true;
+    }
+  
+    if (lower !== "yes") {
+      await sendWhatsAppMessage(
+        from,
+        "❌ Please reply *YES* to confirm or *NO* to change baggage."
+      );
+      return true;
+    }
+  
+    // ✅ CONFIRM
     setConversation(from, {
       ...conversation,
       state: "BOOKING_INSURANCE",
@@ -289,15 +390,24 @@ async function handle(context) {
         ...conversation.booking,
         preferences: {
           ...conversation.booking.preferences,
-          baggageKg: kg
+          baggageKg: pending.kg,
+          baggageCost: pending.cost
         },
+        _pendingBaggage: null,
         _baggageCaptured: true
       }
+    });
+
+    log("PAID_BAGGAGE_CONFIRMED", {
+      user: from,
+      flightId: conversation.booking.selectedFlight.id,
+      kg: pending.kg,
+      cost: pending.cost
     });
   
     await sendWhatsAppMessage(
       from,
-      `✅ Extra baggage set to ${kg} kg.\n\n` +
+      `✅ Extra baggage added: ${pending.kg} kg (₹${pending.cost})\n\n` +
       "🛡️ Would you like to add travel insurance?\n\n" +
       "1️⃣ Yes, add insurance\n" +
       "2️⃣ No, continue without insurance"
@@ -305,6 +415,7 @@ async function handle(context) {
   
     return true;
   }
+
 
   /*==============================
     Insurance block
