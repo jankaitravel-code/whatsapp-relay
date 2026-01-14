@@ -1278,6 +1278,11 @@ async function handle(context) {
   =============================== */
   
   if (conversation.state === "BOOKING_GST_DETAILS") {
+
+    if (conversation.booking._gstCaptured) {
+      return true;
+    }
+
   
     // 🔒 ENTRY — prompt exactly once
     if (!conversation.booking._gstEntryShown) {
@@ -1309,34 +1314,34 @@ async function handle(context) {
     }
   
     const input = lower.trim();
-  
-    // ⏭️ SKIP
+
     if (input === "none") {
       const updatedConversation = {
         ...conversation,
+        state: "BOOKING_PRICE_COMPUTE", // 👈 NEW TERMINAL STATE
         booking: {
           ...conversation.booking,
           _gstCaptured: true
         }
       };
-  
+    
       setConversation(from, updatedConversation);
-  
+    
       await sendWhatsAppMessage(
         from,
         "⏭️ GST details skipped.\n\nCalculating final price…"
       );
-  
+    
       await runPriceCompute({
         from,
         conversation: updatedConversation,
         sendWhatsAppMessage,
         setConversation
       });
-  
+    
       return true;
     }
-  
+
     // 🔒 PLAUSIBILITY (emoji / junk)
     if (!isPlausibleGSTInput(rawText)) {
       await sendWhatsAppMessage(
