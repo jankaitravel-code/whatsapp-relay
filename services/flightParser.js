@@ -103,7 +103,9 @@ async function parseFlightQuery(text) {
     destination,
     date: outboundDate,
     returnDate: returnDate || null,
-    tripType
+    tripType,
+    // 👇 SEARCH-ONLY metadata (populated later)
+    airlineRules: null
   };
 }
 
