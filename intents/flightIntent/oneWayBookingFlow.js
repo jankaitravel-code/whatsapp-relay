@@ -1276,15 +1276,91 @@ async function handle(context) {
   /* ===============================
      BOOKING_GST_DETAILS
   =============================== */
-  
+
   if (conversation.state === "BOOKING_GST_DETAILS") {
 
+    // 🔒 HARD TERMINAL — GST already handled
     if (conversation.booking._gstCaptured) {
       return true;
     }
-
   
-    // 🔒 ENTRY — prompt exactly once
+    const raw = rawText?.trim();
+    const input = raw?.toLowerCase();
+  
+    /* ===============================
+       INPUT HANDLING FIRST
+    =============================== */
+  
+    if (input === "none") {
+      const updatedConversation = {
+        ...conversation,
+        state: "BOOKING_PRICE_COMPUTE", // terminal transition
+        booking: {
+          ...conversation.booking,
+          _gstCaptured: true
+        }
+      };
+  
+      setConversation(from, updatedConversation);
+  
+      await sendWhatsAppMessage(
+        from,
+        "⏭️ GST details skipped.\n\nCalculating final price…"
+      );
+  
+      await runPriceCompute({
+        from,
+        conversation: updatedConversation,
+        sendWhatsAppMessage,
+        setConversation
+      });
+  
+      return true;
+    }
+  
+    if (raw && isPlausibleGSTInput(raw)) {
+      const gstRegex =
+        /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/;
+  
+      if (gstRegex.test(raw.toUpperCase())) {
+        const updatedConversation = {
+          ...conversation,
+          state: "BOOKING_PRICE_COMPUTE",
+          booking: {
+            ...conversation.booking,
+            gst: { gstin: raw.toUpperCase() },
+            _gstCaptured: true
+          }
+        };
+  
+        setConversation(from, updatedConversation);
+  
+        await sendWhatsAppMessage(
+          from,
+          "✅ GST details saved.\n\nCalculating final price…"
+        );
+  
+        await runPriceCompute({
+          from,
+          conversation: updatedConversation,
+          sendWhatsAppMessage,
+          setConversation
+        });
+  
+        return true;
+      }
+  
+      await sendWhatsAppMessage(
+        from,
+        "❌ GST number format looks incorrect.\nReply *NONE* to skip."
+      );
+      return true;
+    }
+  
+    /* ===============================
+       PROMPT (ONLY IF NO INPUT)
+    =============================== */
+  
     if (!conversation.booking._gstEntryShown) {
       setConversation(from, {
         ...conversation,
@@ -1303,92 +1379,6 @@ async function handle(context) {
   
       return true;
     }
-  
-    if (!rawText || !rawText.trim()) {
-      return true;
-    }
-  
-    // 🔒 TERMINAL IDEMPOTENCY
-    if (conversation.booking._gstCaptured) {
-      return true;
-    }
-  
-    const input = lower.trim();
-
-    if (input === "none") {
-      const updatedConversation = {
-        ...conversation,
-        state: "BOOKING_PRICE_COMPUTE", // 👈 NEW TERMINAL STATE
-        booking: {
-          ...conversation.booking,
-          _gstCaptured: true
-        }
-      };
-    
-      setConversation(from, updatedConversation);
-    
-      await sendWhatsAppMessage(
-        from,
-        "⏭️ GST details skipped.\n\nCalculating final price…"
-      );
-    
-      await runPriceCompute({
-        from,
-        conversation: updatedConversation,
-        sendWhatsAppMessage,
-        setConversation
-      });
-    
-      return true;
-    }
-
-    // 🔒 PLAUSIBILITY (emoji / junk)
-    if (!isPlausibleGSTInput(rawText)) {
-      await sendWhatsAppMessage(
-        from,
-        "❌ Please enter a valid GST number or reply *NONE* to skip."
-      );
-      return true;
-    }
-  
-    // ✅ STRICT GST FORMAT
-    const gstRegex =
-      /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/;
-  
-    if (gstRegex.test(rawText.trim().toUpperCase())) {
-      const updatedConversation = {
-        ...conversation,
-        booking: {
-          ...conversation.booking,
-          gst: {
-            gstin: rawText.trim().toUpperCase()
-          },
-          _gstCaptured: true
-        }
-      };
-  
-      setConversation(from, updatedConversation);
-  
-      await sendWhatsAppMessage(
-        from,
-        "✅ GST details saved.\n\nCalculating final price…"
-      );
-  
-      await runPriceCompute({
-        from,
-        conversation: updatedConversation,
-        sendWhatsAppMessage,
-        setConversation
-      });
-  
-      return true;
-    }
-  
-    // 🔁 INVALID BUT PLAUSIBLE
-    await sendWhatsAppMessage(
-      from,
-      "❌ GST number format looks incorrect.\nReply *NONE* to skip."
-    );
   
     return true;
   }
