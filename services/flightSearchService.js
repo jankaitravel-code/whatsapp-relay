@@ -100,17 +100,26 @@ async function searchFlights(input) {
   );
 
   const flights = (response.data.data || []).map((f, idx) => {
-    let fareRules = normalizeFareRules(f);
+    const fareRules = normalizeFareRules(f);
 
     const capability = deriveFlexibilityCapability({
       fareRules
     });
-  
+
+    // 👇 EXPLICIT passenger eligibility (Stage 1 output)
+    const passengerEligibility =
+      fareRules?.allowedPassengerTypes || null;
+
     return {
       ...f,
+    
+      // 🔍 Search-only enrichments
       _normalizedBaggage: normalizeBaggage(f),
       _fareRules: fareRules,
-      _flexibilityCapability: capability
+      _flexibilityCapability: capability,
+    
+      // 🎫 Special fare eligibility (READ-ONLY)
+      _allowedPassengerTypes: passengerEligibility
     };
   });
 
@@ -118,11 +127,17 @@ async function searchFlights(input) {
     count: flights.length,
     sample: flights.slice(0, 1).map(f => ({
       flightId: f.id,
+    
       refundability: f._fareRules?.refundability?.status ?? "MISSING",
+    
       changeAllowed: f._fareRules?.change?.allowed ?? "MISSING",
       cancelAllowed: f._fareRules?.cancellation?.allowed ?? "MISSING",
+    
       changeSource: f._fareRules?.change?.source ?? "UNKNOWN",
-      cancelSource: f._fareRules?.cancellation?.source ?? "UNKNOWN"
+      cancelSource: f._fareRules?.cancellation?.source ?? "UNKNOWN",
+    
+      passengerTypes:
+        f._allowedPassengerTypes?.types ?? "UNKNOWN"
     }))
   });
   
