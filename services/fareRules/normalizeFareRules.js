@@ -17,6 +17,29 @@ function normalizeFareRules(flightOffer) {
 
     const currency = flightOffer.price?.currency || "INR";
 
+        /* -------------------------------
+           0️⃣ PASSENGER TYPE ELIGIBILITY
+           (Special fares — no inference)
+        -------------------------------- */
+        let allowedPassengerTypes = null;
+    
+        const travelerPricings = Array.isArray(flightOffer.travelerPricings)
+          ? flightOffer.travelerPricings
+          : [];
+
+          const passengerTypes = new Set();
+      
+          travelerPricings.forEach(tp => {
+            if (typeof tp.travelerType === "string") {
+              passengerTypes.add(tp.travelerType);
+            }
+          });
+          
+          allowedPassengerTypes =
+            passengerTypes.size > 0
+              ? Array.from(passengerTypes)
+              : null;
+    
     /* -------------------------------
        1️⃣ REFUNDABILITY
     -------------------------------- */
@@ -39,10 +62,6 @@ function normalizeFareRules(flightOffer) {
     -------------------------------- */
     let changePenalty = null;
     let cancelPenalty = null;
-
-    const travelerPricings = Array.isArray(flightOffer.travelerPricings)
-      ? flightOffer.travelerPricings
-      : [];
     
     travelerPricings.forEach(tp => {
       if (!Array.isArray(tp.fareDetailsBySegment)) return;
@@ -101,7 +120,14 @@ function normalizeFareRules(flightOffer) {
     return {
       refundability,
       change,
-      cancellation
+      cancellation,
+      allowedPassengerTypes: allowedPassengerTypes
+        ? {
+            types: allowedPassengerTypes,
+            source: "TRAVELER_PRICING",
+            confidence: "HIGH"
+          }
+        : null
     };
   } catch {
     // Hard safety net — never throw upstream
@@ -112,12 +138,14 @@ function normalizeFareRules(flightOffer) {
 /* ===============================
    Helpers
 =============================== */
-
 function emptyRules() {
   return {
     refundability: { status: "UNKNOWN", confidence: "LOW" },
     change: ruleUnknown(),
-    cancellation: ruleUnknown()
+    cancellation: ruleUnknown(),
+
+    // 👇 Explicitly unknown
+    allowedPassengerTypes: null
   };
 }
 
